@@ -1,15 +1,23 @@
-from source.backend.OrderSide import OrderSide
-from source.backend.LimitOrder import LimitOrder
-from source.backend.OrderBook import OrderBook
-from source.backend.Exchange import Exchange
-from source.backend.Simulator import Simulator
-from source.backend.AgentRemote import AgentRemote
-from source.backend.Agents import RandomMarketTaker, NaiveMarketMaker, CryptoMarketMaker, CryptoMarketTaker, RemoteTrader
-from source.backend.helpers import plot_bars
-from source.backend.run import main
+#Version 0.01
+from source.types.OrderSide import OrderSide
+from source.types.LimitOrder import LimitOrder
+from source.types.OrderBook import OrderBook
+from source.Exchange import Exchange
+from source.Agents import RandomMarketTaker, NaiveMarketMaker
+import asyncio
+import sys
+import traceback
 
 if __name__ == '__main__':
-    main()    
+    try:
+        asyncio.run(main())        
+        print('done...')
+        exit(0)
+    except:
+        # print(sys.exc_info()[2])
+        # print(traceback.format_exc())
+        exit(0)
+        
 
 # export all imports
 __all__ = [
@@ -17,12 +25,9 @@ __all__ = [
     'LimitOrder',
     'OrderBook',
     'Exchange',
-    'Simulator',
     'AgentRemote',
     'RandomMarketTaker',
     'NaiveMarketMaker',
     'CryptoMarketMaker',
     'CryptoMarketTaker',
-    'RemoteTrader',
-    'plot_bars',
 ]
