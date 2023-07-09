@@ -1,4 +1,3 @@
-from time import sleep
 import json
 import traceback
 import asyncio

@@ -1,7 +1,5 @@
 from quart import Quart, websocket, jsonify, request
 from .Requests import Requests
-import logging
-#TODO: migrate to Quart for async https://github.com/pallets/quart
 
 def API(requester):
     app = Quart(__name__)

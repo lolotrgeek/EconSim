@@ -4,7 +4,7 @@ parent_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 sys.path.append(parent_dir)
 
 import unittest
-from source.Requests import Requests
+from source.exchange.Requests import Requests
 from .MockRequester import MockRequester
 
 class RequestsTests(unittest.TestCase):

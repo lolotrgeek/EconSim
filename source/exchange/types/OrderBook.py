@@ -1,7 +1,6 @@
 import pandas as pd
 from typing import List
 from .LimitOrder import LimitOrder
-from ..utils._utils import format_dataframe_rows_to_dict
 
 class OrderBook():
     """An OrderBook contains all the relevant trading data of a given asset. It contains the list of bids and asks, ordered by their place in the queue.

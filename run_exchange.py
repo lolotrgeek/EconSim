@@ -1,7 +1,7 @@
 from datetime import datetime
 import traceback
 from source.Messaging import Responder, Requester, Puller
-from source.Exchange import Exchange
+from source.exchange.Exchange import Exchange
 from source.utils._utils import dumps
 from rich import print
 from rich.live import Live

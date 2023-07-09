@@ -1,7 +1,7 @@
 from random import randint
 import traceback
 from source.Messaging import Requester
-from source.Requests import Requests
+from source.exchange.Requests import Requests
 from source.Agents import NaiveMarketMaker, RandomMarketTaker, LowBidder
 from rich import print
 import asyncio

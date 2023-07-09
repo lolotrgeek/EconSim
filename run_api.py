@@ -1,7 +1,7 @@
 from random import randint
 import traceback
 from source.Messaging import Requester
-from source.API import API
+from source.exchange.API import API
 from rich import print
 import asyncio
 asyncio.set_event_loop_policy(asyncio.WindowsSelectorEventLoopPolicy())

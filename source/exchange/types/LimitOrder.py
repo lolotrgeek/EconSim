@@ -1,7 +1,10 @@
+import sys
+import os
+parent_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 from datetime import datetime
 from decimal import Decimal
 from .OrderSide import OrderSide
-from ..utils._utils import get_random_string
+from source.utils._utils import get_random_string
 
 class LimitOrder():
 

@@ -1,8 +1,6 @@
 from .utils._utils import get_datetime_range, get_pandas_time
 import pandas as pd
 from typing import List, Union
-from .types.Trade import Trade
-from .types.LimitOrder import LimitOrder
 from uuid import uuid4 as UUID
 import asyncio
 
@@ -23,7 +21,7 @@ class Agent():
     def __str__(self):
         return f'<Agent: {self.name}>'
 
-    async def get_latest_trade(self, ticker:str) -> Trade:
+    async def get_latest_trade(self, ticker:str):
         """returns the most recent trade of a given asset
 
         Args:
@@ -34,7 +32,7 @@ class Agent():
         """
         return await self.requests.get_latest_trade(ticker)
 
-    async def get_best_bid(self, ticker:str) -> LimitOrder:
+    async def get_best_bid(self, ticker:str):
         """returns the current best limit buy order
 
         Args:
@@ -45,7 +43,7 @@ class Agent():
         """
         return await self.requests.get_best_bid(ticker)
 
-    async def get_best_ask(self, ticker:str) -> LimitOrder:
+    async def get_best_ask(self, ticker:str):
         """returns the current best limit sell order
 
         Args:
@@ -98,7 +96,7 @@ class Agent():
         order = await self.requests.market_sell(ticker, qty, self.name, fee)
         return order
 
-    async def limit_buy(self, ticker:str, price:float, qty:int, fee=0.0) -> LimitOrder:
+    async def limit_buy(self, ticker:str, price:float, qty:int, fee=0.0):
         """Creates a limit buy order for a given asset and quantity at a certain price.
 
         Args:
@@ -112,7 +110,7 @@ class Agent():
         order = await self.requests.limit_buy(ticker,price,qty,self.name, fee)
         return order
 
-    async def limit_sell(self, ticker:str, price:float, qty:int, fee=0.0) -> LimitOrder:
+    async def limit_sell(self, ticker:str, price:float, qty:int, fee=0.0):
         """Creates a limit sell order for a given asset and quantity at a certain price.
 
         Args:

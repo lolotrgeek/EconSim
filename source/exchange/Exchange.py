@@ -1,3 +1,7 @@
+import sys
+import os
+parent_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+sys.path.append(parent_dir)
 import pandas as pd
 from typing import List
 from .types.OrderBook import OrderBook
@@ -5,7 +9,7 @@ from .types.Trade import Trade
 from .types.LimitOrder import LimitOrder
 from .types.OrderSide import OrderSide
 from .types.Fees import Fees
-from .utils._utils import format_dataframe_rows_to_dict
+from source.utils._utils import format_dataframe_rows_to_dict
 from uuid import uuid4 as UUID
 
 # Creates an Orderbook and Assets

@@ -1,6 +1,6 @@
 from source.company.PublicCompany import PublicCompany
 from source.Messaging import Responder, Requester, Puller
-from source.Requests import Requests
+from source.exchange.Requests import Requests
 from source.utils._utils import dumps
 import asyncio
 import random
