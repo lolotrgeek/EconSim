@@ -1,4 +1,4 @@
-from .utils._utils import get_datetime_range, get_pandas_time
+from ..utils._utils import get_datetime_range, get_pandas_time
 import pandas as pd
 from typing import List, Union
 from uuid import uuid4 as UUID
@@ -129,7 +129,7 @@ class Agent():
         _transactions = agent['_transactions']
         return sum(t['qty'] for t in _transactions if t['ticker'] == ticker)
 
-    async def cancel_order(self, id:str) -> Union[LimitOrder,None]:
+    async def cancel_order(self, id:str) -> Union[dict,None]:
         """Cancels the order with a given id (if it exists)
 
         Args:

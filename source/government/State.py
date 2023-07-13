@@ -1,1 +1,0 @@
-# Taxes capital gains yearly april 15th, issues tax bill to agents
