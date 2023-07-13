@@ -1,6 +1,9 @@
 # 🚀EconSim🚀
 A simulated economy with an exchange using backed assets.
 
+## Goals
+For backtesting agent based strategies with continuous generative data as opposed to discrete historical data.
+
 ## UNDER DEVELOPMENT
 -- version 0.1 -- 
 
