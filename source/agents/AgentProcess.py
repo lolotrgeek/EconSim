@@ -162,25 +162,6 @@ class Agent():
         returns: {assets: {ticker, amount}}"""
         return await self.requests.get_assets(self.name)
     
-    async def get_portfolio_history(self, agent):
-        #TODO: update for process
-        return None
-        bar_size = get_pandas_time(self._time_unit)
-        portfolio = pd.DataFrame(index=get_datetime_range(self._from_date, self.dt, self._time_unit))
-        transactions = pd.DataFrame(agent._transactions).set_index('dt')
-        for ticker in list(self.exchange.books.keys()):
-            qty_asset = pd.DataFrame(transactions[transactions['ticker'] == ticker]['qty'])
-            qty_asset = qty_asset.resample(bar_size).agg('sum').cumsum()
-            price = pd.DataFrame(index=get_datetime_range(self._from_date, self.dt, self._time_unit))
-            price = price.join(self.get_price_bars(ticker=ticker, bar_size=bar_size)['close']).ffill()
-            price = price.join(qty_asset).ffill()
-            portfolio[ticker] = (price['close'] * price['qty'])
-        portfolio['cash'] = transactions['cash_flow'].resample(bar_size).agg('sum').ffill()
-        portfolio.fillna(0, inplace=True)
-        portfolio['cash'] = portfolio['cash'].cumsum()
-        portfolio['aum'] = portfolio.sum(axis=1)
-        return portfolio  
-    
     async def register(self):
         agent = await self.requests.register_agent(self.name, self.initial_cash)
         if 'registered_agent' in agent:
