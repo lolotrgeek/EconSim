@@ -1,14 +1,14 @@
-from AgentProcess import Agent
+from .AgentProcess import Agent
 from datetime import datetime, timedelta
 
 class Government(Agent):
-    def __init__(self, name, id, initial_balance):
-        super().__init__("Government", id, initial_balance)
+    def __init__(self, initial_balance=10000000, requester=None):
+        super().__init__("Government", initial_balance, requester=requester)
         self.long_term_capital_gains_tax_rate = None
         self.short_term_capital_gains_tax_rate = None
-        self.agents = []
+        self.current_date = datetime(1700,1,1)
 
-    async def issue_tax_bills(self, current_date, tax_rate):
+    async def collect_taxes(self, current_date, tax_rate):
         agents = await self.requests.get_agents()
         for agent in agents:
             tax_bill = 0
@@ -23,7 +23,6 @@ class Government(Agent):
                     if transaction['cash_flow'] > 0:
                         tax_bill += transaction['exits']['pnl'] * tax_rate
             await self.requests.remove_cash(agent['name'], tax_bill)
-
 
     async def set_reserve_requirement(self, reserve_requirement):
         """Sets requirement for how much money the banks must keep in reserve.
@@ -69,7 +68,7 @@ class Government(Agent):
         """
         pass
 
-    async def next(self, current_date):
+    async def next(self):
         """The government's next action.
 
         Args:
@@ -77,5 +76,6 @@ class Government(Agent):
         """
         
         # if the date is april 15th, calculate tax bills
-        if current_date.month == 4 and current_date.day == 15:
-            tax_bill = await self.issue_tax_bills(current_date, self.long_term_capital_gains_tax_rate)
+        if self.current_date.month == 4 and self.current_date.day == 15:
+            print('collecting taxes...')
+            await self.collect_taxes(self.current_date, self.long_term_capital_gains_tax_rate)
