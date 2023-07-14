@@ -8,7 +8,6 @@ def run_clock():
         p = Pusher(5115)
         clock = Clock()
         while True:
-            sleep(.1) # length of simulated  day
             clock.tick()
             msg = p.push({"time": str(clock.dt)})
     
