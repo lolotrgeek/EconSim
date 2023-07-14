@@ -6,8 +6,9 @@ class Government(Agent):
         super().__init__("Government", id, initial_balance)
         self.long_term_capital_gains_tax_rate = None
         self.short_term_capital_gains_tax_rate = None
+        self.agents = []
 
-    async def calculate_tax_bills(self, current_date, tax_rate):
+    async def issue_tax_bills(self, current_date, tax_rate):
         agents = await self.requests.get_agents()
         for agent in agents:
             tax_bill = 0
@@ -21,7 +22,8 @@ class Government(Agent):
                         tax_rate = self.short_term_capital_gains_tax_rate
                     if transaction['cash_flow'] > 0:
                         tax_bill += transaction['exits']['pnl'] * tax_rate
-            return tax_bill
+            await self.requests.remove_cash(agent['name'], tax_bill)
+
 
     async def set_reserve_requirement(self, reserve_requirement):
         """Sets requirement for how much money the banks must keep in reserve.
@@ -39,7 +41,6 @@ class Government(Agent):
         """
         pass
 
-    async def send_money(self, amount, recipient):
         """Sends money to another agent.
 
         Args:
@@ -77,4 +78,4 @@ class Government(Agent):
         
         # if the date is april 15th, calculate tax bills
         if current_date.month == 4 and current_date.day == 15:
-            tax_bill = await self.calculate_tax_bills(current_date, self.long_term_capital_gains_tax_rate)
+            tax_bill = await self.issue_tax_bills(current_date, self.long_term_capital_gains_tax_rate)
