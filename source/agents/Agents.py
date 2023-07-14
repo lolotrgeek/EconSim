@@ -4,14 +4,14 @@ from time import sleep
 
 class RandomMarketTaker(Agent):
     def __init__(self,name,tickers, aum=10000,prob_buy=.2,prob_sell=.2,qty_per_order=1,seed=None, requester=None):
-        Agent.__init__(self, name, tickers, aum, requester=requester)
+        Agent.__init__(self, name, aum, requester=requester)
         if  prob_buy + prob_sell> 1:
             raise ValueError("Sum of probabilities cannot be greater than 1.") 
         self.prob_buy = prob_buy
         self.prob_sell = prob_sell
         self.qty_per_order = qty_per_order
         self.assets = {}
-        self.tickers
+        self.tickers = tickers
         self.aum = aum
 
         # Allows for setting a different independent seed to each instance
@@ -51,7 +51,7 @@ class RandomMarketTaker(Agent):
 
 class LowBidder(Agent):
     def __init__(self, name, tickers, aum, qty_per_order=1, requester=None):
-        Agent.__init__(self, name, tickers, aum, requester=requester)
+        Agent.__init__(self, name, aum, requester=requester)
         self.qty_per_order = qty_per_order
         self.tickers = tickers
         self.assets = {}
@@ -80,7 +80,7 @@ class LowBidder(Agent):
 class GreedyScalper(Agent):
     '''waits for initial supply to dry up, then starts inserting bids very low and asks very high'''
     def __init__(self, name, tickers, aum, qty_per_order=1, requester=None):
-        Agent.__init__(self, name, tickers, aum, requester=requester)
+        Agent.__init__(self, name, aum, requester=requester)
         self.qty_per_order = qty_per_order
         self.tickers = tickers
         self.aum = aum
@@ -101,7 +101,7 @@ class GreedyScalper(Agent):
 
 class NaiveMarketMaker(Agent):
     def __init__(self, name, tickers, aum, spread_pct=.005, qty_per_order=1, requester=None):
-        Agent.__init__(self, name, tickers, aum, requester=requester)
+        Agent.__init__(self, name, aum, requester=requester)
         self.qty_per_order = qty_per_order
         self.tickers = tickers
         self.spread_pct = spread_pct

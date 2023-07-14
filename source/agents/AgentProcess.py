@@ -7,10 +7,10 @@ import asyncio
 class Agent():
     """The Agent class is the base class for developing different traders that participate in the simulated exchange.
     """
-    def __init__(self, name:str, tickers:List[str], aum:int=10_000, requester=None):
+    def __init__(self, name:str, aum:int=10_000, requester=None):
         self.id = UUID()
         self.name = name 
-        self.tickers = tickers
+        self.tickers = []
         self.requests = requester
         self.cash = aum
         self.initial_cash = aum
