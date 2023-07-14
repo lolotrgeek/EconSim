@@ -30,7 +30,7 @@ def API(requester):
         if (limit is None):
             limit = 20
         if (ticker is None or ticker == ""):
-            return await jsonify({'message': 'Ticker not found.'}), 400
+            return jsonify({'message': 'Ticker not found.'}), 400
         return await requests.get_price_bars(ticker, interval, limit)
 
     @app.route('/api/v1/create_asset', methods=['POST'])

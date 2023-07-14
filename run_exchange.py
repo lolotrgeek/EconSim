@@ -58,6 +58,7 @@ async def run_exchange(exchange_channel = 5570, time_channel = 5114):
             elif msg['topic'] == 'get_agent': return dumps(await exchange.get_agent(msg['name']))
             elif msg['topic'] == 'get_agents': return dumps(await exchange.get_agents())
             elif msg['topic'] == 'add_cash': return dumps(await exchange.add_cash(msg['agent'], msg['amount']))
+            elif msg['topic'] == 'remove_cash': return dumps(await exchange.remove_cash(msg['agent'], msg['amount']))
             elif msg['topic'] == 'get_cash': return dumps(await exchange.get_cash(msg['agent']))
             elif msg['topic'] == 'get_assets': return dumps(await exchange.get_assets(msg['agent']))
             elif msg['topic'] == 'get_agents_holding': return dumps(await exchange.get_agents_holding(msg['ticker']))

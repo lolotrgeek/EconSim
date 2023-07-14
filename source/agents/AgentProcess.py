@@ -170,5 +170,8 @@ class Agent():
         else:
             return 'UnRegistered Agent'
 
+    async def send_cash(self, amount, recipient):
+        return await self.requests.send_cash(amount, self.name, recipient)
+
     async def next(self):  
         pass

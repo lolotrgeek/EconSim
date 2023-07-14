@@ -245,7 +245,7 @@ class Exchange():
             if unfilled_qty > 0:
                 maker_fee = self.fees.maker_fee(unfilled_qty)
                 self.fees.total_fee_revenue += maker_fee
-            new_order = LimitOrder(ticker, price, unfilled_qty, creator, OrderSide.SELL, self.datetime, fee=fee+maker_fee)
+            new_order = LimitOrder(ticker, price, unfilled_qty, creator, OrderSide.SELL, self.datetime, fee=fee+maker_fee, accounting=accounting)
             self.books[ticker].asks.insert(queue, new_order)
             initial_order = new_order
             initial_order.qty = qty
@@ -451,7 +451,15 @@ class Exchange():
             return {'cash':self.agents[agent_idx]['cash']}
         else:
             return {'error': 'agent not found'}
-        
+
+    async def remove_cash(self, agent, amount):
+        agent_idx = await self.__get_agent_index(agent)
+        if agent_idx is not None:
+            self.agents[agent_idx]['cash'] -= amount
+            return {'cash':self.agents[agent_idx]['cash']}
+        else:
+            return {'error': 'agent not found'}
+
     async def calculate_market_cap(price, shares_outstanding):
         """
         Calculates the market capitalization of a company
