@@ -452,7 +452,7 @@ class Exchange():
         else:
             return {'error': 'agent not found'}
 
-    async def remove_cash(self, agent, amount):
+    async def remove_cash(self, agent, amount, notes=''):
         agent_idx = await self.__get_agent_index(agent)
         if agent_idx is not None:
             self.agents[agent_idx]['cash'] -= amount
