@@ -6,7 +6,7 @@ import traceback
 from source.Messaging import Requester, Puller
 from source.agents.Government import Government
 from source.exchange.Requests import Requests
-from source.utils._utils import dumps
+from source.utils._utils import string_to_time
 from rich import print
 from rich.live import Live
 from rich.table import Table
@@ -29,7 +29,7 @@ async def run_government(exchange_channel = 5570, time_channel = 5114):
             elif type(clock['time']) is dict:
                 pass
             else: 
-                government.current_date = datetime.strptime(clock['time'], '%Y-%m-%d %H:%M:%S')
+                government.current_date = string_to_time(clock['time'])
 
         while True: 
             get_time()

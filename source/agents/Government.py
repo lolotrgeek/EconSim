@@ -4,6 +4,7 @@ import sys
 import os
 parent_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 from source.Instruments.Tax import Tax
+from source.utils._utils import string_to_time
 
 class Government(Agent):
     def __init__(self, initial_balance=10000000, requester=None):
@@ -21,7 +22,7 @@ class Government(Agent):
                 position['transactions'].sort(key=lambda x: x['dt'])
  
                 for idx, transaction in enumerate(position['transactions']):
-                    if transaction['dt'] + timedelta(days=365) < current_date:
+                    if string_to_time(transaction['dt']) + timedelta(days=365) < current_date:
                         if transaction['cash_flow'] > 0:
                             long_term_capital_gains += transaction['exits']['pnl']
                     else:

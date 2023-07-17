@@ -42,3 +42,6 @@ def format_dataframe_rows_to_dict(df):
             row_dict['dt'] = index.strftime("%m/%d/%Y, %H:%M:%S")
         result_list.append(row_dict)
     return result_list
+
+def string_to_time(string):
+    return datetime.strptime(string, '%Y-%m-%d %H:%M:%S')
