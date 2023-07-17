@@ -21,10 +21,7 @@ For backtesting agent based strategies with continuous generative data as oppose
 ## Usage
 
 ```
-python run_clock.py
-python run_exchange.py
-python run_agents.py
-
+python main.py
 ```
 
 Run dashboard
@@ -47,4 +44,4 @@ pytest
 ```
 
 ## Credits
-Exchange based on https://github.com/QMResearch/qmrExchange 
+Exchange and static agents based on https://github.com/QMResearch/qmrExchange 
