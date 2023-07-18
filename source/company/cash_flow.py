@@ -40,7 +40,3 @@ def generate_fake_cash_flow(retained_earnings, date, symbol, period):
         "freeCashFlow": random.randint(20000000000, 26000000000),
     }
     return cash_flow
-
-# Example usage
-fake_cash_flow = generate_fake_cash_flow()
-print(fake_cash_flow)

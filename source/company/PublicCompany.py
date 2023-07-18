@@ -1,7 +1,3 @@
-import sys
-import os
-parent_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-sys.path.append(parent_dir)
 from datetime import datetime, timedelta
 from .balance_sheet import generate_fake_balance_sheet
 from .income import generate_fake_income_statement
@@ -11,10 +7,9 @@ class PublicCompany:
     """
     Runs all public companies as a process Generating financial reports, distributing dividends, and issuing shares
     """
-    def __init__(self, name, initial_price, startdate, requester):
+    def __init__(self, name, startdate, requester):
         self.name = name
         self.symbol = name[:3].upper()
-        self.price = initial_price
         self.startdate = startdate
         self.currentdate = startdate
         self.quarters = [
@@ -40,11 +35,10 @@ class PublicCompany:
     #TODO: make all actions below alter the company's financials
 
     async def initial_shares(self, shares, price):
-        self.price = price
         self.requests.create_asset(self.symbol, shares, price, price * 0.99, price * 1.01)
 
     async def issue_shares(self, shares, price):
-        #TODO: this needs to be a special sell order similar to that in create_asset
+        #TODO: adding shares to an existing asset
         pass
 
     async def buyback_shares(self, shares, price):

@@ -78,6 +78,3 @@ def generate_fake_income_statement(date, symbol, period):
     income_statement["finalLink"] = "https://www.sec.gov/Archives/edgar/data/320193/000032019323000064/aapl-20230401.htm"
 
     return income_statement
-
-fake_income_statement = generate_fake_income_statement()
-print(fake_income_statement)

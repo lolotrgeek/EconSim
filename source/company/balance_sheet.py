@@ -110,7 +110,3 @@ def generate_fake_balance_sheet(date, symbol, period):
     balance_sheet["netDebt"] = net_debt
 
     return balance_sheet
-
-# Example usage
-fake_balance_sheet = generate_fake_balance_sheet()
-print(fake_balance_sheet)
