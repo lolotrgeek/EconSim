@@ -29,18 +29,18 @@ class Exchange():
     async def __str__(self):
         return ', '.join(ob for ob in self.books)
 
-    async def create_asset(self, ticker: str, type: str, market_qty=1000, seed_price=100, seed_bid=.99, seed_ask=1.01) -> OrderBook:
+    async def create_asset(self, ticker: str, asset_type='stock', market_qty=1000, seed_price=100, seed_bid=.99, seed_ask=1.01) -> OrderBook:
         """_summary_
 
         Args:
             ticker (str): the ticker of the new asset
-            type (str): the type of asset, either 'crypto', 'stock', 'currency', 'bond', 'cash'
+            asset_type (str, optional): the type of asset, default: 'stock', 'crypto', 'currency', 'bond', 'cash'
             marekt_qty (int, optional): the total amount of the asset in circulation. async defaults to 1000.
             seed_price (int, optional): Price of an initial trade that is created for ease of use. async defaults to 100.
             seed_bid (float, optional): Limit price of an initial buy order, expressed as percentage of the seed_price. async defaults to .99.
             seed_ask (float, optional): Limit price of an initial sell order, expressed as percentage of the seed_price. async defaults to 1.01.
         """
-        self.assets[ticker] = {'type':type}
+        self.assets[ticker] = {'type':asset_type}
         self.books[ticker] = OrderBook(ticker)
         self.agents.append({'name':'init_seed_'+ticker,'cash':market_qty * seed_price,'_transactions':[], 'positions':[], 'assets': {ticker: market_qty}})
         await self._process_trade(ticker, market_qty, seed_price, 'init_seed_'+ticker, 'init_seed_'+ticker)
@@ -144,7 +144,7 @@ class Exchange():
     
     async def get_price_bars(self, ticker, limit=20, bar_size='1D'):
         #TODO: not resampling correctly
-        trades = self.trades
+        trades = await self.trades
         trades = trades[trades['ticker']== ticker]
         trades.index = pd.to_datetime(trades.index)
         df = trades.resample(bar_size).agg({'price': 'ohlc', 'qty': 'sum'})
@@ -181,7 +181,8 @@ class Exchange():
             return LimitOrder(ticker, 0, 0, 'null_quote', OrderSide.BUY, self.datetime)
 
     async def limit_buy(self, ticker: str, price: float, qty: int, creator: str, fee=0, tif='GTC', position_id=UUID()):
-        if await self.agent_has_cash(creator, price, qty):
+        has_cash = await self.agent_has_cash(creator, price, qty)
+        if has_cash:
             if not self.assets[ticker]['type'] == 'crypto':
                 price = round(price,2)
             # check if we can match trades before submitting the limit order
@@ -219,7 +220,8 @@ class Exchange():
             return LimitOrder("error", 0, 0, 'insufficient_funds', OrderSide.BUY, self.datetime)
 
     async def limit_sell(self, ticker: str, price: float, qty: int, creator: str, fee=0, tif='GTC', accounting='FIFO'):
-        if await self.agent_has_assets(creator, ticker, qty):
+        has_assets = await self.agent_has_assets(creator, ticker, qty)
+        if has_assets:
             if not self.assets[ticker]['type'] == 'crypto':
                 price = round(price,2)
             unfilled_qty = qty
@@ -286,7 +288,8 @@ class Exchange():
 
     async def market_buy(self, ticker: str, qty: int, buyer: str, fee=0.0):
         best_price = (await self.get_best_ask(ticker)).price
-        if await self.agent_has_cash(buyer, best_price, qty):
+        has_cash = (await self.agent_has_cash(buyer, best_price, qty))
+        if has_cash:
             fills = []
             for idx, ask in enumerate(self.books[ticker].asks):
                 if ask.creator == buyer:
