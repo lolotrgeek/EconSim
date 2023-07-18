@@ -19,19 +19,20 @@ class Government(Agent):
             long_term_capital_gains = 0
             short_term_capital_gains = 0
             for position in agent['positions']:
-                position['transactions'].sort(key=lambda x: x['dt'])
- 
-                for idx, transaction in enumerate(position['transactions']):
-                    if string_to_time(transaction['dt']) + timedelta(days=365) < current_date:
-                        if transaction['cash_flow'] > 0:
-                            long_term_capital_gains += transaction['exits']['pnl']
+                position['exits'].sort(key=lambda x: x['dt'])
+
+                for exit in position['exits']:
+                    if string_to_time(exit['dt']) + timedelta(days=365) < current_date:
+                        if exit['pnl'] > 0:
+                            for exit in exit['exits']:
+                                long_term_capital_gains += exit['pnl']
                     else:
-                        if transaction['cash_flow'] > 0:
-                            short_term_capital_gains += transaction['exits']['pnl']
+                        if exit['pnl'] > 0:
+                            short_term_capital_gains += exit['pnl']
 
             long_term_tax = await self.taxes.calculate_tax(long_term_capital_gains, 'long_term', debug=False)
             short_term_tax = await self.taxes.calculate_tax(short_term_capital_gains, 'ordinary', debug=False)
-            await self.requests.remove_cash(agent['name'], long_term_tax + short_term_tax, 'taxes')
+            await self.requests.remove_cash(agent['name'], long_term_tax['amount'] + short_term_tax['amount'], 'taxes')
 
     async def set_reserve_requirement(self, reserve_requirement):
         """Sets requirement for how much money the banks must keep in reserve.
