@@ -2,22 +2,18 @@ from datetime import datetime
 import traceback
 from source.Messaging import Responder, Requester, Puller
 from source.exchange.Exchange import Exchange
-from source.utils._utils import dumps
+from source.company.PublicCompany import PublicCompany
+from source.utils._utils import dumps, string_to_time
 from rich import print
 from rich.live import Live
 from rich.table import Table
 import asyncio
 asyncio.set_event_loop_policy(asyncio.WindowsSelectorEventLoopPolicy())
 
-tickers = ['XYZ', 'ABC', 'DEF', 'GHI', 'JKL', 'MNO', 'PQR', 'STU', 'VWX', 'YZA', 'BCD', 'EFG', 'HIJ', 'KLM', 'NOP', 'QRS', 'TUV', 'WXY', 'ZAB', 'CDE', 'FGH', 'IJK', 'LMN', 'OPQ', 'RST', 'UVW']
-
 async def run_exchange(exchange_channel = 5570, time_channel = 5114):
     try: 
         exchange = Exchange(datetime=datetime(1700,1,1))
-        for ticker in tickers:
-            asset = (await exchange.create_asset(ticker, 'stock'))
-            # print(asset.asks, asset.bids)
-        print(f'{len(tickers)} assets created.')
+        await exchange.create_asset("XYZ", 'stock')
         time_puller = Puller(time_channel)
         responder = Responder(exchange_channel)
         requester = Requester(exchange_channel)
@@ -33,7 +29,7 @@ async def run_exchange(exchange_channel = 5570, time_channel = 5114):
             elif type(clock['time']) is dict:
                 pass
             else: 
-                exchange.datetime = datetime.strptime(clock['time'], '%Y-%m-%d %H:%M:%S')
+                exchange.datetime = string_to_time(clock['time'])
 
         async def callback(msg):
             if msg['topic'] == 'create_asset': return dumps((await exchange.create_asset(msg['ticker'],msg['qty'], msg['seed_price'], msg['seed_bid'], msg['seed_ask'])).to_dict())

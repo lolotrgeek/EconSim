@@ -1,5 +1,5 @@
 from quart import Quart, websocket, jsonify, request
-from .Requests import Requests
+from .ExchangeRequests import ExchangeRequests as Requests
 
 def API(requester):
     app = Quart(__name__)
