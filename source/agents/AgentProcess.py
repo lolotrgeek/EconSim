@@ -138,7 +138,7 @@ class Agent():
         returns:
             Union[LimitOrder,None]: the cancelled order if it is still pending. None if it does not exists or has already been filled/cancelled
         """
-        return self.requests.cancel_order(id=id)
+        return await self.requests.cancel_order(id=id)
 
     async def cancel_all_orders(self, ticker:str):
         """Cancels all remaining orders that the agent has on an asset.
