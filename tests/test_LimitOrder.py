@@ -1,9 +1,10 @@
+import asyncio
 import sys
 import os
 parent_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 sys.path.append(parent_dir)
-from source.types.LimitOrder import LimitOrder
-from source.types.OrderSide import OrderSide
+from source.exchange.types.LimitOrder import LimitOrder
+from source.exchange.types.OrderSide import OrderSide
 import unittest
 from datetime import datetime
 from decimal import Decimal
@@ -43,7 +44,9 @@ class LimitOrderTests(unittest.TestCase):
             'qty': 100,
             'creator': 'Creator',
             'type': 'limit_buy',
-            'dt': self.limit_order.dt
+            'dt': self.limit_order.dt,
+            'accounting': 'FIFO',
+            'position_id': None
         }
         self.assertDictEqual(self.limit_order.to_dict(), expected_dict)
 
@@ -56,4 +59,4 @@ class LimitOrderTests(unittest.TestCase):
         self.assertEqual(str(self.limit_order), expected_str)
 
 if __name__ == '__main__':
-    unittest.main()
+    asyncio.run(unittest.main())

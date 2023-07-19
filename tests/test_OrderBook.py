@@ -1,4 +1,4 @@
-
+import asyncio
 import unittest
 import pandas as pd
 import sys
@@ -6,9 +6,9 @@ import os
 parent_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 sys.path.append(parent_dir)
 
-from source.types.OrderSide import OrderSide
-from source.types.OrderBook import OrderBook
-from source.types.LimitOrder import LimitOrder
+from source.exchange.types.OrderSide import OrderSide
+from source.exchange.types.OrderBook import OrderBook
+from source.exchange.types.LimitOrder import LimitOrder
 class OrderBookTests(unittest.TestCase):
     def __init__(self, methodName: str = "runTest") -> None:
         super().__init__(methodName)
@@ -49,7 +49,6 @@ class OrderBookTests(unittest.TestCase):
             test_order3,
             test_order4
         ]
-        print(self.order_book.df)
         expected_df = {
             'bids': pd.DataFrame({
                 'id': ['id1', 'id2'],
@@ -59,7 +58,9 @@ class OrderBookTests(unittest.TestCase):
                 'qty': [100, 200],
                 'creator': ['Creator1', 'Creator2'],
                 'dt': ['dt1', 'dt2'],
-                'type': ['limit_buy', 'limit_buy']
+                'type': ['limit_buy', 'limit_buy'],
+                'accounting': ['FIFO', 'FIFO'],
+                'position_id': [None, None]
             }),
             'asks': pd.DataFrame({
                 'id': ['id3', 'id4'],
@@ -69,7 +70,9 @@ class OrderBookTests(unittest.TestCase):
                 'qty': [50, 75],
                 'creator': ['Creator3', 'Creator4'],
                 'dt': ['dt3', 'dt4'],
-                'type': ['limit_sell', 'limit_sell']
+                'type': ['limit_sell', 'limit_sell'],
+                'accounting': ['FIFO', 'FIFO'],
+                'position_id': [None, None]
             })
         }
         self.assertDictEqual(self.order_book.df['bids'].to_dict(), expected_df['bids'].to_dict())
@@ -121,4 +124,4 @@ class OrderBookTests(unittest.TestCase):
 
 
 if __name__ == '__main__':
-    unittest.main()
+    asyncio.run(unittest.main())

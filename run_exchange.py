@@ -32,7 +32,7 @@ async def run_exchange(exchange_channel = 5570, time_channel = 5114):
                 exchange.datetime = string_to_time(clock['time'])
 
         async def callback(msg):
-            if msg['topic'] == 'create_asset': return dumps((await exchange.create_asset(msg['ticker'],msg['qty'], msg['seed_price'], msg['seed_bid'], msg['seed_ask'])).to_dict())
+            if msg['topic'] == 'create_asset': return dumps((await exchange.create_asset(msg['ticker'],msg['asset_type'],msg['qty'], msg['seed_price'], msg['seed_bid'], msg['seed_ask'])))
             elif msg['topic'] == 'limit_buy': return dumps((await exchange.limit_buy(msg['ticker'], msg['price'], msg['qty'], msg['creator'], msg['fee'])).to_dict())
             elif msg['topic'] == 'limit_sell': return dumps((await exchange.limit_sell(msg['ticker'], msg['price'], msg['qty'], msg['creator'], msg['fee'])).to_dict())
             elif msg['topic'] == 'market_buy': return await exchange.market_buy(msg['ticker'], msg['qty'], msg['buyer'], msg['fee'])
