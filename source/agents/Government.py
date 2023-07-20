@@ -13,7 +13,7 @@ class Government(Agent):
         self.taxes = Tax()
 
 
-    async def collect_taxes(self, current_date):
+    async def collect_taxes(self):
         agents = await self.requests.get_agents()
         for agent in agents:
             long_term_capital_gains = 0
@@ -22,7 +22,7 @@ class Government(Agent):
                 position['exits'].sort(key=lambda x: x['dt'])
 
                 for exit in position['exits']:
-                    if string_to_time(exit['dt']) + timedelta(days=365) < current_date:
+                    if string_to_time(exit['dt']) - string_to_time(exit['enter_date']) >= timedelta(days=365):
                         if exit['pnl'] > 0:
                             for exit in exit['exits']:
                                 long_term_capital_gains += exit['pnl']
@@ -88,4 +88,4 @@ class Government(Agent):
         # if the date is april 15th, calculate tax bills
         if self.current_date.month == 4 and self.current_date.day == 15:
             print('collecting taxes...')
-            await self.collect_taxes(self.current_date)
+            await self.collect_taxes()

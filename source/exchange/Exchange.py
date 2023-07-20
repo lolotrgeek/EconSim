@@ -9,7 +9,7 @@ from .types.Trade import Trade
 from .types.LimitOrder import LimitOrder
 from .types.OrderSide import OrderSide
 from .types.Fees import Fees
-from .types.Transaction import Transaction
+from .types.Transaction import Transaction, Exit
 from .types.Position import Position
 from source.utils._utils import format_dataframe_rows_to_dict
 from uuid import uuid4 as UUID
@@ -397,11 +397,11 @@ class Exchange():
                                 for enter in self.agents[agent_idx]['positions'][idx]['enters']:
                                     if enter['qty'] >= side['qty']:
                                         self.agents[agent_idx]['positions'][idx]['qty'] -= side['qty']
-                                        self.agents[agent_idx]['positions'][idx]['exits'].append(Transaction(side['cash_flow'], side['ticker'], side['qty'], side['dt'], side['type'], side['cash_flow']-enter['cash_flow'], enter['id']).to_dict())
+                                        self.agents[agent_idx]['positions'][idx]['exits'].append(Exit(side['cash_flow'], side['ticker'], side['qty'], side['dt'], side['type'], side['cash_flow']-enter['cash_flow'], enter['id'], enter['dt']).to_dict())
                                         side['qty'] = 0
                                         break
                                     else:
-                                        self.agents[agent_idx]['positions'][idx]['exits'].append(Transaction(side['cash_flow'], side['ticker'], side['qty'], side['dt'], side['type'], side['cash_flow']-enter['cash_flow'], enter['id']).to_dict())
+                                        self.agents[agent_idx]['positions'][idx]['exits'].append(Exit(side['cash_flow'], side['ticker'], side['qty'], side['dt'], side['type'], side['cash_flow']-enter['cash_flow'], enter['id'], enter['dt']).to_dict())
                                         side['qty'] -= self.agents[agent_idx]['positions'][idx]['qty']
                                         self.agents[agent_idx]['positions'][idx]['qty'] = 0
                             break

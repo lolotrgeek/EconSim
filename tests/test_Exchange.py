@@ -134,7 +134,6 @@ class GetBestBidTestCase(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(best_bid.qty, 0)
         self.assertEqual(best_bid.creator, "null_quote")
 
-
 class CancelOrderTestCase(unittest.IsolatedAsyncioTestCase):
     async def asyncSetUp(self) -> None:
         self.exchange = Exchange(datetime=datetime(2023, 1, 1))
@@ -407,7 +406,7 @@ class UpdateAgentsTestCase(unittest.IsolatedAsyncioTestCase):
         agent2 = await self.exchange.register_agent("Agent2", initial_cash=200)
         self.agent1 = agent1['registered_agent']
         self.agent2 = agent2['registered_agent']
-        fake_buy_txn = Transaction(-50, "AAPL", 1, self.exchange.datetime, self.agent1, self.agent2, "buy").to_dict()
+        fake_buy_txn = Transaction(-50, "AAPL", 1, self.exchange.datetime, "buy").to_dict()
     
         self.exchange.agents[1]['_transactions'].append(fake_buy_txn)
         self.exchange.agents[1]['positions'].append(Position("fake_buy_id", "AAPL", 1, self.exchange.datetime, enters=[fake_buy_txn]).to_dict())
@@ -606,7 +605,6 @@ class getAgentsPositionsTest(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(result[0]['positions'][0]['enters'][0]['qty'], 1000)
         self.assertEqual(result[0]['positions'][0]['enters'][0]['dt'], datetime(2023, 1, 1, 0, 0))
         self.assertEqual(result[0]['positions'][0]['enters'][0]['type'], 'buy')
-        self.assertEqual(result[0]['positions'][0]['enters'][0]['pnl'], 0)
         self.assertEqual(result[0]['agent'], 'init_seed_AAPL')
         self.assertEqual(result[0]['positions'][0]['ticker'], 'AAPL')
         self.assertEqual(result[0]['positions'][0]['qty'], 1000)
@@ -617,6 +615,7 @@ class getAgentsPositionsTest(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(result[0]['positions'][0]['exits'][0]['dt'], datetime(2023, 1, 1, 0, 0))
         self.assertEqual(result[0]['positions'][0]['exits'][0]['type'], 'sell')
         self.assertEqual(result[0]['positions'][0]['exits'][0]['pnl'], 100)
+
 
 if __name__ == '__main__':
     asyncio.run(unittest.main())

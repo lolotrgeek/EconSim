@@ -1,6 +1,6 @@
 from uuid import uuid4 as UUID
 class Transaction():
-    def __init__(self, cash_flow, ticker, qty, dt, side, pnl=0, enter_id=None):
+    def __init__(self, cash_flow, ticker, qty, dt, side):
         """
         Represents one side of a transaction.
         """
@@ -10,8 +10,6 @@ class Transaction():
         self.qty = qty
         self.dt = dt
         self.type = side
-        self.pnl = pnl
-        self.enter_id = enter_id
 
     def __repr__(self):
         return f"Transaction({self.id}, {self.cash_flow}, {self.ticker}, {self.qty}, {self.dt}, {self.type})"
@@ -27,6 +25,31 @@ class Transaction():
             'qty': self.qty,
             'dt': self.dt,
             'type': self.type,
-            'pnl': self.pnl
         }
 
+class Exit(Transaction):
+    def __init__(self, cash_flow, ticker, qty, dt, side, pnl, enter_id, enter_date):
+        super().__init__(cash_flow, ticker, qty, dt, side)
+        self.pnl = pnl
+        self.enter_id = enter_id
+        self.enter_date = enter_date
+
+    def __repr__(self):
+        return f"Exit({self.id}, {self.cash_flow}, {self.ticker}, {self.qty}, {self.dt}, {self.type}, {self.pnl}, {self.enter_id}, {self.enter_date})"
+    
+    def __str__(self):
+        return f"<Exit({self.ticker} {self.qty} @ {self.dt}>"
+    
+    def to_dict(self):
+        return {
+            'id': self.id,
+            'cash_flow': self.cash_flow,
+            'ticker': self.ticker,
+            'qty': self.qty,
+            'dt': self.dt,
+            'type': self.type,
+            'pnl': self.pnl,
+            'enter_id': self.enter_id,
+            'enter_date': self.enter_date
+        }
+    
