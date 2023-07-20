@@ -616,6 +616,16 @@ class getAgentsPositionsTest(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(result[0]['positions'][0]['exits'][0]['type'], 'sell')
         self.assertEqual(result[0]['positions'][0]['exits'][0]['pnl'], 100)
 
+class calculateMarketCapTest(unittest.IsolatedAsyncioTestCase):
+    async def asyncSetUp(self) -> None:
+        self.exchange = Exchange(datetime=datetime(2023, 1, 1))
+
+    async def test_calculate_market_cap(self):
+        await self.exchange.create_asset("AAPL", seed_price=150, seed_bid=0.99, seed_ask=1.01)
+        await self.exchange.create_asset("TSLA", seed_price=150, seed_bid=0.99, seed_ask=1.01)
+        result = await self.exchange.calculate_market_cap("AAPL")
+        result = await self.exchange.calculate_market_cap("AAPL")
+        self.assertEqual(result, 150000)
 
 if __name__ == '__main__':
     asyncio.run(unittest.main())

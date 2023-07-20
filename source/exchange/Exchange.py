@@ -463,16 +463,13 @@ class Exchange():
         else:
             return {'error': 'agent not found'}
 
-    async def calculate_market_cap(price, shares_outstanding):
+    async def calculate_market_cap(self,ticker):
         """
         Calculates the market capitalization of a company
         Args: 
-        
-        price: the current price of the stock
-        
-        shares_outstanding : the number of shares currently held by investors
+        ticker: the ticker of the asset
         """
-        market_cap = price * shares_outstanding
+        market_cap = (await self.get_midprice(ticker))['midprice'] * (await self.get_shares_outstanding(ticker))
         return market_cap
     
     async def get_shares_outstanding(self, ticker):
