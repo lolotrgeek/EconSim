@@ -22,12 +22,10 @@ class Government(Agent):
                 position['exits'].sort(key=lambda x: x['dt'])
 
                 for exit in position['exits']:
-                    if string_to_time(exit['dt']) - string_to_time(exit['enter_date']) >= timedelta(days=365):
-                        if exit['pnl'] > 0:
-                            for exit in exit['exits']:
-                                long_term_capital_gains += exit['pnl']
-                    else:
-                        if exit['pnl'] > 0:
+                    if exit['pnl'] > 0:
+                        if string_to_time(exit['dt']) - string_to_time(exit['enter_date']) >= timedelta(days=365):
+                            long_term_capital_gains += exit['pnl']
+                        else:
                             short_term_capital_gains += exit['pnl']
 
             long_term_tax = await self.taxes.calculate_tax(long_term_capital_gains, 'long_term', debug=False)
