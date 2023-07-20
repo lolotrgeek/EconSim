@@ -94,7 +94,7 @@ class Exchange():
         returns:
             Trade
         """
-        latest_trade = next(trade for trade in self.trade_log[::-1] if trade.ticker == ticker)
+        latest_trade = next((trade for trade in self.trade_log[::-1] if trade.ticker == ticker), {'error': 'no trades found'})
         if isinstance(latest_trade, Trade):
             return latest_trade.to_dict()
         else:
@@ -258,14 +258,14 @@ class Exchange():
         else:
             return LimitOrder("error", 0, 0, 'insufficient_assets', OrderSide.SELL, self.datetime)
 
-    async def get_order(self, id):
-        for book in self.books:
-            bid = next(([idx,o] for idx, o in enumerate(self.books[book].bids) if o.id == id),None)
+    async def get_order(self, ticker, id):
+        if ticker in self.books:
+            bid = next(([idx,o] for idx, o in enumerate(self.books[ticker].bids) if o.id == id),None)
             if bid:
-                return bid
-            ask = next(([idx,o] for idx, o in enumerate(self.books[book].asks) if o.id == id),None)
+                return bid[1]
+            ask = next(([idx,o] for idx, o in enumerate(self.books[ticker].asks) if o.id == id),None)
             if ask:
-                return ask
+                return ask[1]
         return None
 
     async def cancel_order(self, id):
@@ -353,7 +353,7 @@ class Exchange():
         self.datetime = dt
 
     async def get_transactions(self, agent):
-        return {'transactions':await self.get_agent(agent)['_transactions']}
+        return {'transactions':(await self.get_agent(agent))['_transactions']}
 
     async def register_agent(self, name, initial_cash):
         #TODO: use an agent class???
@@ -435,7 +435,7 @@ class Exchange():
         return self.agents
     
     async def total_cash(self):
-        return sum(agent['cash'] for agent in self.agents if agent['name'] != 'init_seed' )
+        return sum(agent['cash'] for agent in self.agents if 'init_seed' not in agent['name'])
     
     async def agents_cash(self):
         info = []
@@ -510,6 +510,6 @@ class Exchange():
             positions = []
             for position in agent['positions']:
                 if position['ticker'] == ticker:
-                    position.append(position)
+                    positions.append(position)
             agent_positions.append({'agent':agent['name'],'positions':positions})
         return agent_positions

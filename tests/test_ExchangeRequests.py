@@ -31,7 +31,6 @@ class CreateAssetTest(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(book['asks'][0]['qty'], 1000)
         self.assertEqual(book['asks'][0]['ticker'], 'AAPL')
 
-
 class GetOrderBookTest(unittest.IsolatedAsyncioTestCase):
     async def asyncSetUp(self):
         self.mock_requester = MockRequester()
@@ -300,6 +299,48 @@ class GetAgentsTest(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(len(response[0]['_transactions']), 2)
         self.assertEqual(response[1]['cash'], 100000)
         self.assertEqual(response[1]['assets'], {})
+
+class AddCashTest(unittest.IsolatedAsyncioTestCase):
+    async def asyncSetUp(self) -> None:
+        self.mock_requester = MockRequester()
+        await self.mock_requester.init()
+        self.requests = Requests(self.mock_requester)
+
+    async def test_add_cash(self):
+        response = await self.requests.make_request('add_cash', {'agent': self.mock_requester.responder.agent, 'amount': 1000}, self.mock_requester)
+        self.assertEqual(response, {'cash': 101000})
+
+
+class RemoveCashTest(unittest.IsolatedAsyncioTestCase):
+    async def asyncSetUp(self) -> None:
+        self.mock_requester = MockRequester()
+        await self.mock_requester.init()
+        self.requests = Requests(self.mock_requester)
+
+    async def test_remove_cash(self):
+        response = await self.requests.make_request('remove_cash', {'agent': self.mock_requester.responder.agent, 'amount': 1000}, self.mock_requester)
+        self.assertEqual(response, {'cash': 99000})
+
+class GetAgentsHoldingTest(unittest.IsolatedAsyncioTestCase):
+    async def asyncSetUp(self) -> None:
+        self.mock_requester = MockRequester()
+        await self.mock_requester.init()
+        self.requests = Requests(self.mock_requester)
+
+    async def get_agents_holding(self):
+        response = await self.requests.make_request('get_agents_holding', {'ticker': 'AAPL'}, self.mock_requester)
+        print(response)
+
+class GetAgentsPositionsTest(unittest.IsolatedAsyncioTestCase):
+    async def asyncSetUp(self) -> None:
+        self.mock_requester = MockRequester()
+        await self.mock_requester.init()
+        self.requests = Requests(self.mock_requester)
+
+    async def get_agents_positions(self):
+        response = await self.requests.make_request('get_agents_positions', {'agent': self.mock_requester.responder.agent}, self.mock_requester)
+        print(response)
+        
 
 if __name__ == '__main__':
     asyncio.run(unittest.main())
