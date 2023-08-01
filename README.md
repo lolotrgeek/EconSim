@@ -1,8 +1,8 @@
 # 🚀EconSim🚀
 A simulated economy with an exchange using backed assets.
 
-## Goals
-For backtesting agent based strategies with continuous generative data as opposed to discrete historical data.
+## Goal
+Train agents to develop strategies of resource acquisition and allocation via interaction with continuously generative data as opposed to discrete historical data.
 
 ## UNDER DEVELOPMENT
 -- version 0.2 -- 
