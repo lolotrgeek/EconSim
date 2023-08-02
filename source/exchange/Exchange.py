@@ -506,7 +506,7 @@ class Exchange():
         for agent in self.agents:
             positions = []
             for position in agent['positions']:
-                if position['ticker'] == ticker:
+                if ticker is None or position['ticker'] == ticker:
                     positions.append(position)
             agent_positions.append({'agent':agent['name'],'positions':positions})
         return agent_positions

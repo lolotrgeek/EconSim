@@ -16,7 +16,6 @@ class CreateAssetTest(unittest.IsolatedAsyncioTestCase):
 
     async def test_create_asset(self):
         response = await self.requests.make_request('create_asset', {'ticker': "AAPL", "asset_type":'stock', 'qty': 1000, 'seed_price': 50000, 'seed_bid': 0.99, 'seed_ask': 1.01}, self.mock_requester)
-        print(response)
         book = self.mock_requester.responder.exchange.books['AAPL'].to_dict()
         self.assertEqual(type(response), dict)
         self.assertEqual(response['type'], "stock")
@@ -263,7 +262,6 @@ class GetMempoolTest(unittest.IsolatedAsyncioTestCase):
     async def get_mempool(self, limit):
         response = await self.requests.make_request('mempool', {'limit': limit}, self.mock_requester)
         #TODO: implement test
-        print(response)
 
 class GetAgentTest(unittest.IsolatedAsyncioTestCase):
     async def asyncSetUp(self):
@@ -283,7 +281,6 @@ class GetAgentsTest(unittest.IsolatedAsyncioTestCase):
 
     async def test_get_agents(self):
         response = await self.requests.make_request('get_agents', {}, self.mock_requester)
-        print(response)
         expected = [
             {'_transactions': [{'cash_flow': -150000, 'dt': '2023-01-01 00:00:00', 'id': 'af33c054-c78e-4379-ad03-8ad952d32581', 'pnl': 0, 'qty': 1000, 'ticker': 'AAPL', 'type': 'buy'}, {'cash_flow': 150000, 'dt': '2023-01-01 00:00:00', 'id': 'e4beb9d1-bf1f-46de-8725-140c7c6e1235', 'pnl': 0, 'qty': -1000, 'ticker': 'AAPL', 'type': 'sell'}], 
             'assets': {'AAPL': 1000}, 
@@ -327,9 +324,9 @@ class GetAgentsHoldingTest(unittest.IsolatedAsyncioTestCase):
         await self.mock_requester.init()
         self.requests = Requests(self.mock_requester)
 
-    async def get_agents_holding(self):
+    async def test_get_agents_holding(self):
         response = await self.requests.make_request('get_agents_holding', {'ticker': 'AAPL'}, self.mock_requester)
-        print(response)
+        self.assertEqual(response, ['init_seed_AAPL'])
 
 class GetAgentsPositionsTest(unittest.IsolatedAsyncioTestCase):
     async def asyncSetUp(self) -> None:
@@ -337,10 +334,22 @@ class GetAgentsPositionsTest(unittest.IsolatedAsyncioTestCase):
         await self.mock_requester.init()
         self.requests = Requests(self.mock_requester)
 
-    async def get_agents_positions(self):
-        response = await self.requests.make_request('get_agents_positions', {'agent': self.mock_requester.responder.agent}, self.mock_requester)
-        print(response)
-        
+    async def test_get_agents_positions(self):
+        result = await self.requests.make_request('get_agents_positions', {'ticker': None}, self.mock_requester)
+        self.assertEqual(len(result[0]['positions']), 1)
+        self.assertEqual(result[0]['agent'], 'init_seed_AAPL')
+        self.assertEqual(result[0]['positions'][0]['ticker'], 'AAPL')
+        self.assertEqual(result[0]['positions'][0]['qty'], 1000)
+        self.assertEqual(result[0]['positions'][0]['dt'], '2023-01-01 00:00:00')
+        self.assertEqual(result[0]['positions'][0]['enters'][0]['cash_flow'], -150000)
+        self.assertEqual(result[0]['positions'][0]['enters'][0]['ticker'], 'AAPL')
+        self.assertEqual(result[0]['positions'][0]['enters'][0]['qty'], 1000)
+        self.assertEqual(result[0]['positions'][0]['enters'][0]['dt'], '2023-01-01 00:00:00')
+        self.assertEqual(result[0]['positions'][0]['enters'][0]['type'], 'buy')
+        self.assertEqual(result[0]['agent'], 'init_seed_AAPL')
+        self.assertEqual(result[0]['positions'][0]['ticker'], 'AAPL')
+        self.assertEqual(result[0]['positions'][0]['qty'], 1000)
+        self.assertEqual(result[0]['positions'][0]['dt'], '2023-01-01 00:00:00')
 
 if __name__ == '__main__':
     asyncio.run(unittest.main())
