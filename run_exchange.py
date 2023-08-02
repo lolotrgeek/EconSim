@@ -60,6 +60,7 @@ async def run_exchange(exchange_channel = 5570, time_channel = 5114):
             elif msg['topic'] == 'get_assets': return dumps(await exchange.get_assets(msg['agent']))
             elif msg['topic'] == 'get_agents_holding': return dumps(await exchange.get_agents_holding(msg['ticker']))
             elif msg['topic'] == 'get_agents_positions': return dumps(await exchange.get_agents_positions(msg['ticker']))
+            elif msg['topic'] == 'get_agents_simple': return dumps(await exchange.get_agents_simple())
             #TODO: exchange topic to get general exchange data
             else: return f'unknown topic {msg["topic"]}'
 

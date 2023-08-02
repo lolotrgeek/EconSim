@@ -15,10 +15,10 @@ def API(requester):
     
     @app.route('/api/v1/get_agents', methods=['GET'])
     async def get_agents():
-        agents = requests.get_agents()
+        agents = await requests.get_agents_simple()
         if agents is None:
             return jsonify({'message': 'Agents not found.'}), 400
-        return await agents
+        return agents
 
     @app.route('/api/v1/candles', methods=['GET'])
     async def candles():

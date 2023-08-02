@@ -627,5 +627,20 @@ class calculateMarketCapTest(unittest.IsolatedAsyncioTestCase):
         result = await self.exchange.calculate_market_cap("AAPL")
         self.assertEqual(result, 150000)
 
+class getAgentsSimpleTest(unittest.IsolatedAsyncioTestCase):
+    async def asyncSetUp(self) -> None:
+        self.exchange = Exchange(datetime=datetime(2023, 1, 1))
+        self.agent1 = (await self.exchange.register_agent("agent19", initial_cash=10000))['registered_agent']
+        self.agent2 = (await self.exchange.register_agent("agent20", initial_cash=10000))['registered_agent']
+        self.agent3 = (await self.exchange.register_agent("agent21", initial_cash=10000))['registered_agent']
+        await self.exchange.create_asset("AAPL", seed_price=150, seed_bid=0.99, seed_ask=1.01)
+
+    async def test_get_agents_simple(self):
+        await self.exchange.market_buy("AAPL", qty=2, buyer=self.agent1, fee=0)
+        await self.exchange.market_buy("AAPL", qty=3, buyer=self.agent2, fee=0)
+        await self.exchange.market_buy("AAPL", qty=4, buyer=self.agent3, fee=0)
+        result = await self.exchange.get_agents_simple()
+        self.assertCountEqual(result, [{'agent': 'init_seed_AAPL', 'cash': 151363.5, 'assets': {'AAPL': 991}}, {'agent': self.agent1, 'cash': 9697.0, 'assets': {'AAPL': 2}}, {'agent': self.agent2, 'cash': 9545.5, 'assets': {'AAPL': 3}}, {'agent': self.agent3, 'cash': 9394.0, 'assets': {'AAPL': 4}}])
+
 if __name__ == '__main__':
     asyncio.run(unittest.main())

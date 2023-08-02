@@ -510,3 +510,12 @@ class Exchange():
                     positions.append(position)
             agent_positions.append({'agent':agent['name'],'positions':positions})
         return agent_positions
+    
+    async def get_agents_simple(self):
+        """
+        Returns a list of agents and their cash and assets
+        """
+        agents_simple = []
+        for agent in self.agents:
+            agents_simple.append({'agent':agent['name'],'cash':agent['cash'],'assets':agent['assets']})
+        return agents_simple
