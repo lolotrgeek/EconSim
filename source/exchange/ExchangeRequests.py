@@ -8,6 +8,9 @@ class ExchangeRequests(Requests):
     def __init__(self, requester):
         super().__init__(requester)
 
+    async def get_sim_time(self):
+        return await self.make_request('sim_time', {}, self.requester)
+
     async def get_price_bars(self, ticker, interval, limit):
         return await self.make_request('candles', {'ticker': ticker, 'interval': interval, 'limit': limit}, self.requester)
 

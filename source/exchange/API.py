@@ -11,7 +11,7 @@ def API(requester):
 
     @app.route('/api/v1/sim_time', methods=['GET'])
     async def get_sim_time():
-        return jsonify({'sim_time': "TODO: req from clock process"})
+        return await requests.get_sim_time()
     
     @app.route('/api/v1/get_agents', methods=['GET'])
     async def get_agents():
