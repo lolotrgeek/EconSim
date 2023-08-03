@@ -266,7 +266,7 @@ class Exchange():
             ask = next(([idx,o] for idx, o in enumerate(self.books[ticker].asks) if o.id == id),None)
             if ask:
                 return ask[1]
-        return None
+        return {'error': 'order not found'}
 
     async def cancel_order(self, id) -> dict:
         for book in self.books:
@@ -426,7 +426,7 @@ class Exchange():
             seller['_transactions'].append({'dt':self.datetime,'cash_flow':transaction.amount,'ticker':transaction.ticker,'qty':transaction.amount})
 
     async def get_agent(self, agent_name)  -> dict:
-        return next((d for (index, d) in enumerate(self.agents) if d['name'] == agent_name), None)
+        return next((d for (index, d) in enumerate(self.agents) if d['name'] == agent_name), {'error': 'agent not found'})
 
     async def __get_agent_index(self,agent_name) -> dict:
         return next((index for (index, d) in enumerate(self.agents) if d['name'] == agent_name), None)
@@ -522,4 +522,6 @@ class Exchange():
     
     async def get_positions(self, agent) -> dict:
         agent_info = await self.get_agent(agent)
+        if "error" in agent_info:
+            return agent_info
         return {'agent': agent, 'positions': agent_info['positions']}
