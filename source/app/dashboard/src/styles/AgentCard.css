@@ -1,0 +1,17 @@
+/* Styles for the AgentCard component */
+.agent-card {
+    background-color: #292929;
+    border: 1px solid #ccc;
+    border-radius: 5px;
+    padding: 10px;
+    margin: 10px;
+  }
+  
+  .agent-card h3 {
+    font-size: 1rem;
+    margin-bottom: 10px;
+  }
+  
+  .agent-card p {
+    margin: 5px 0;
+  }

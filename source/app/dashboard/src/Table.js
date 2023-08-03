@@ -1,14 +1,19 @@
 import React, { useEffect, useState } from 'react'
-import AgentList from './components/AgentList'
+import { BrowserRouter as Router, Routes, Route, Link } from 'react-router-dom';
+import AgentCard from './components/AgentCard';
+import AgentPositions from './components/AgentPositions';
 import OrderBook from './components/OrderBook'
+import './styles/AgentList.css';
+import './styles/MainContent.css';
 
 const base_url = 'http://127.0.0.1:5000'
 
 const TableComponent = ({ ticker }) => {
     const [agents, setAgents] = useState([])
+    const [currentAgent, setCurrentAgent] = useState('')
     const [latestTrade, setLatestTrade] = useState({})
     const [candles, setCandles] = useState([])
-    const [orderBook, setOrderBook] = useState({bids:[], asks:[]})
+    const [orderBook, setOrderBook] = useState({ bids: [], asks: [] })
     const [trades, setTrades] = useState([])
     const [quotes, setQuotes] = useState({})
     const [bestBid, setBestBid] = useState({})
@@ -62,12 +67,34 @@ const TableComponent = ({ ticker }) => {
     }, [ticker])
 
     return (
-        <div>
-        <div className="agent-cards">
-            <AgentList agents={agents} />
-        </div>
-            <OrderBook bids={orderBook.bids} asks={orderBook.asks} />
-        </div>
+        <Router>
+            <div className="app-container">
+
+                <div className="agent-list">
+                    <h1>Agent List</h1>
+                    <div className="agent-cards">
+                        {Array.isArray(agents) ? agents.map((agent, index) => (
+                            <Link key={index} to={`/agent/${encodeURIComponent(agent.agent)}`} onClick={() => setCurrentAgent(agent.agent)}>
+                                <AgentCard agent={agent} />
+                            </Link>
+                        )) : 
+                        <p>loading...</p>
+                        }
+                    </div>
+                </div>
+                <div className="main-content">
+                    <Routes>
+                        <Route path="/" element={<div>hi</div>}></Route>
+                        <Route path="/agent/:agentName" element={<AgentPositions />}></Route>
+                    </Routes>
+                </div>
+                {orderBook.bids !== undefined && orderBook.asks !== undefined ?
+                    <OrderBook bids={orderBook.bids} asks={orderBook.asks} />: 
+                    <p>loading...</p>
+                }
+                
+            </div>
+        </Router>
     )
 }
 export default TableComponent

@@ -1,0 +1,57 @@
+/* Styles for the OrderBook component */
+.order-book {
+    display: flex;
+    justify-content: space-between;
+    margin: 20px;
+  }
+  
+  /* Styles for the Bids section */
+  .bids {
+    flex: 1;
+    padding: 10px;
+    border: 1px solid #ccc;
+    border-radius: 5px;
+  }
+  
+  .bids h2 {
+    margin-bottom: 10px;
+  }
+  
+  .bids-list {
+    display: grid;
+    width: 100%;
+  }
+  
+  /* Styles for the Asks section */
+  .asks {
+    flex: 1;
+    padding: 10px;
+    border: 1px solid #ccc;
+    border-radius: 5px;
+  }
+  
+  .asks h2 {
+    margin-bottom: 10px;
+  }
+  
+  .asks-list {
+    display: grid;
+    width: 100%;
+  }
+  
+  /* Styles for the table rows */
+  .table-row {
+    display: grid;
+    width: 100%;
+    grid-template-columns: 1fr 1fr 1fr;
+    grid-gap: 5px;
+    padding: 5px;
+    border-bottom: 1px solid #292929;
+  }
+  
+  /* Styles for the header row */
+  .table-row.header {
+    font-weight: bold;
+    background-color: #292929;
+  }
+  
