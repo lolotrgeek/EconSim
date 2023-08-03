@@ -90,4 +90,4 @@ class ExchangeRequests(Requests):
         return await self.make_request('get_agents_simple', {}, self.requester)
     
     async def get_positions(self, agent):
-        return await self.make_request('get_positions', {'agent', agent}, self.requester)
+        return await self.make_request('get_positions', {'agent': agent}, self.requester)

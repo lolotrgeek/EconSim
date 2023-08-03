@@ -253,14 +253,15 @@ async def test_get_agents( expected_status_code):
     assert response.status_code == expected_status_code
 
 @pytest.mark.asyncio
-@pytest.mark.parametrize('expected_status_code', [
-    200
+@pytest.mark.parametrize('agent', [
+    "agent1",
 ])
-async def test_get_positions( expected_status_code):
+async def test_get_positions( agent):
     await requester.init()
-    async_client = AsyncClient(app=app, base_url='http://test')    
+    params = {'agent': agent}
+    async_client = AsyncClient(app=app, base_url='http://test', params=params)    
     response = await async_client.get('/api/v1/get_positions')
-    assert response.status_code == expected_status_code
+    assert response.status_code == 200
 
 if __name__ == '__main__':
     pytest.main()

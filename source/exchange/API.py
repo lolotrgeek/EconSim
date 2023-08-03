@@ -23,10 +23,9 @@ def API(requester):
     @app.route('/api/v1/get_positions', methods=['GET'])
     async def get_positions() -> str:
         agent = request.args.get('agent')
-        positions = await requests.get_positions(agent)
-        if positions is None:
-            return jsonify({'message': 'Positions not found.'}), 400
-        return positions
+        if (agent is None or agent == ""):
+            return jsonify({'message': 'Agent not found.'}), 400
+        return await requests.get_positions(agent)
 
     @app.route('/api/v1/candles', methods=['GET'])
     async def candles() -> str:
