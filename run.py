@@ -5,7 +5,7 @@ class Run():
     def __init__(self):
         self.energy = Energy()
         
-    async def next(self, runner):
+    async def next(self, runner) -> None:
         while self.energy.available_energy > 0:
             start_time = datetime.now()
             await runner(self.energy)

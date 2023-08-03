@@ -12,7 +12,7 @@ from rich.live import Live
 from rich.table import Table
 
 
-async def run_government(exchange_channel = 5570, time_channel = 5114):
+async def run_government(exchange_channel = 5570, time_channel = 5114) -> None:
     try:
         requester = Requester(channel=exchange_channel)
         time_puller = Puller(time_channel)

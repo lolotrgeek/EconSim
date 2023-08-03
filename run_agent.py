@@ -9,7 +9,7 @@ asyncio.set_event_loop_policy(asyncio.WindowsSelectorEventLoopPolicy())
 
 tickers = ['XYZ']
 
-async def run_agent(exchange_channel = 5570):
+async def run_agent(exchange_channel = 5570) -> None:
     try:
         agent = None
         picker = randint(0,3)

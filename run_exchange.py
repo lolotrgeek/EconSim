@@ -10,7 +10,7 @@ from rich.table import Table
 import asyncio
 asyncio.set_event_loop_policy(asyncio.WindowsSelectorEventLoopPolicy())
 
-async def run_exchange(exchange_channel = 5570, time_channel = 5114):
+async def run_exchange(exchange_channel = 5570, time_channel = 5114) -> None:
     try: 
         exchange = Exchange(datetime=datetime(1700,1,1))
         await exchange.create_asset("XYZ", 'stock')
@@ -31,7 +31,7 @@ async def run_exchange(exchange_channel = 5570, time_channel = 5114):
             else: 
                 exchange.datetime = string_to_time(clock['time'])
 
-        async def callback(msg):
+        async def callback(msg) -> str:
             if msg['topic'] == 'create_asset': return dumps((await exchange.create_asset(msg['ticker'],msg['asset_type'],msg['qty'], msg['seed_price'], msg['seed_bid'], msg['seed_ask'])))
             elif msg['topic'] == 'sim_time': return dumps(exchange.datetime)
             elif msg['topic'] == 'limit_buy': return dumps((await exchange.limit_buy(msg['ticker'], msg['price'], msg['qty'], msg['creator'], msg['fee'])).to_dict())

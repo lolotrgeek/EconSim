@@ -3,7 +3,7 @@ from source.Clock import Clock
 from multiprocessing import Process
 from time import sleep
 
-def run_clock():
+def run_clock() -> None:
     try:
         p = Pusher(5115)
         clock = Clock()
@@ -16,7 +16,7 @@ def run_clock():
         return
 
 
-def route_clock(time_channel):
+def route_clock(time_channel) -> None:
     try:
         r = Router(5115, time_channel )
         r.route()
@@ -27,7 +27,7 @@ def route_clock(time_channel):
         print("attempting to close clock router..." )
         return None
     
-def main():
+def main() -> None:
     try:
         time_channel = 5114
 

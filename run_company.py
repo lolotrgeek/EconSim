@@ -7,7 +7,7 @@ import random
 import string
 
 
-def generate_names(num_companies=20):
+def generate_names(num_companies=20) -> list:
     """
     A function that randomly generates one to five letter company names
     """
@@ -22,13 +22,13 @@ def generate_names(num_companies=20):
             i -= 1
     return names
 
-def generate_companies(names, requester, responder, time):
+def generate_companies(names, requester, responder, time) -> list:
     companies = []
     for name in names:
         companies.append(PublicCompany(name, time, requester, responder))
     return companies
 
-async def run_companies(time_channel=5114, exchange_channel=5570, company_channel=5572):
+async def run_companies(time_channel=5114, exchange_channel=5570, company_channel=5572) -> None:
     try:
         num_companies = 20
 

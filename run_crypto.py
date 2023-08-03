@@ -7,7 +7,7 @@ asyncio.set_event_loop_policy(asyncio.WindowsSelectorEventLoopPolicy())
 from source.utils._utils import dumps
 
 
-async def run_crypto(crypto_channel = 5571):
+async def run_crypto(crypto_channel = 5571) -> None:
     #NOTE: the `fee` is the network fee and the exchange fee since the exchange fee is added to the transaction before it is added to the blockchain
     # while not how this works, this is makes calulating the overall fee easier for the simulator
     try:

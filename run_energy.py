@@ -6,7 +6,7 @@ import asyncio
 asyncio.set_event_loop_policy(asyncio.WindowsSelectorEventLoopPolicy())
 
 
-async def runner(energy):
+async def runner(energy) -> None:
     costPerkWh = 0.15
     total_cost = energy.energyCost(energy.totalenergyUsed)
     print(f"available energy: {energy.available_energy}, total energy used: {energy.totalenergyUsed}, energy used last run: {energy.energyUsedlastRun} kWh, total cost: ${total_cost}")
