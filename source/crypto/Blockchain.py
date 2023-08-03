@@ -12,7 +12,7 @@ class Blockchain():
         self.total_transactions = 0
         # self.new_block(transactions=[], previous_hash=1)
 
-    async def new_block(self, transactions, previous_hash=None, dt=None):
+    async def new_block(self, transactions, previous_hash=None, dt=None) -> dict:
         block = {
             'index': len(self.chain) + 1, 
             'timestamp': dt, 
@@ -23,13 +23,13 @@ class Blockchain():
         self.chain.append(block)
         return block
     
-    async def add_transaction(self, ticker, fee, amount, sender, recipient, dt):
+    async def add_transaction(self, ticker, fee, amount, sender, recipient, dt) -> MempoolTransaction:
         self.total_transactions += 1
         mempool_transaction = MempoolTransaction(ticker, fee, amount, sender, recipient, dt)
         self.mempool.transactions.append(mempool_transaction)
         return self.mempool.transactions[-1]
 
-    async def process_transactions(self, dt=None):
+    async def process_transactions(self, dt=None) -> None:
         unconfirmed_transactions = self.mempool.get_pending_transactions()
         unconfirmed_transactions.sort(key=lambda x: x.fee, reverse=True)
         num_unconfirmed = len(unconfirmed_transactions)
@@ -45,15 +45,15 @@ class Blockchain():
         
         self.mempool.transactions = self.mempool.get_pending_transactions() # clear the mempool of confirmed transactions
     
-    async def get_transactions(self):
+    async def get_transactions(self) -> pd.DataFrame:
         return pd.DataFrame.from_records([t.to_dict() for t in self.chain]).set_index('dt')
 
 
     @property
-    def last_block(self):
+    def last_block(self) -> dict:
         return self.chain[-1]
 
     @property
-    def transactions(self):
+    def transactions(self) -> pd.DataFrame:
         return pd.DataFrame.from_records([t.to_dict() for t in self.chain]).set_index('dt')
     

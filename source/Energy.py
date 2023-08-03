@@ -9,10 +9,10 @@ class Energy():
         self.powerUsage = 0
         self.energyUsedlastRun = 0
 
-    def energyCost(self, kWh, costPerkWh = 0.15 ):
+    def energyCost(self, kWh, costPerkWh = 0.15 ) -> float:
         return round(costPerkWh * kWh, 10)
     
-    def energyUsed(self, run_time):
+    def energyUsed(self, run_time) -> float:
         '''
         Returns the energy(kWh) used between start_time and end_time
         '''
@@ -26,7 +26,7 @@ class Energy():
         # print(f"Energy used: [{kWh} kWh, ${self.energyCost(kWh)} , {run_time / 3600} hours, {self.powerUsage} kW]")
         return  kWh
 
-    def poll(self, minWatt, maxWatt):
+    def poll(self, minWatt, maxWatt) -> None:
         '''
         Returns a random number of kiloWatts between minWatt and maxWatt
         eventually this will poll an actual power meter

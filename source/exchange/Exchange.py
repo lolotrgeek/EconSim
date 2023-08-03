@@ -100,7 +100,7 @@ class Exchange():
         else:
             return {'error': 'no trades found'}
 
-    async def get_quotes(self, ticker):
+    async def get_quotes(self, ticker) -> dict:
         try:
             # TODO: if more than one order has the best price, add the quantities.
             best_bid = self.books[ticker].bids[0]
@@ -142,7 +142,7 @@ class Exchange():
         trades = pd.DataFrame.from_records([t.to_dict() for t in self.trade_log if t.ticker == ticker]).tail(limit)
         return format_dataframe_rows_to_dict(trades)
     
-    async def get_price_bars(self, ticker, limit=20, bar_size='1D'):
+    async def get_price_bars(self, ticker, limit=20, bar_size='1D') -> list:
         #TODO: not resampling correctly
         trades = await self.trades
         trades = trades[trades['ticker']== ticker]
@@ -180,7 +180,7 @@ class Exchange():
         else:
             return LimitOrder(ticker, 0, 0, 'null_quote', OrderSide.BUY, self.datetime)
 
-    async def limit_buy(self, ticker: str, price: float, qty: int, creator: str, fee=0, tif='GTC', position_id=UUID()):
+    async def limit_buy(self, ticker: str, price: float, qty: int, creator: str, fee=0, tif='GTC', position_id=UUID()) -> LimitOrder:
         has_cash = await self.agent_has_cash(creator, price, qty)
         if has_cash:
             if not self.assets[ticker]['type'] == 'crypto':
@@ -219,7 +219,7 @@ class Exchange():
         else:
             return LimitOrder("error", 0, 0, 'insufficient_funds', OrderSide.BUY, self.datetime)
 
-    async def limit_sell(self, ticker: str, price: float, qty: int, creator: str, fee=0, tif='GTC', accounting='FIFO'):
+    async def limit_sell(self, ticker: str, price: float, qty: int, creator: str, fee=0, tif='GTC', accounting='FIFO') -> LimitOrder:
         has_assets = await self.agent_has_assets(creator, ticker, qty)
         if has_assets:
             if not self.assets[ticker]['type'] == 'crypto':
@@ -258,7 +258,7 @@ class Exchange():
         else:
             return LimitOrder("error", 0, 0, 'insufficient_assets', OrderSide.SELL, self.datetime)
 
-    async def get_order(self, ticker, id):
+    async def get_order(self, ticker, id) -> LimitOrder:
         if ticker in self.books:
             bid = next(([idx,o] for idx, o in enumerate(self.books[ticker].bids) if o.id == id),None)
             if bid:
@@ -268,7 +268,7 @@ class Exchange():
                 return ask[1]
         return None
 
-    async def cancel_order(self, id):
+    async def cancel_order(self, id) -> dict:
         for book in self.books:
             bid = next(([idx,o] for idx, o in enumerate(self.books[book].bids) if o.id == id),None)
             if bid:
@@ -281,12 +281,12 @@ class Exchange():
                 return {"cancelled_order": id}
         return {"cancelled_order": "order not found"}
 
-    async def cancel_all_orders(self, agent, ticker):
+    async def cancel_all_orders(self, agent, ticker) -> dict:
         self.books[ticker].bids = [b for b in self.books[ticker].bids if b.creator != agent]
         self.books[ticker].asks = [a for a in self.books[ticker].asks if a.creator != agent]
         return {"cancelled_all_orders": ticker}
 
-    async def market_buy(self, ticker: str, qty: int, buyer: str, fee=0.0):
+    async def market_buy(self, ticker: str, qty: int, buyer: str, fee=0.0) -> dict:
         best_price = (await self.get_best_ask(ticker)).price
         has_cash = (await self.agent_has_cash(buyer, best_price, qty))
         if has_cash:
@@ -311,7 +311,7 @@ class Exchange():
         else:
             return {"market_buy": "insufficient funds"}
 
-    async def market_sell(self, ticker: str, qty: int, seller: str, fee=0.0, accounting='FIFO'):
+    async def market_sell(self, ticker: str, qty: int, seller: str, fee=0.0, accounting='FIFO') -> dict:
         if await self.agent_has_assets(seller, ticker, qty):
             fills = []
             for idx, bid in enumerate(self.books[ticker].bids):
@@ -334,11 +334,11 @@ class Exchange():
         else:
             return {"market_sell": "insufficient assets"}
 
-    async def agent_has_cash(self, agent, price, qty):
+    async def agent_has_cash(self, agent, price, qty) -> bool:
         agent_cash = (await self.get_cash(agent))
         return agent_cash['cash'] >= price * qty
     
-    async def agent_has_assets(self, agent, ticker, qty):
+    async def agent_has_assets(self, agent, ticker, qty) -> bool:
         agent_assets = (await self.get_assets(agent))
         if ticker in agent_assets['assets']:
             return agent_assets['assets'][ticker] >= qty
@@ -346,30 +346,30 @@ class Exchange():
             return False
         
     @property
-    async def trades(self):
+    async def trades(self) -> pd.DataFrame:
         return pd.DataFrame.from_records([t.to_dict() for t in self.trade_log]).set_index('dt')
 
-    async def _set_datetime(self, dt):
+    async def _set_datetime(self, dt) -> None:
         self.datetime = dt
 
-    async def get_transactions(self, agent):
+    async def get_transactions(self, agent) -> dict:
         return {'transactions':(await self.get_agent(agent))['_transactions']}
 
-    async def register_agent(self, name, initial_cash):
+    async def register_agent(self, name, initial_cash) -> dict:
         #TODO: use an agent class???
         registered_name = name + str(UUID())[0:8]
         self.agents.append({'name':registered_name,'cash':initial_cash,'_transactions':[], 'positions':[], 'assets': {}})
         return {'registered_agent':registered_name}
 
-    async def get_cash(self, agent_name):
+    async def get_cash(self, agent_name) -> dict:
         agent_info = await self.get_agent(agent_name)
         return {'cash':agent_info['cash']}
     
-    async def get_assets(self, agent):
+    async def get_assets(self, agent) -> dict:
         agent_info = await self.get_agent(agent)
         return {'assets': agent_info['assets']}
     
-    async def __update_agents(self, transaction, accounting, position_id):
+    async def __update_agents(self, transaction, accounting, position_id) -> None:
         for side in transaction:
             agent_idx = await self.__get_agent_index(side['agent'])
             if agent_idx is not None:
@@ -411,7 +411,7 @@ class Exchange():
                 else: 
                     self.agents[agent_idx]['assets'][side['ticker']] = side['qty']
                 
-    async def __update_agents_currency(self, transaction):
+    async def __update_agents_currency(self, transaction) -> None:
         if transaction.confirmed:
             buyer_idx = await self.__get_agent_index(transaction.recipient)
             seller_idx = await self.__get_agent_index(transaction.sender)
@@ -425,19 +425,19 @@ class Exchange():
             buyer['_transactions'].append({'dt':self.datetime,'cash_flow':-(transaction.amount+transaction.fee),'ticker':transaction.ticker,'qty':transaction.amount})
             seller['_transactions'].append({'dt':self.datetime,'cash_flow':transaction.amount,'ticker':transaction.ticker,'qty':transaction.amount})
 
-    async def get_agent(self, agent_name):
+    async def get_agent(self, agent_name)  -> dict:
         return next((d for (index, d) in enumerate(self.agents) if d['name'] == agent_name), None)
 
-    async def __get_agent_index(self,agent_name):
+    async def __get_agent_index(self,agent_name) -> dict:
         return next((index for (index, d) in enumerate(self.agents) if d['name'] == agent_name), None)
     
-    async def get_agents(self):
+    async def get_agents(self) -> dict:
         return self.agents
     
-    async def total_cash(self):
+    async def total_cash(self) -> float:
         return sum(agent['cash'] for agent in self.agents if 'init_seed' not in agent['name'])
     
-    async def agents_cash(self):
+    async def agents_cash(self) -> dict:
         info = []
         for agent in self.agents:
             if agent['name'] != 'init_seed':
@@ -447,7 +447,7 @@ class Exchange():
                 info.append({agent['name']: {'cash':agent['cash'],'assets':agent['assets'], 'last_action': last_action }})
         return info
     
-    async def add_cash(self, agent, amount):
+    async def add_cash(self, agent, amount) -> dict:
         agent_idx = await self.__get_agent_index(agent)
         if agent_idx is not None:
             self.agents[agent_idx]['cash'] += amount
@@ -455,7 +455,7 @@ class Exchange():
         else:
             return {'error': 'agent not found'}
 
-    async def remove_cash(self, agent, amount, notes=''):
+    async def remove_cash(self, agent, amount, notes='') -> dict:
         agent_idx = await self.__get_agent_index(agent)
         if agent_idx is not None:
             self.agents[agent_idx]['cash'] -= amount
@@ -463,7 +463,7 @@ class Exchange():
         else:
             return {'error': 'agent not found'}
 
-    async def calculate_market_cap(self,ticker):
+    async def calculate_market_cap(self,ticker) -> float:
         """
         Calculates the market capitalization of a company
         Args: 
@@ -472,7 +472,7 @@ class Exchange():
         market_cap = (await self.get_midprice(ticker))['midprice'] * (await self.get_shares_outstanding(ticker))
         return market_cap
     
-    async def get_shares_outstanding(self, ticker):
+    async def get_shares_outstanding(self, ticker) -> int:
         """
         Calculates the number of shares outstanding for a given ticker
         Args: 
@@ -485,7 +485,7 @@ class Exchange():
                 shares_outstanding += agent['assets'][ticker]
         return shares_outstanding
     
-    async def get_agents_holding(self, ticker):
+    async def get_agents_holding(self, ticker) -> list:
         """
         Returns a list of agents holding a given ticker
         Args: 
@@ -498,7 +498,7 @@ class Exchange():
                 agents_holding.append(agent['name'])
         return agents_holding
     
-    async def get_agents_positions(self,ticker):
+    async def get_agents_positions(self,ticker) -> list:
         """
         Returns a list of agents positions of a given ticker
         """
@@ -511,7 +511,7 @@ class Exchange():
             agent_positions.append({'agent':agent['name'],'positions':positions})
         return agent_positions
     
-    async def get_agents_simple(self):
+    async def get_agents_simple(self) -> list:
         """
         Returns a list of agents and their cash and assets
         """

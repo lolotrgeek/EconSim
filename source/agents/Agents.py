@@ -19,8 +19,7 @@ class RandomMarketTaker(Agent):
         if seed is not None:
             self.random.seed = seed
 
-    
-    async def next(self):
+    async def next(self) -> bool:
         self.cash = (await self.get_cash())['cash']
         self.assets = (await self.get_assets())['assets']
 
@@ -57,7 +56,7 @@ class LowBidder(Agent):
         self.assets = {}
         self.aum = aum
 
-    async def next(self):
+    async def next(self) -> bool:
         self.cash = (await self.get_cash())['cash']
         self.assets = (await self.get_assets())['assets']
         if self.cash <= 0 and all(asset == 0 for asset in self.assets.values()) == True:
@@ -85,7 +84,7 @@ class GreedyScalper(Agent):
         self.tickers = tickers
         self.aum = aum
 
-    async def next(self):
+    async def next(self) -> bool:
         get_supply = await self.get_assets('init_seed')
 
         for ticker in self.tickers:
@@ -110,7 +109,7 @@ class NaiveMarketMaker(Agent):
         self.can_buy = True
         self.can_sell = {ticker: False for ticker in self.tickers}
 
-    async def next(self):
+    async def next(self) -> bool:
         self.cash = (await self.get_cash())['cash']
         self.assets = (await self.get_assets())['assets']
         if self.cash <= 0:

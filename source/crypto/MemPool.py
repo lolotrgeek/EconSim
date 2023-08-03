@@ -12,7 +12,7 @@ class MempoolTransaction:
         self.timestamp = None
         self.dt = dt if dt else datetime.now()
 
-    def to_dict(self):
+    def to_dict(self) -> dict:
         return {
             'ticker': self.ticker,
             'fee': self.fee,
@@ -26,17 +26,17 @@ class MempoolTransaction:
 
 
 class MemPool:
-    def __init__(self):
+    def __init__(self) :
         self.transactions = []
 
-    def get_pending_transactions(self):
+    def get_pending_transactions(self) -> str:
         return [transaction for transaction in self.transactions if not transaction.confirmed]
     
-    def get_confirmed_transactions(self):
+    def get_confirmed_transactions(self) -> str:
         return [transaction for transaction in self.transactions if transaction.confirmed]
     
     @property
-    def transaction_log(self):
+    def transaction_log(self) -> str:
         if(len(self.transactions) == 0):
             return pd.DataFrame()
         else:

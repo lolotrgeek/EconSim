@@ -6,12 +6,12 @@ class Fees():
         self.taker_fee_rate = 0.002  # Taker fee rate as a decimal (e.g., 0.002 = 0.2%)
         self.total_fee_revenue = 0.0  # Total fee revenue collected by the exchange
 
-    def taker_fee(self, volume):
+    def taker_fee(self, volume) -> float:
         if self.waive_fees:
             return 0.0
         return volume * self.taker_fee_rate
     
-    def maker_fee(self, volume):
+    def maker_fee(self, volume) -> float:
         if self.waive_fees:
             return 0.0
         return volume * self.maker_fee_rate

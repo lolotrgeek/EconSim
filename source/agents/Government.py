@@ -12,8 +12,7 @@ class Government(Agent):
         self.current_date = datetime(1700,4,15)
         self.taxes = Tax()
 
-
-    async def collect_taxes(self):
+    async def collect_taxes(self) -> None:
         agents = await self.requests.get_agents()
         for agent in agents:
             long_term_capital_gains = 0
@@ -32,7 +31,7 @@ class Government(Agent):
             short_term_tax = await self.taxes.calculate_tax(short_term_capital_gains, 'ordinary', debug=False)
             await self.requests.remove_cash(agent['name'], long_term_tax['amount'] + short_term_tax['amount'], 'taxes')
 
-    async def set_reserve_requirement(self, reserve_requirement):
+    async def set_reserve_requirement(self, reserve_requirement) -> None:
         """Sets requirement for how much money the banks must keep in reserve.
 
         Args:
@@ -40,7 +39,7 @@ class Government(Agent):
         """
         pass
 
-    async def print_money(self, amount):
+    async def print_money(self, amount) -> None:
         """Creates money by increasing the government's balance.
 
         Args:
@@ -56,7 +55,7 @@ class Government(Agent):
         """
         pass
     
-    async def issue_treasury_notes(self, face_value, maturity_years, quantity):
+    async def issue_treasury_notes(self, face_value, maturity_years, quantity) -> None:
         """Issues treasury notes to the banking system.
 
         Args:
@@ -66,7 +65,7 @@ class Government(Agent):
         """
         pass
 
-    async def loan_money(self, amount, rate, recipient):
+    async def loan_money(self, amount, rate, recipient) -> None:
         """Loans money to another agent.
 
         Args:
@@ -76,7 +75,7 @@ class Government(Agent):
         """
         pass
 
-    async def next(self):
+    async def next(self) -> None:
         """The government's next action.
 
         Args:

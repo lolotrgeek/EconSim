@@ -10,18 +10,18 @@ def API(requester):
         return "hello"
 
     @app.route('/api/v1/sim_time', methods=['GET'])
-    async def get_sim_time():
+    async def get_sim_time() -> str:
         return await requests.get_sim_time()
     
     @app.route('/api/v1/get_agents', methods=['GET'])
-    async def get_agents():
+    async def get_agents() -> str:
         agents = await requests.get_agents_simple()
         if agents is None:
             return jsonify({'message': 'Agents not found.'}), 400
         return agents
 
     @app.route('/api/v1/candles', methods=['GET'])
-    async def candles():
+    async def candles() -> str:
         interval = request.args.get('interval')
         limit = request.args.get('limit', type=int)
         ticker = request.args.get('ticker')
@@ -34,7 +34,7 @@ def API(requester):
         return await requests.get_price_bars(ticker, interval, limit)
 
     @app.route('/api/v1/create_asset', methods=['POST'])
-    async def create_asset():
+    async def create_asset() -> str:
         data = await request.get_json()
         ticker = data['ticker']
         seed_price = data.get('seed_price', 100)
@@ -46,28 +46,28 @@ def API(requester):
         return await requests.create_asset(ticker, seed_price, seed_qty, seed_bid, seed_ask)
 
     @app.route('/api/v1/crypto/get_mempool', methods=['GET'])
-    async def get_mempool():
+    async def get_mempool() -> str:
         limit = request.args.get('limit', type=int)
         if (limit is None):
             limit = 20
         return jsonify({'TODO': 'req from mempool process'})
 
     @app.route('/api/v1/get_order_book', methods=['GET'])
-    async def get_order_book():
+    async def get_order_book() -> str:
         ticker = request.args.get('ticker')
         if (ticker is None or ticker == ""):
             return jsonify({'message': 'Ticker not found.'}), 400
         return await requests.get_order_book(ticker)
 
     @app.route('/api/v1/get_latest_trade', methods=['GET'])
-    async def get_latest_trade():
+    async def get_latest_trade() -> str:
         ticker = request.args.get('ticker')
         if (ticker is None or ticker == ""):
             return jsonify({'message': 'Ticker not found.'}), 400
         return await requests.get_latest_trade(ticker)
 
     @app.route('/api/v1/get_trades', methods=['GET'])
-    async def get_trades():
+    async def get_trades() -> str:
         limit = request.args.get('limit', type=int)
         ticker = request.args.get('ticker')
         if (ticker is None or ticker == ""):
@@ -77,35 +77,35 @@ def API(requester):
         return await requests.get_trades(ticker, limit)
 
     @app.route('/api/v1/get_quotes', methods=['GET'])
-    async def get_quotes():
+    async def get_quotes() -> str:
         ticker = request.args.get('ticker')
         if (ticker is None or ticker == ""):
             return jsonify({'message': 'Ticker not found.'}), 400
         return await requests.get_quotes(ticker)
         
     @app.route('/api/v1/get_best_bid', methods=['GET'])
-    async def get_best_bid():
+    async def get_best_bid() -> str:
         ticker = request.args.get('ticker')
         if (ticker is None or ticker == ""):
             return jsonify({'message': 'Ticker not found.'}), 400
         return await requests.get_best_bid(ticker)
 
     @app.route('/api/v1/get_best_ask', methods=['GET'])
-    async def get_best_ask():
+    async def get_best_ask() -> str:
         ticker = request.args.get('ticker')
         if (ticker is None or ticker == ""):
             return jsonify({'message': 'Ticker not found.'}), 400
         return await requests.get_best_ask(ticker)
 
     @app.route('/api/v1/get_midprice', methods=['GET'])
-    async def get_midprice():
+    async def get_midprice() -> str:
         ticker = request.args.get('ticker')
         if (ticker is None or ticker == ""):
             return jsonify({'message': 'Ticker not found.'}), 400
         return jsonify({'midprice': (await requests.get_midprice(ticker))})
 
     @app.route('/api/v1/limit_buy', methods=['POST'])
-    async def limit_buy():
+    async def limit_buy() -> str:
         data = await request.get_json()
         ticker = data['ticker']
         price = data['price']
@@ -123,7 +123,7 @@ def API(requester):
         return await requests.limit_buy(ticker, price, qty, creator, fee)
 
     @app.route('/api/v1/limit_sell', methods=['POST'])
-    async def limit_sell():
+    async def limit_sell() -> str:
         data = await request.get_json()
         ticker = data['ticker']
         price = data['price']
@@ -141,7 +141,7 @@ def API(requester):
         return await requests.limit_sell(ticker, price, qty, creator, fee)
 
     @app.route('/api/v1/cancel_order', methods=['POST'])
-    async def cancel_order():
+    async def cancel_order() -> str:
         data = await request.get_json()
         order_id = data['id']
         if (order_id is None or order_id == ""):
@@ -149,7 +149,7 @@ def API(requester):
         return await requests.cancel_order(order_id)
 
     @app.route('/api/v1/cancel_all_orders', methods=['POST'])
-    async def cancel_all_orders():
+    async def cancel_all_orders() -> str:
         data = await request.get_json()
         agent = data['agent']
         ticker = data['ticker']
@@ -158,7 +158,7 @@ def API(requester):
         return await requests.cancel_all_orders(ticker, agent)
 
     @app.route('/api/v1/market_buy', methods=['POST'])
-    async def market_buy():
+    async def market_buy() -> str:
         data = await request.get_json()
         ticker = data['ticker']
         qty = data['qty']
@@ -173,7 +173,7 @@ def API(requester):
         return await requests.market_buy(ticker, qty, buyer, fee)
 
     @app.route('/api/v1/market_sell', methods=['POST'])
-    async def market_sell():
+    async def market_sell() -> str:
         data = await request.get_json()
         ticker = data['ticker']
         qty = data['qty']

@@ -11,13 +11,13 @@ class Transaction():
         self.dt = dt
         self.type = side
 
-    def __repr__(self):
+    def __repr__(self) -> str:
         return f"Transaction({self.id}, {self.cash_flow}, {self.ticker}, {self.qty}, {self.dt}, {self.type})"
     
-    def __str__(self):
+    def __str__(self) -> str:
         return f"<Transaction({self.ticker} {self.qty} @ {self.dt}>"
 
-    def to_dict(self):
+    def to_dict(self) -> dict:
         return {
             'id': self.id,
             'cash_flow': self.cash_flow,
@@ -34,13 +34,13 @@ class Exit(Transaction):
         self.enter_id = enter_id
         self.enter_date = enter_date
 
-    def __repr__(self):
+    def __repr__(self) -> str:
         return f"Exit({self.id}, {self.cash_flow}, {self.ticker}, {self.qty}, {self.dt}, {self.type}, {self.pnl}, {self.enter_id}, {self.enter_date})"
     
-    def __str__(self):
+    def __str__(self) -> str:
         return f"<Exit({self.ticker} {self.qty} @ {self.dt}>"
     
-    def to_dict(self):
+    def to_dict(self) -> dict:
         return {
             'id': self.id,
             'cash_flow': self.cash_flow,

@@ -20,7 +20,7 @@ class LimitOrder():
         self.position_id = position_id
         self.accounting = accounting
 
-    def to_dict(self):
+    def to_dict(self) -> dict:
         if self.ticker == 'error' and self.type == OrderSide.BUY: 
             return {'limit_buy': "insufficient funds", 'id': self.id}
         elif self.ticker == 'error' and self.type == OrderSide.SELL:
@@ -38,8 +38,8 @@ class LimitOrder():
             'position_id': self.position_id
         }
 
-    def __repr__(self):
+    def __repr__(self) -> str:
         return f'<LimitOrder: {self.ticker} {self.qty}@{self.price}>'
 
-    def __str__(self):
+    def __str__(self) -> str:
         return f'<LimitOrder: {self.ticker} {self.qty}@{self.price}>'

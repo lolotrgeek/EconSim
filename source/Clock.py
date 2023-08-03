@@ -7,6 +7,6 @@ class Clock():
         self.dt = dt
         self.timeDelta = get_timedelta(time_unit)
         
-    def tick(self):
+    def tick(self) -> datetime:
         self.dt +=self.timeDelta
         return self.dt

@@ -29,7 +29,7 @@ class Tax():
             ]
         }
         
-    async def calculate_tax(self, income, bracket_type, debug=False):
+    async def calculate_tax(self, income, bracket_type, debug=False) -> dict:
         tax = 0
         income_left = income
         bracket_index = 0

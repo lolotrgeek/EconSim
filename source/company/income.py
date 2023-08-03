@@ -1,7 +1,7 @@
 import random
 import json
 
-def generate_fake_income_statement(date, symbol, period):
+def generate_fake_income_statement(date, symbol, period) -> dict:
     income_statement = {
         "date": date,
         "symbol": symbol,

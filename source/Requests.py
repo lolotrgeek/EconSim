@@ -12,7 +12,7 @@ class Requests():
         self.max_tries = 1
         self.debug = True
         
-    async def make_request(self, topic: str, message: dict, factory, tries=0):
+    async def make_request(self, topic: str, message: dict, factory, tries=0) -> str:
         try:
             message['topic'] = topic
             msg = await self.requester.request(message)

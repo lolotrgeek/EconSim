@@ -13,14 +13,14 @@ class Requester:
         self.max_retries = max_retries
         self.request_timeout = 1000  # ms
 
-    async def connect(self):
+    async def connect(self) -> None:
         self.context = zmq.asyncio.Context()
         self.socket = self.context.socket(zmq.REQ)
         self.socket.connect(f'tcp://127.0.0.1:{self.channel}')
         self.poller = zmq.asyncio.Poller()
         self.poller.register(self.socket, zmq.POLLIN)
 
-    async def simple_request(self, msg):
+    async def simple_request(self, msg) -> str:
         try:
             await self.socket.send_json(msg)
             return await self.socket.recv_json()
@@ -32,7 +32,7 @@ class Requester:
             print(traceback.format_exc())
             return None
 
-    async def request(self, msg):
+    async def request(self, msg) -> str:
         retries = 1
         while True:
             try:
@@ -65,12 +65,12 @@ class Responder:
     def __init__(self, channel='5556'):
         self.channel = channel
 
-    async def connect(self):
+    async def connect(self) -> None:
         self.context = zmq.asyncio.Context()
         self.socket = self.context.socket(zmq.REP)
         self.socket.bind(f'tcp://127.0.0.1:{self.channel}')
 
-    async def respond(self, callback=lambda msg: msg): 
+    async def respond(self, callback=lambda msg: msg) -> str: 
         try:
             msg = await self.socket.recv_json()
             response = await callback(msg)
@@ -86,11 +86,11 @@ class Responder:
             return None
 
 class Broker:
-    def __init__(self, request_side='5556', response_side='5557'):
+    def __init__(self, request_side='5556', response_side='5557') :
         self.request_side = request_side
         self.response_side = response_side
 
-    async def start(self):
+    async def start(self) -> None:
         self.context = zmq.asyncio.Context()
         self.requests_socket = self.context.socket(zmq.ROUTER)
         self.requests_socket.bind(f"tcp://127.0.0.1:{self.request_side}")
@@ -99,12 +99,11 @@ class Broker:
         self.mon_socket = self.context.socket(zmq.PUB)
         self.mon_socket.bind("tcp://127.0.0.1:6969")
 
-    async def route(self, cb=None):
+    async def route(self, cb=None) -> None:
         try:
             await zmq.asyncio.proxy(self.requests_socket, self.responses_socket, self.mon_socket)
         except Exception as e:
             print("[Broker Error]", e)
-
 
 class Pusher():
     def __init__(self, channel='5558'):
@@ -113,14 +112,13 @@ class Pusher():
         self.address = f"tcp://127.0.0.1:{channel}"
         self.zmq_socket.connect(self.address)
         
-    def push(self, message):
+    def push(self, message) -> bool:
         try:
             self.zmq_socket.send_json(message)
             return True
         except Exception as e:
             print(e)
             return None
-
 
 class Puller():
     def __init__(self, channel='5556'):
@@ -129,7 +127,7 @@ class Puller():
         self.address = f"tcp://127.0.0.1:{channel}"
         self.socket.connect(self.address)
 
-    def pull(self):
+    def pull(self) -> str:
         try:
             msg = self.socket.recv_json()
             return msg
@@ -137,10 +135,10 @@ class Puller():
             print(e)
             return None
         
-    def request(self, topic, args=None):
+    def request(self, topic, args=None) -> str:
         return self.pull()
 
-    def close(self):
+    def close(self) -> None:
         self.socket.close()
         self.context.term()
 
@@ -154,7 +152,7 @@ class Router():
         self.poller = zmq.Poller()
         self.poller.register(self.producer_socket, zmq.POLLIN)
 
-    def route(self, cb=None):
+    def route(self, cb=None) -> None:
         last_msg = {}
         while True:
             try:

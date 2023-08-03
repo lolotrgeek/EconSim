@@ -8,13 +8,13 @@ class Position():
         self.enters = enters # enters is a list of transactions
         self.exits = exits # exits is a list of transactions
 
-    def __repr__(self):
+    def __repr__(self) -> str:
         return f"Position({self.id}, {self.ticker}, {self.qty}, {self.dt}, {self.transactions})"
     
-    def __str__(self):
+    def __str__(self) -> str:
         return f"<Position({self.ticker} {self.qty} @ {self.dt}>"
     
-    def to_dict(self):
+    def to_dict(self) -> dict:
         return {
             'id': self.id,
             'ticker': self.ticker,

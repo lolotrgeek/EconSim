@@ -10,10 +10,10 @@ class Trade():
         self.dt = dt
         self.fee = fee
 
-    def __repr__(self):
+    def __repr__(self) -> str:
         return f'<Trade: {self.ticker} {self.qty}@{self.price} {self.dt}>'
 
-    def to_dict(self):
+    def to_dict(self) -> dict:
         return {
             'dt': self.dt,
             'ticker': self.ticker,

@@ -8,23 +8,23 @@ class PublicCompanyRequests(Requests):
     def __init__(self, requester):
         super().__init__(requester)
 
-    async def get_price_bars(self, ticker, interval, limit):
+    async def get_price_bars(self, ticker, interval, limit) -> str:
         return await self.make_request('candles', {'ticker': ticker, 'interval': interval, 'limit': limit}, self.requester)
 
-    async def get_income_statement(self, company):
+    async def get_income_statement(self, company) -> str:
         return await self.make_request('get_income_statement', {'company': company}, self.requester)
     
-    async def get_balance_sheet(self, company):
+    async def get_balance_sheet(self, company) -> str:
         return await self.make_request('get_balance_sheet', {'company': company}, self.requester)
     
-    async def get_cash_flow(self, company):
+    async def get_cash_flow(self, company) -> str:
         return await self.make_request('get_cash_flow', {'company': company}, self.requester)
     
-    async def get_dividend_payment_date(self, company):
+    async def get_dividend_payment_date(self, company) -> str:
         return await self.make_request('get_dividend_payment_date', {'company': company}, self.requester)
     
-    async def get_ex_dividend_date(self, company):
+    async def get_ex_dividend_date(self, company) -> str:
         return await self.make_request('get_ex_dividend_date', {'company': company}, self.requester)
     
-    async def get_dividends_to_distribute(self, company):
+    async def get_dividends_to_distribute(self, company) -> str:
         return await self.make_request('get_dividends_to_distribute', {'company': company}, self.requester)

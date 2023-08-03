@@ -5,7 +5,7 @@ import json
 def dumps(data):
     return json.dumps(data, indent=4, sort_keys=True, default=str)
 
-def get_pandas_time(time_unit):
+def get_pandas_time(time_unit) -> str:
     return {
         'second': '1s',
         'minute': '1Min',
@@ -13,7 +13,7 @@ def get_pandas_time(time_unit):
         'day': '1Day',
     }[time_unit]
 
-def get_timedelta(time_unit):
+def get_timedelta(time_unit) -> timedelta:
     return {
         'second': timedelta(seconds=1),
         'minute': timedelta(minutes=1),
@@ -21,7 +21,7 @@ def get_timedelta(time_unit):
         'day': timedelta(days=1),
     }[time_unit]
 
-def get_datetime_range(start_date, end_date,time_unit='day'):
+def get_datetime_range(start_date, end_date,time_unit='day') -> list:
     date_range =[]
     delta = get_timedelta(time_unit)
     while start_date < end_date:
@@ -30,11 +30,11 @@ def get_datetime_range(start_date, end_date,time_unit='day'):
     return date_range
 
 
-def get_random_string(length=9):
+def get_random_string(length=9) -> str:
     x = ''.join(random.choice(string.ascii_uppercase + string.ascii_lowercase + string.digits) for _ in range(length))
     return x
 
-def format_dataframe_rows_to_dict(df):
+def format_dataframe_rows_to_dict(df) -> list:
     result_list = []
     for index, row in df.iterrows():
         row_dict = row.to_dict()
@@ -43,5 +43,5 @@ def format_dataframe_rows_to_dict(df):
         result_list.append(row_dict)
     return result_list
 
-def string_to_time(string):
+def string_to_time(string) -> datetime:
     return datetime.strptime(string, '%Y-%m-%d %H:%M:%S')

@@ -34,37 +34,37 @@ class PublicCompany:
 
     #TODO: make all actions below alter the company's financials
 
-    async def initial_shares(self, shares, price):
+    async def initial_shares(self, shares, price) -> None:
         self.requests.create_asset(self.symbol, shares, price, price * 0.99, price * 1.01)
 
-    async def issue_shares(self, shares, price):
+    async def issue_shares(self, shares, price) -> None:
         #TODO: adding shares to an existing asset
         pass
 
-    async def buyback_shares(self, shares, price):
+    async def buyback_shares(self, shares, price) -> None:
         #TODO: place a market order to buy shares
         pass
 
-    async def split_shares(self, ratio):
+    async def split_shares(self, ratio) -> None:
         #TODO: split shares
         pass
 
-    async def cease_operations(self):
+    async def cease_operations(self) -> None:
         #TODO: bancrupt company, delist, and liquidate all assets, pay off all debts, and distribute remaining cash to shareholders
         pass
 
-    async def delist(self):
+    async def delist(self) -> None:
         #TODO: delist company on exchange, meaning no more shares can be bought or sold
         pass
 
-    async def generate_financial_report(self, date, period, symbol):
+    async def generate_financial_report(self, date, period, symbol) -> None:
         #TODO: use the prior period's financials to generate the current period's financials, integrate lower probabilities for large changes
         self.balance_sheet = generate_fake_balance_sheet(date, symbol, period)
         self.income_statement = generate_fake_income_statement(date, symbol, period)
         self.cash_flow = generate_fake_cash_flow(self.balance_sheet['retainedEarnings'], date, symbol, period)
         self.dividends_to_distribute = self.income_statement["dividendsPaid"] * -1
     
-    async def distribute_dividends(self, eligible_shareholders, dividends_paid):
+    async def distribute_dividends(self, eligible_shareholders, dividends_paid) -> None:
         total_shares = sum(sum(shareholder["shares"]) for shareholder in self.shareholders)
         for shareholder in eligible_shareholders:
             shares = sum(shareholder["shares"])
@@ -72,7 +72,7 @@ class PublicCompany:
             shareholder["dividend"] = dividend
             self.requests.add_cash(shareholder["name"], dividend)
     
-    async def get_eligible_shareholders(self):
+    async def get_eligible_shareholders(self) -> list:
         eligible_shareholders = []
         for shareholder in self.shareholders:
             for position in self.shareholders["positions"]:
@@ -88,13 +88,13 @@ class PublicCompany:
                     eligible_shareholders.append(eligible_shareholder)
         return eligible_shareholders
     
-    async def quarterly_things(self, quarter):
+    async def quarterly_things(self, quarter) -> None:
         await self.generate_financial_report(self.currentdate, quarter, self.symbol)
         if self.dividends_to_distribute > 0:
             self.ex_dividend_date = datetime(self.currentdate.year, self.currentdate.month+1, self.currentdate.day)
             self.dividend_payment_date = self.ex_dividend_date + timedelta(weeks=4)
     
-    async def next(self, current_date):
+    async def next(self, current_date) -> None:
         self.currentdate = current_date
         
         if self.currentdate == self.quarters[0]:

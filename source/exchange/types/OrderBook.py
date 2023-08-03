@@ -15,10 +15,10 @@ class OrderBook():
         self.bids: List[LimitOrder] = []
         self.asks: List[LimitOrder] = []
 
-    def __repr__(self):
+    def __repr__(self) -> str:
         return f'<OrderBook: {self.ticker}>'
 
-    def __str__(self):
+    def __str__(self) -> str:
         return f'<OrderBook: {self.ticker}>'
     
 
