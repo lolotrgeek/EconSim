@@ -362,5 +362,15 @@ class GetAgentSimpleTest(unittest.IsolatedAsyncioTestCase):
         print(result)
         self.assertCountEqual(result, [{'agent': 'init_seed_AAPL', 'assets': {'AAPL': 1000}, 'cash': 150000}, {'agent': self.mock_requester.responder.agent, 'assets': {}, 'cash': 100000}])
 
+class GetPositionsTest(unittest.IsolatedAsyncioTestCase):
+    async def asyncSetUp(self) -> None:
+        self.mock_requester = MockRequester()
+        await self.mock_requester.init()
+        self.requests = Requests(self.mock_requester)
+
+    async def test_get_positions(self):
+        result = await self.requests.make_request('get_positions', {'agent': self.mock_requester.responder.agent}, self.mock_requester)
+        self.assertEqual(result, {'agent': self.mock_requester.responder.agent, 'positions': []})
+
 if __name__ == '__main__':
     asyncio.run(unittest.main())

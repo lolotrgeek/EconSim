@@ -519,3 +519,7 @@ class Exchange():
         for agent in self.agents:
             agents_simple.append({'agent':agent['name'],'cash':agent['cash'],'assets':agent['assets']})
         return agents_simple
+    
+    async def get_positions(self, agent) -> dict:
+        agent_info = await self.get_agent(agent)
+        return {'agent': agent, 'positions': agent_info['positions']}

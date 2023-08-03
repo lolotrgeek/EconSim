@@ -642,5 +642,21 @@ class getAgentsSimpleTest(unittest.IsolatedAsyncioTestCase):
         result = await self.exchange.get_agents_simple()
         self.assertCountEqual(result, [{'agent': 'init_seed_AAPL', 'cash': 151363.5, 'assets': {'AAPL': 991}}, {'agent': self.agent1, 'cash': 9697.0, 'assets': {'AAPL': 2}}, {'agent': self.agent2, 'cash': 9545.5, 'assets': {'AAPL': 3}}, {'agent': self.agent3, 'cash': 9394.0, 'assets': {'AAPL': 4}}])
 
+class getPositionsTest(unittest.IsolatedAsyncioTestCase):
+    async def asyncSetUp(self) -> None:
+        self.exchange = Exchange(datetime=datetime(2023, 1, 1))
+        self.agent = (await self.exchange.register_agent("agent22", initial_cash=10000))['registered_agent']
+        await self.exchange.create_asset("AAPL", seed_price=150, seed_bid=0.99, seed_ask=1.01)
+
+    async def test_get_positions(self):
+        await self.exchange.limit_buy("AAPL", price=152, qty=2, creator=self.agent, fee=0)
+        result = await self.exchange.get_positions(self.agent)
+        print(result)
+        self.assertEqual(result['agent'], self.agent)
+        self.assertEqual(len(result['positions']), 1)
+        self.assertEqual(result['positions'][0]['ticker'], 'AAPL')
+        self.assertEqual(result['positions'][0]['qty'], 2)
+        self.assertEqual(result['positions'][0]['dt'], datetime(2023, 1, 1, 0, 0))
+
 if __name__ == '__main__':
     asyncio.run(unittest.main())

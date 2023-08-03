@@ -58,6 +58,7 @@ class MockResponder():
         elif msg['topic'] == 'get_agents_holding': return dumps(await self.exchange.get_agents_holding(msg['ticker']))
         elif msg['topic'] == 'get_agents_positions': return dumps(await self.exchange.get_agents_positions(msg['ticker']))
         elif msg['topic'] == 'get_agents_simple': return dumps(await self.exchange.get_agents_simple())
+        elif msg['topic'] == 'get_positions': return dumps(await self.exchange.get_positions(msg['agent']))
 
         #TODO: exchange topic to get general exchange data
         else: return f'unknown topic {msg["topic"]}'
