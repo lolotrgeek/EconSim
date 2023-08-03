@@ -64,7 +64,6 @@ async def run_exchange(exchange_channel = 5570, time_channel = 5114):
             #TODO: exchange topic to get general exchange data
             else: return f'unknown topic {msg["topic"]}'
 
-        last_latest_trade = None
         while True:
             get_time()
             msg = await responder.respond(callback)
