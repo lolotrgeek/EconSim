@@ -1,5 +1,5 @@
 import traceback
-import logging
+import json
 import zmq
 import zmq.asyncio
 import asyncio
@@ -78,12 +78,13 @@ class Responder:
             return response
         except zmq.ZMQError as e:
             print("[ZMQ Response Error]", e, "Request:", msg)
-            return None
+            print(traceback.format_exc())
+            return json.dumps({'error': e})
         except Exception as e:
             print("[Response Error]", e, "Request:", msg)
             print(traceback.format_exc())
-            await self.socket.send_json(None)
-            return None
+            await self.socket.send_json({'error': e})
+            return json.dumps({'error': e})
 
 class Broker:
     def __init__(self, request_side='5556', response_side='5557') :
