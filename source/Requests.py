@@ -36,7 +36,7 @@ class Requests():
                 if self.debug:
                     print("[Request Error]", e)
                     print(traceback.format_exc())
-                return json.dump(error)
+                return json.dumps(error)
             await asyncio.sleep(0.1)
             return await self.make_request(topic, message, factory, tries)
 
