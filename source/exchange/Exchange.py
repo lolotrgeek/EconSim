@@ -525,6 +525,9 @@ class Exchange():
         agent_info = await self.get_agent(agent)
         if "error" in agent_info:
             return agent_info
+        
+        positions = agent_info['positions']
+        positions.sort(key=lambda position: position['dt'], reverse=True)
 
         positions = agent_info['positions']
         total_positions = len(positions)
