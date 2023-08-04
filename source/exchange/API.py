@@ -23,9 +23,15 @@ def API(requester):
     @app.route('/api/v1/get_positions', methods=['GET'])
     async def get_positions() -> str:
         agent = request.args.get('agent')
+        page_size = request.args.get('page_size', type=int)
+        page = request.args.get('page', type=int)
         if (agent is None or agent == ""):
             return jsonify({'message': 'Agent not found.'}), 400
-        return await requests.get_positions(agent)
+        if (page_size is None or page_size == ""):
+            page_size = 10
+        if (page is None or page == ""):
+            page = 1
+        return await requests.get_positions(agent, page_size, page)
 
     @app.route('/api/v1/candles', methods=['GET'])
     async def candles() -> str:
@@ -62,9 +68,12 @@ def API(requester):
     @app.route('/api/v1/get_order_book', methods=['GET'])
     async def get_order_book() -> str:
         ticker = request.args.get('ticker')
+        limit = request.args.get('limit', type=int)
         if (ticker is None or ticker == ""):
             return jsonify({'message': 'Ticker not found.'}), 400
-        return await requests.get_order_book(ticker)
+        if (limit is None or limit == ""):
+            limit = 20
+        return await requests.get_order_book(ticker, limit)
 
     @app.route('/api/v1/get_latest_trade', methods=['GET'])
     async def get_latest_trade() -> str:

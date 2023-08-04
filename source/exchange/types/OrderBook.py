@@ -35,8 +35,8 @@ class OrderBook():
             'asks': pd.DataFrame.from_records([a.to_dict() for a in self.asks])
         }
     
-    def to_dict(self) -> dict:
+    def to_dict(self, limit=20) -> dict:
         return {
-            "bids": [b.to_dict() for b in self.bids], 
-            "asks": [a.to_dict() for a in self.asks]
+            "bids": [b.to_dict() for b in self.bids][:limit], 
+            "asks": [a.to_dict() for a in self.asks][:limit]
         }

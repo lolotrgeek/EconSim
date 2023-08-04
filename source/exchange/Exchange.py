@@ -3,6 +3,7 @@ import os
 parent_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 sys.path.append(parent_dir)
 import pandas as pd
+import math
 from typing import List
 from .types.OrderBook import OrderBook
 from .types.Trade import Trade
@@ -520,8 +521,26 @@ class Exchange():
             agents_simple.append({'agent':agent['name'],'cash':agent['cash'],'assets':agent['assets']})
         return agents_simple
     
-    async def get_positions(self, agent) -> dict:
+    async def get_positions(self, agent, page_size=10, page=1) -> dict:
         agent_info = await self.get_agent(agent)
         if "error" in agent_info:
             return agent_info
-        return {'agent': agent, 'positions': agent_info['positions']}
+
+        positions = agent_info['positions']
+        total_positions = len(positions)
+        total_pages = math.ceil(total_positions / page_size)
+        start_idx = (page - 1) * page_size
+        end_idx = start_idx + page_size
+        paginated_positions = positions[start_idx:end_idx]
+
+        next_page = page + 1 if end_idx < total_positions else None
+
+        return {
+            'agent': agent,
+            'total_positions': total_positions,
+            'page': page,
+            'total_pages': total_pages,
+            'page_size': page_size,
+            'positions': paginated_positions,
+            'next_page': next_page
+        }

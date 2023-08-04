@@ -20,8 +20,8 @@ class ExchangeRequests(Requests):
     async def get_mempool(self, limit):
         return await self.make_request('mempool', {'limit': limit}, self.requester)
 
-    async def get_order_book(self, ticker):
-        return await self.make_request('order_book', {'ticker': ticker}, self.requester)
+    async def get_order_book(self, ticker, limit=20):
+        return await self.make_request('order_book', {'ticker': ticker, 'limit': limit}, self.requester)
 
     async def get_latest_trade(self, ticker):
         return await self.make_request('latest_trade', {'ticker': ticker}, self.requester)
@@ -89,5 +89,5 @@ class ExchangeRequests(Requests):
     async def get_agents_simple(self):
         return await self.make_request('get_agents_simple', {}, self.requester)
     
-    async def get_positions(self, agent):
-        return await self.make_request('get_positions', {'agent': agent}, self.requester)
+    async def get_positions(self, agent, page_size=10, page=1):
+        return await self.make_request('get_positions', {'agent': agent, 'page_size': page_size, "page": page}, self.requester)

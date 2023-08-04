@@ -1,6 +1,7 @@
 import asyncio
 import sys
 import os
+import json
 parent_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 sys.path.append(parent_dir)
 
@@ -37,7 +38,7 @@ class GetOrderBookTest(unittest.IsolatedAsyncioTestCase):
         self.requests = Requests(self.mock_requester)
 
     async def test_get_order_book(self):
-        response = await self.requests.make_request('order_book', {'ticker': 'AAPL'}, self.mock_requester)
+        response = await self.requests.make_request('order_book', {'ticker': 'AAPL', 'limit': 2}, self.mock_requester)
         self.assertEqual(type(response), dict)
         self.assertEqual(len(response['bids']), 2)
         self.assertEqual(len(response['asks']), 1)
@@ -307,7 +308,6 @@ class AddCashTest(unittest.IsolatedAsyncioTestCase):
         response = await self.requests.make_request('add_cash', {'agent': self.mock_requester.responder.agent, 'amount': 1000}, self.mock_requester)
         self.assertEqual(response, {'cash': 101000})
 
-
 class RemoveCashTest(unittest.IsolatedAsyncioTestCase):
     async def asyncSetUp(self) -> None:
         self.mock_requester = MockRequester()
@@ -369,8 +369,14 @@ class GetPositionsTest(unittest.IsolatedAsyncioTestCase):
         self.requests = Requests(self.mock_requester)
 
     async def test_get_positions(self):
-        result = await self.requests.make_request('get_positions', {'agent': self.mock_requester.responder.agent}, self.mock_requester)
-        self.assertEqual(result, {'agent': self.mock_requester.responder.agent, 'positions': []})
+        result = await self.requests.make_request('get_positions', {'agent': self.mock_requester.responder.agent, 'page_size': 10, 'page': 1}, self.mock_requester)
+        self.assertEqual(result['agent'], self.mock_requester.responder.agent)
+        self.assertEqual(result['positions'] , [])
+        self.assertEqual(result['total_positions'] , 0)
+        self.assertEqual(result['page'], 1)
+        self.assertEqual(result['total_pages'], 0)
+        self.assertEqual(result['next_page'], None)
+        self.assertEqual(result['page_size'], 10)
 
 if __name__ == '__main__':
     asyncio.run(unittest.main())

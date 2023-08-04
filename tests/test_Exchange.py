@@ -147,7 +147,7 @@ class CancelOrderTestCase(unittest.IsolatedAsyncioTestCase):
         cancel = await self.exchange.cancel_order(order.id)
         self.assertEqual(cancel, {"cancelled_order": order.id})
         self.assertEqual(len(self.exchange.books["AAPL"].bids), 1)
-        self.assertEqual(await self.exchange.get_order("AAPL", order.id), None)       
+        self.assertEqual(await self.exchange.get_order("AAPL", order.id), {'error': 'order not found'})       
 
     async def test_cancel_order_error(self):
         cancel = await self.exchange.cancel_order("error")
@@ -653,6 +653,11 @@ class getPositionsTest(unittest.IsolatedAsyncioTestCase):
         result = await self.exchange.get_positions(self.agent)
         print(result)
         self.assertEqual(result['agent'], self.agent)
+        self.assertEqual(result['total_positions'] , 1)
+        self.assertEqual(result['page'], 1)
+        self.assertEqual(result['total_pages'], 1)
+        self.assertEqual(result['next_page'], None)
+        self.assertEqual(result['page_size'], 10)
         self.assertEqual(len(result['positions']), 1)
         self.assertEqual(result['positions'][0]['ticker'], 'AAPL')
         self.assertEqual(result['positions'][0]['qty'], 2)

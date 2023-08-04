@@ -76,7 +76,7 @@ async def test_get_mempool( limit, expected_status_code):
 async def test_get_order_book( ticker, expected_status_code):
     await requester.init()
     async_client = AsyncClient(app=app, base_url='http://test')    
-    params = {'ticker': ticker}
+    params = {'ticker': ticker, 'limit': 20}
     response = await async_client.get('/api/v1/get_order_book', params=params)
     assert response.status_code == expected_status_code
 
@@ -258,9 +258,9 @@ async def test_get_agents( expected_status_code):
 ])
 async def test_get_positions( agent):
     await requester.init()
-    params = {'agent': agent}
-    async_client = AsyncClient(app=app, base_url='http://test', params=params)    
-    response = await async_client.get('/api/v1/get_positions')
+    params = {'agent': agent, 'page_size': 10, 'page': 1}
+    async_client = AsyncClient(app=app, base_url='http://test')    
+    response = await async_client.get('/api/v1/get_positions', params=params)
     assert response.status_code == 200
 
 if __name__ == '__main__':

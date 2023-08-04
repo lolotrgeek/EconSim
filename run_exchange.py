@@ -42,7 +42,7 @@ async def run_exchange(exchange_channel = 5570, time_channel = 5114) -> None:
             elif msg['topic'] == 'cancel_all_orders': return await exchange.cancel_all_orders(msg['agent'], msg['ticker'])
             elif msg['topic'] == 'candles': return await exchange.get_price_bars(ticker=msg['ticker'], bar_size=msg['interval'], limit=msg['limit'])
             # elif msg['topic'] == 'mempool': return await exchange.mempool(msg['limit'])
-            elif msg['topic'] == 'order_book': return dumps( (await exchange.get_order_book(msg['ticker'])).to_dict())
+            elif msg['topic'] == 'order_book': return dumps( (await exchange.get_order_book(msg['ticker'])).to_dict(msg['limit']))
             elif msg['topic'] == 'latest_trade': return dumps(await exchange.get_latest_trade(msg['ticker']))
             elif msg['topic'] == 'trades': return dumps( await exchange.get_trades(msg['ticker']))
             elif msg['topic'] == 'quotes': return await exchange.get_quotes(msg['ticker'])
@@ -61,7 +61,7 @@ async def run_exchange(exchange_channel = 5570, time_channel = 5114) -> None:
             elif msg['topic'] == 'get_agents_holding': return dumps(await exchange.get_agents_holding(msg['ticker']))
             elif msg['topic'] == 'get_agents_positions': return dumps(await exchange.get_agents_positions(msg['ticker']))
             elif msg['topic'] == 'get_agents_simple': return dumps(await exchange.get_agents_simple())
-            elif msg['topic'] == 'get_positions': return dumps(await exchange.get_positions(msg['agent']))
+            elif msg['topic'] == 'get_positions': return dumps(await exchange.get_positions(msg['agent'], msg['page_size'], msg['page']))
             #TODO: exchange topic to get general exchange data
             else: return f'unknown topic {msg["topic"]}'
 
