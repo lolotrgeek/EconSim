@@ -3,7 +3,7 @@ from .ExchangeRequests import ExchangeRequests as Requests
 
 def API(requester):
     app = Quart(__name__)
-    requests = Requests(requester)
+    requests = Requests(requester, cache=True)
 
     @app.route('/')
     async def index():

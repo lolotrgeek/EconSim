@@ -5,8 +5,8 @@ sys.path.append(parent_dir)
 from source.Requests import Requests
 
 class ExchangeRequests(Requests):
-    def __init__(self, requester):
-        super().__init__(requester)
+    def __init__(self, requester, cache=False):
+        super().__init__(requester, cache)
 
     async def get_sim_time(self):
         return await self.make_request('sim_time', {}, self.requester)

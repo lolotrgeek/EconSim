@@ -11,7 +11,7 @@ class Requester:
     def __init__(self, channel='5556', max_retries=3):
         self.channel = channel
         self.max_retries = max_retries
-        self.request_timeout = 1000  # ms
+        self.request_timeout = 2500  # ms
 
     async def connect(self) -> None:
         self.context = zmq.asyncio.Context()
@@ -87,12 +87,12 @@ class Responder:
             return json.dumps({'error': e})
 
 class Broker:
-    def __init__(self, request_side='5556', response_side='5557') :
+    def __init__(self, request_side='5556', response_side='5557'):
         self.request_side = request_side
         self.response_side = response_side
 
     async def start(self) -> None:
-        self.context = zmq.asyncio.Context()
+        self.context = zmq.Context()
         self.requests_socket = self.context.socket(zmq.ROUTER)
         self.requests_socket.bind(f"tcp://127.0.0.1:{self.request_side}")
         self.responses_socket = self.context.socket(zmq.DEALER)
@@ -102,7 +102,7 @@ class Broker:
 
     async def route(self, cb=None) -> None:
         try:
-            await zmq.asyncio.proxy(self.requests_socket, self.responses_socket, self.mon_socket)
+            zmq.proxy(self.requests_socket, self.responses_socket, self.mon_socket)
         except Exception as e:
             print("[Broker Error]", e)
 
