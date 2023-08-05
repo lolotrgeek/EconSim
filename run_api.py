@@ -10,7 +10,7 @@ async def run_api(loop, exchange_channel = 5570) -> None:
     try:
         requester = Requester(exchange_channel)
         await requester.connect()
-        api = API(requester)
+        api = await API(requester)
         await api.run_task()
     except Exception as e:
         print("[API Error] ", e)
