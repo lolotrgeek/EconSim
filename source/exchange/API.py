@@ -1,9 +1,9 @@
 from quart import Quart, websocket, jsonify, request
 from .ExchangeRequests import ExchangeRequests as Requests
 
-def API(requester):
+async def API(requester):
     app = Quart(__name__)
-    requests = Requests(requester, cache=True)
+    requests = Requests(requester, cache=False)
 
     @app.route('/')
     async def index():
