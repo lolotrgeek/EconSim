@@ -16,7 +16,7 @@ const AgentPositions = () => {
                     throw new Error('Failed to fetch agent positions')
                 }
                 const data = await response.json()
-                setAgentPositions(data.positions)
+                setAgentPositions(JSON.parse(data).positions)
             } catch (error) {
                 console.error(error)
             }
@@ -41,7 +41,7 @@ const AgentPositions = () => {
                     ))}
                 </ul>
             ) : (
-                <p>No positions found.</p>
+                <p>Loading...</p>
             )}
         </div>
     )
