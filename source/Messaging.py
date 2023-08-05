@@ -12,15 +12,15 @@ class Requester:
         self.channel = channel
         self.max_retries = max_retries
         self.request_timeout = 2500  # ms
+        self.context = zmq.asyncio.Context()
 
     async def connect(self) -> None:
-        self.context = zmq.asyncio.Context()
         self.socket = self.context.socket(zmq.REQ)
         self.socket.connect(f'tcp://127.0.0.1:{self.channel}')
         self.poller = zmq.asyncio.Poller()
         self.poller.register(self.socket, zmq.POLLIN)
 
-    async def simple_request(self, msg) -> str:
+    async def request(self, msg) -> str:
         try:
             await self.socket.send_json(msg)
             return await self.socket.recv_json()
@@ -32,30 +32,39 @@ class Requester:
             print(traceback.format_exc())
             return None
 
-    async def request(self, msg) -> str:
-        retries = 1
-        while True:
-            try:
-                if retries > self.max_retries:
-                    break
-                await self.socket.send_json(msg)
-                socks = dict(await self.poller.poll(self.request_timeout * retries))
+    async def request_lazy(self, msg) -> str:
+        try:
+            await self.socket.send_json(msg)
+            retries_left = self.max_retries
+            while True:
+                socks = dict(await self.poller.poll(self.request_timeout) )
                 if socks.get(self.socket) == zmq.POLLIN:
                     reply = await self.socket.recv_json()
                     return reply
+                else:
+                    print("[Requester Warning] No response from server, retrying...")
+                    retries_left -= 1
+                    self.socket.setsockopt(zmq.LINGER, 0)
+                    await self.socket.close()
+                    if retries_left == 0:
+                        return {'error': '[Requester Error] Maximum retries reached, no response from server.'}
+                    
+                    print("[Requester Warning] Reconnecting and resending request...")
+                    self.socket = self.context.socket(zmq.REQ)
+                    self.socket.connect(f'tcp://127.0.0.1:{self.channel}')
+                    self.poller = zmq.asyncio.Poller()
+                    self.poller.register(self.socket, zmq.POLLIN)
+                    await self.socket.send_json(msg)
+                    continue
+        except zmq.ZMQError as e:
+            print("[ZMQ Requester Error]", e, "Request:", msg)
+            print(traceback.format_exc())
+            return {'error': e}
 
-                print("[Requester Warning] No response from server, retrying...")
-                retries += 1
-            except zmq.ZMQError as e:
-                print("[ZMQ Requester Error]", e, "Request:", msg)
-                break
-            except Exception as e:
-                print("[Requester Error]", e, "Request:", msg)
-                print(traceback.format_exc())
-                break
-
-        print("[Requester Error] Maximum retries reached, no response from server.")
-        return None        
+        except Exception as e:
+            print("[Requester Error]", e, "Request:", msg)
+            print(traceback.format_exc())
+            return {'error': e}
 
     async def close(self):
         await self.socket.close()
