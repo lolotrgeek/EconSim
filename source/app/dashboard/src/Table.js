@@ -11,15 +11,7 @@ const base_url = 'http://127.0.0.1:5000'
 
 const TableComponent = ({ ticker }) => {
     const [agents, setAgents] = useState([])
-    const [currentAgent, setCurrentAgent] = useState('')
-    const [latestTrade, setLatestTrade] = useState({})
-    const [candles, setCandles] = useState([])
     const [orderBook, setOrderBook] = useState({ bids: [], asks: [] })
-    const [trades, setTrades] = useState([])
-    const [quotes, setQuotes] = useState({})
-    const [bestBid, setBestBid] = useState({})
-    const [bestAsk, setBestAsk] = useState({})
-    const [midprice, setMidprice] = useState('')
 
     useEffect(() => {
         const fetchData = async () => {
@@ -48,7 +40,7 @@ const TableComponent = ({ ticker }) => {
                     <h1>Agent List</h1>
                     <div className="agent-cards">
                         {Array.isArray(agents) ? agents.map((agent, index) => (
-                            <Link key={index} to={`/agent/${encodeURIComponent(agent.agent)}`} onClick={() => setCurrentAgent(agent.agent)}>
+                            <Link key={index} to={`/agent/${encodeURIComponent(agent.agent)}`}>
                                 <AgentCard agent={agent} />
                             </Link>
                         )) : 
