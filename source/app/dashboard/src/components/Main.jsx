@@ -1,15 +1,15 @@
 import React, { useEffect, useState } from 'react'
-import { BrowserRouter as Router, Routes, Route, Link } from 'react-router-dom';
-import AgentCard from './components/AgentCard';
-import AgentPositions from './components/AgentPositions';
-import OrderBook from './components/OrderBook'
-import Chart from './components/Chart'
-import './styles/AgentList.css';
-import './styles/MainContent.css';
+import { BrowserRouter as Router, Routes, Route, Link } from 'react-router-dom'
+import AgentCard from './AgentCard'
+import AgentPositions from './AgentPositions'
+import OrderBook from './OrderBook'
+import Chart from './Chart'
+import '../styles/AgentList.css'
+import '../styles/MainContent.css'
 
 const base_url = 'http://127.0.0.1:5000'
 
-const TableComponent = ({ ticker }) => {
+const Main = ({ ticker }) => {
     const [agents, setAgents] = useState([])
     const [orderBook, setOrderBook] = useState({ bids: [], asks: [] })
 
@@ -64,4 +64,4 @@ const TableComponent = ({ ticker }) => {
         </Router>
     )
 }
-export default TableComponent
+export default Main
