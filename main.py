@@ -9,7 +9,9 @@ files = [
     parent_dir+'\\EconSim\\run_agents.py',
     parent_dir+'\\EconSim\\run_government.py',
     parent_dir+'\\EconSim\\run_clock.py',
-    parent_dir+'\\EconSim\\run_api.py',
+]
+api = [
+    parent_dir+'\\EconSim\\source\\api\exchange_api.js'
 ]
 
 
@@ -18,6 +20,10 @@ if __name__ == '__main__':
         processes = []
         for file in files:
             process = subprocess.Popen(['python', file])
+            processes.append(process)
+
+        for file in api:
+            process = subprocess.Popen(['node', file])
             processes.append(process)
 
         while True:
