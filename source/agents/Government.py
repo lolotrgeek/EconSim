@@ -9,10 +9,21 @@ from source.utils._utils import string_to_time
 class Government(Agent):
     def __init__(self, initial_balance=10000000, requester=None):
         super().__init__("Government", initial_balance, requester=requester)
-        self.current_date = datetime(1700,4,15)
+        self.current_date = datetime(1700,1,1)
+        self.taxes_last_collected = {"date": datetime(1700,1,1), "amount": 0}
         self.taxes = Tax()
 
+    async def get_date(self) -> datetime:
+        return self.current_date
+
+    async def get_cash(self) -> float:
+        return self.cash
+    
+    async def get_last_collected_taxes(self) -> dict:
+        return self.taxes_last_collected
+
     async def collect_taxes(self) -> None:
+        self.taxes_last_collected['amount'] = 0
         agents = await self.requests.get_agents()
         for agent in agents:
             long_term_capital_gains = 0
@@ -29,6 +40,7 @@ class Government(Agent):
 
             long_term_tax = await self.taxes.calculate_tax(long_term_capital_gains, 'long_term', debug=False)
             short_term_tax = await self.taxes.calculate_tax(short_term_capital_gains, 'ordinary', debug=False)
+            self.taxes_last_collected['amount'] += long_term_tax['amount'] + short_term_tax['amount']
             await self.requests.remove_cash(agent['name'], long_term_tax['amount'] + short_term_tax['amount'], 'taxes')
 
     async def set_reserve_requirement(self, reserve_requirement) -> None:
@@ -82,7 +94,8 @@ class Government(Agent):
             current_date (datetime): the current date.
         """
         
-        # if the date is april 15th, calculate tax bills
+        # if the date is april 15th, collect tax bills
         if self.current_date.month == 4 and self.current_date.day == 15:
-            print('collecting taxes...')
+            self.taxes_last_collected['date'] = self.current_date
             await self.collect_taxes()
+        return None
