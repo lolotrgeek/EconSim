@@ -13,15 +13,6 @@ class Government(Agent):
         self.taxes_last_collected = {"date": datetime(1700,1,1), "amount": 0}
         self.taxes = Tax()
 
-    async def get_date(self) -> datetime:
-        return self.current_date
-
-    async def get_cash(self) -> float:
-        return self.cash
-    
-    async def get_last_collected_taxes(self) -> dict:
-        return self.taxes_last_collected
-
     async def collect_taxes(self) -> None:
         self.taxes_last_collected['amount'] = 0
         agents = await self.requests.get_agents()

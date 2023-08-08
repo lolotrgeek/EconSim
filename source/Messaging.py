@@ -116,19 +116,23 @@ class Broker:
             print("[Broker Error]", e)
 
 class Pusher():
-    def __init__(self, channel='5558'):
-        self.context = zmq.Context()
+    def __init__(self, channel='5558', bind=True):
+        self.context = zmq.asyncio.Context()
         self.zmq_socket = self.context.socket(zmq.PUSH)
         self.address = f"tcp://127.0.0.1:{channel}"
-        self.zmq_socket.connect(self.address)
-        
-    def push(self, message) -> bool:
+        self.zmq_socket.setsockopt(zmq.CONFLATE, 1)
+        self.zmq_socket.setsockopt(zmq.SNDHWM, 1)
+        if bind:
+            self.zmq_socket.bind(self.address)
+        else:
+            self.zmq_socket.connect(self.address)
+
+
+    async def push(self, message) -> bool:
         try:
-            self.zmq_socket.send_json(message)
-            return True
+            await self.zmq_socket.send_json(message, zmq.NOBLOCK)
         except Exception as e:
-            print(e)
-            return None
+            return {'error': e}
 
 class Puller():
     def __init__(self, channel='5556'):
@@ -176,3 +180,37 @@ class Router():
             except Exception as e:
                 print(e)
                 continue  
+    
+class Publisher():
+    def __init__(self, channel=5560):
+        self.context = zmq.Context()
+        self.socket = self.context.socket(zmq.PUB)
+        self.address = f"tcp://127.0.0.1:{channel}"
+        self.socket.bind(self.address)
+
+    def publish(self, topic, message) -> bool:
+        try:
+            payload = b"%s--> %s" % (topic.encode('utf-8'), message.encode('utf-8'))
+            self.socket.send(payload)
+            return True
+        except Exception as e:
+            print(e)
+            return None
+        
+class Subscriber():
+    def __init__(self, channel=5560):
+        self.context = zmq.Context()
+        self.socket = self.context.socket(zmq.SUB)
+        self.address = f"tcp://127.0.0.1:{channel}"
+        self.socket.connect(self.address)
+        self.socket.setsockopt_string(zmq.SUBSCRIBE, '')
+
+    def subscribe(self, topic) -> bool:
+        try:
+            self.socket.setsockopt_string(zmq.SUBSCRIBE, topic)
+            raw_msg = self.socket.recv()
+            msg = raw_msg.split(b"--> ")[1]
+            return str(msg, 'utf-8')
+        except Exception as e:
+            print(e)
+            return None

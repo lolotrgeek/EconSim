@@ -1,6 +1,6 @@
 from datetime import datetime
 import traceback
-from source.Messaging import Responder, Requester, Puller
+from source.Messaging import Responder, Requester, Subscriber
 from source.exchange.Exchange import Exchange
 from source.company.PublicCompany import PublicCompany
 from source.utils._utils import dumps, string_to_time
@@ -15,7 +15,7 @@ async def run_exchange(exchange_channel = 5570, time_channel = 5114) -> None:
     try: 
         exchange = Exchange(datetime=datetime(1700,1,1))
         await exchange.create_asset("XYZ", 'stock')
-        time_puller = Puller(time_channel)
+        time_puller = Subscriber(time_channel)
         responder = Responder(exchange_channel)
         requester = Requester(exchange_channel)
         await responder.connect()
@@ -24,15 +24,13 @@ async def run_exchange(exchange_channel = 5570, time_channel = 5114) -> None:
         topic_times = {}
 
         def get_time():
-            clock = time_puller.pull()
+            clock = time_puller.subscribe("time")
             if clock == None: 
                 pass
-            elif type(clock) is dict and 'time' not in clock:
-                pass
-            elif type(clock['time']) is dict:
+            elif type(clock) is not str:
                 pass
             else: 
-                exchange.datetime = string_to_time(clock['time'])
+                exchange.datetime = string_to_time(clock)
 
         async def callback(msg) -> str:
             topic_start_time = time.time()

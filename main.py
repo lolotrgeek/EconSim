@@ -11,7 +11,8 @@ files = [
     parent_dir+'\\EconSim\\run_clock.py',
 ]
 api = [
-    parent_dir+'\\EconSim\\source\\api\exchange_api.js'
+    parent_dir+'\\EconSim\\source\\api\exchange_api.js',
+    parent_dir+'\\EconSim\\source\\api\government_api.js'
 ]
 
 

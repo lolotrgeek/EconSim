@@ -1,28 +1,27 @@
 import express from 'express'
-import Requester from './Requester.js'
+import Puller from './Puller.js'
 const app = express()
 
 app.get('/', (req, res) => {
     res.send('This is the government API.')
 })
 
-// get date endpoint
-const get_date_requests = new Requester('5580')
+const get_date_pulls = new Puller('5580')
 app.get('/api/v1/get_date', async (req, res) => {
-    await get_date_requests.request('get_date', {})
-    res.json(get_date_requests.latest_result)
+    await get_date_pulls.pull('get_date')
+    res.json(get_date_pulls.latest_result)
 })
 
-const get_cash_requests = new Requester('5580')
+const get_cash_pulls = new Puller('5580')
 app.get('/api/v1/get_cash', async (req, res) => {
-    await get_cash_requests.request('get_cash', {})
-    res.json(get_cash_requests.latest_result)
+    await get_cash_pulls.pull('get_cash')
+    res.json(get_cash_pulls.latest_result)
 })
 
-const get_last_collected_taxes_requests = new Requester('5580')
+const get_last_collected_taxes_pulls = new Puller('5580')
 app.get('/api/v1/get_last_collected_taxes', async (req, res) => {
-    await get_last_collected_taxes_requests.request('get_last_collected_taxes', {})
-    res.json(get_last_collected_taxes_requests.latest_result)
+    await get_last_collected_taxes_pulls.pull('get_last_collected_taxes')
+    res.json(get_last_collected_taxes_pulls.latest_result)
 })
 
 app.listen(5001, () => {
