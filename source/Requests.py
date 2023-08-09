@@ -5,7 +5,7 @@ import asyncio
 
 class Requests():
     """
-    Creates an API for making requests to the exchange process.
+    Creates an Interface for making requests to the exchange process.
     """
     def __init__(self, requester, cache=False):
         self.requester = requester

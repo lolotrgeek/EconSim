@@ -73,11 +73,14 @@ class Requester:
 class Responder:
     def __init__(self, channel='5556'):
         self.channel = channel
+        self.listen_timeout = 500  # ms
 
     async def connect(self) -> None:
         self.context = zmq.asyncio.Context()
         self.socket = self.context.socket(zmq.REP)
         self.socket.bind(f'tcp://127.0.0.1:{self.channel}')
+        self.poller = zmq.asyncio.Poller()
+        self.poller.register(self.socket, zmq.POLLIN)        
 
     async def respond(self, callback=lambda msg: msg) -> str: 
         try:
@@ -91,6 +94,24 @@ class Responder:
             return json.dumps({'error': e})
         except Exception as e:
             print("[Response Error]", e, "Request:", msg)
+            print(traceback.format_exc())
+            await self.socket.send_json({'error': e})
+            return json.dumps({'error': e})
+        
+    async def lazy_respond(self, callback=lambda msg: msg) -> str:
+        try:
+            socks = dict(await self.poller.poll(self.listen_timeout) )
+            if socks.get(self.socket) == zmq.POLLIN:            
+                msg = await self.socket.recv_json()
+                response = await callback(msg)
+                await self.socket.send_json(response)
+                return response
+        except zmq.ZMQError as e:
+            print("[ZMQ Response Error]", e)
+            print(traceback.format_exc())
+            return json.dumps({'error': e})
+        except Exception as e:
+            print("[Response Error]", e)
             print(traceback.format_exc())
             await self.socket.send_json({'error': e})
             return json.dumps({'error': e})
@@ -135,10 +156,12 @@ class Pusher():
             return {'error': e}
 
 class Puller():
-    def __init__(self, channel='5556'):
+    def __init__(self, channel='5556', latest_only=True):
         self.context = zmq.Context()
         self.socket = self.context.socket(zmq.PULL)
         self.address = f"tcp://127.0.0.1:{channel}"
+        if latest_only:
+            self.socket.setsockopt(zmq.CONFLATE, 1)
         self.socket.connect(self.address)
 
     def pull(self) -> str:
@@ -198,12 +221,14 @@ class Publisher():
             return None
         
 class Subscriber():
-    def __init__(self, channel=5560):
+    def __init__(self, channel=5560, latest_only=True):
         self.context = zmq.Context()
         self.socket = self.context.socket(zmq.SUB)
         self.address = f"tcp://127.0.0.1:{channel}"
-        self.socket.connect(self.address)
         self.socket.setsockopt_string(zmq.SUBSCRIBE, '')
+        if latest_only:
+            self.socket.setsockopt(zmq.CONFLATE, 1)
+        self.socket.connect(self.address)
 
     def subscribe(self, topic) -> bool:
         try:

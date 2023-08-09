@@ -15,7 +15,6 @@ from .types.Position import Position
 from source.utils._utils import format_dataframe_rows_to_dict
 from uuid import uuid4 as UUID
 
-# Creates an Orderbook and Assets
 class Exchange():
     def __init__(self, datetime= None):
         self.agents = []
@@ -24,7 +23,7 @@ class Exchange():
         self.trade_log: List[Trade] = [] #TODO: this is going to get to big to hold in memory, need a DB
         self.datetime = datetime
         self.agents_cash_updates = []
-        self.blockchain = None
+        self.base_currency = 'USD' # when cash is removed from exchange, it is converted to this currency
         self.fees = Fees()
 
     async def __str__(self):
