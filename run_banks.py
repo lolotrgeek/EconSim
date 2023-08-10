@@ -29,7 +29,10 @@ async def run_banks(bank_channel=5581, bank_response_channel = 5582, exchange_ch
                 bank.current_date = string_to_time(clock)
 
         async def callback(msg):
-            if msg['topic'] == 'request_loan': return  dumps(await bank.issue_loan(msg['borrower'], msg['amount']))
+            if msg['topic'] == 'apply_for_loan': return  dumps(await bank.apply_for_loan(msg['borrower']))
+            elif msg['topic'] == 'pay_loan': return dumps(await bank.pay_loan(msg['borrower'], msg['amount']))
+            elif msg['topic'] == 'get_loan': return dumps(await bank.get_loan(msg['borrower']))
+            elif msg['topic'] == 'get_credit_score': return dumps(await bank.get_credit(msg['borrower']))
             elif msg['topic'] == 'open_savings_account': return dumps(await bank.open_savings_account(msg['agent'], msg['initial_balance']))
             elif msg['topic'] == 'update_prime_rate': return dumps(await bank.update_prime_rate())
             elif msg['topic'] == 'deposit': return dumps(await bank.deposit_savings(msg['agent'], msg['amount']))

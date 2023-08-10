@@ -11,20 +11,29 @@ async def RequestBank():
 
         assert bank_requests != None
 
-        loan = await requester.request_lazy({"topic": 'request_loan', "borrower":"borrower", "amount": 100})
-        print("loan", loan)
-        
+        account = await requester.request_lazy({"topic": "open_savings_account", "agent": "agent", "initial_balance" :200})
+        print( account)
 
-        account = await requester.request_lazy({"topic": "open_savings_account", "agent": "agent", "initial_balance" :100})
-        print("account", account)
-        
+        loan = await requester.request_lazy({"topic": 'apply_for_loan', "borrower":"agent"})
+        print( loan)
 
+        get_loan = await requester.request_lazy({"topic": "get_loan", "borrower": "agent"})
+        print( get_loan)
+
+        pay_loan = await requester.request_lazy({"topic": "pay_loan", "borrower": "agent", "amount": 100})
+        print( pay_loan)
+
+        get_credit = await requester.request_lazy({"topic": "get_credit_score", "borrower": "agent"})
+        print( get_credit)
+
+        afterpay_loan = await requester.request_lazy({"topic": "get_loan", "borrower": "agent"})
+        print( afterpay_loan)
+        
         deposit = await requester.request_lazy({"topic": "deposit", "agent": "agent","amount": 100})
-        print("deposit", deposit)
+        print( deposit)
         
-
         withdraw = await requester.request_lazy({"topic": "withdraw", "agent": "agent","amount": 100})
-        print("withdraw", withdraw)
+        print( withdraw)
         
     except Exception as e:
         print("[Error]", e)
