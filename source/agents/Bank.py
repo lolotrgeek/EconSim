@@ -1,6 +1,7 @@
 import random
 from .AgentProcess import Agent
 from datetime import datetime
+from uuid import uuid4
 
 class Bank(Agent):
     """
@@ -51,7 +52,7 @@ class Bank(Agent):
         print("Account not found.")
         return None
     
-    async def withdraw_savings(self, agent, amount):
+    async def withdraw_savings(self, agent, amount, note=""):
         """
         Withdraws an amount from the agent's savings account.
         """
@@ -147,12 +148,12 @@ class Bank(Agent):
         self.reserve -= amount
         return {"loan": amount}
 
-    async def pay_loan(self, agent, amount):
+    async def pay_loan(self, id, agent, amount):
         """
         Pays off a loan.
         """
         for loan in self.loans:
-            if loan.borrower == agent:
+            if loan.id == id and loan.borrower == agent:
                 if amount > loan.balance:
                     return {"pay": "Amount exceeds loan balance."}
                 if await (loan.get_minimum_payment()) > amount:
@@ -170,14 +171,15 @@ class Bank(Agent):
                 return {"pay": amount}
         return {"pay": "Loan not found."}
            
-    async def get_loan(self, agent):
+    async def get_loans(self, agent):
         """
         Gets an agent's loan.
         """
+        loans = []
         for loan in self.loans:
             if loan.borrower == agent:
-                return {"loan": loan.to_dict()}
-        return None
+                loans.append( loan.to_dict())
+        return loans
     
     async def update_prime_rate(self, new_rate=random.uniform(0.01, 0.1)):
         """
@@ -299,6 +301,7 @@ class Loan:
     Represents a loan with daily accrued interest.
     """
     def __init__(self, borrower, amount, interest_rate=random.uniform(0.05, 0.15), rate_type="fixed"):
+        self.id = str(uuid4())
         self.borrower = borrower
         self.principal = amount
         self.balance = amount # current remaining principal + interest
@@ -319,12 +322,12 @@ class Loan:
         self.minimum_payment = self.balance * 0.1
         return self.minimum_payment
 
-
     def to_dict(self):
         """
         Get a dictionary representation of the loan.
         """
         return {
+            "id": self.id,
             "borrower": self.borrower,
             "principal": self.principal,
             "balance": self.balance,
