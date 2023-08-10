@@ -46,13 +46,13 @@ class Bank(Agent):
         """
         for account in self.accounts:
             if account.owner == agent:
-                await account.deposit(amount)
+                await account.deposit(amount, self.current_date, "deposit")
                 self.deposits.append(amount)
                 return account.to_dict()
         print("Account not found.")
         return None
     
-    async def withdraw_savings(self, agent, amount, note=""):
+    async def withdraw_savings(self, agent, amount):
         """
         Withdraws an amount from the agent's savings account.
         """
@@ -60,7 +60,7 @@ class Bank(Agent):
             if account.owner == agent:
                 if amount > account.balance:
                     return {"withdraw":"Insufficient funds."}
-                await account.withdraw(amount)
+                await account.withdraw(amount, self.current_date, "withdraw")
                 return {"withdraw": amount}
         return {"withdraw": "Account not found."}
     
@@ -209,11 +209,11 @@ class Bank(Agent):
                     min_payment = await loan.get_minimum_payment()
                     if min_payment > account.balance:
                         payment = account.balance
-                        if payment > 0: account.balance -= payment
+                        if payment > 0: await account.withdraw(payment, self.current_date, "Loan payment")
                         await self.update_credit(payment-min_payment, loan)
                         print("Loan auto pay failed due to insufficient funds.")
                     if min_payment <= account.balance:
-                        await account.withdraw(min_payment)
+                        await account.withdraw(min_payment, self.current_date, "Loan payment")
                         loan.balance -= min_payment                       
                         await self.update_credit(min_payment, loan)
                     # update interest rate if variable
@@ -249,6 +249,7 @@ class SavingsAccount:
         self.balance = initial_balance
         self.interest_rate = initial_interest_rate
         self.accrued_interest = 0
+        self.transactions = []
 
     async def compound_interest(self):
         """
@@ -264,18 +265,20 @@ class SavingsAccount:
         self.balance += self.accrued_interest
         self.accrued_interest = 0
 
-    async def deposit(self, amount):
+    async def deposit(self, amount, time,  note=""):
         """
         Deposit funds into the account.
         """
         self.balance += amount
+        self.transactions.append({"dt": time, "amount": amount, "note": note})
 
-    async def withdraw(self, amount):
+    async def withdraw(self, amount, time, note=""):
         """
         Withdraw funds from the account if there are sufficient funds.
         """
         if amount <= self.balance:
             self.balance -= amount
+            self.transactions.append({"dt": time, "amount": amount, "note": note})
         else:
             print("Insufficient funds.")
 
