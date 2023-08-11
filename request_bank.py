@@ -1,4 +1,3 @@
-from source.agents.BankRequests import BankRequests
 from source.Messaging import Requester
 import json
 import asyncio
@@ -8,9 +7,6 @@ async def RequestBank():
     try:
         requester = Requester(channel=5582)
         await requester.connect()
-        bank_requests = BankRequests(requester=requester)
-
-        assert bank_requests != None
 
         account = await requester.request_lazy({"topic": "open_savings_account", "agent": "agent", "initial_balance" :200})
         print( account)
