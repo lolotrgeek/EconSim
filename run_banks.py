@@ -30,8 +30,8 @@ async def run_banks(bank_channel=5581, bank_response_channel = 5582, exchange_ch
 
         async def callback(msg):
             if msg['topic'] == 'apply_for_loan': return  dumps(await bank.apply_for_loan(msg['borrower']))
-            elif msg['topic'] == 'pay_loan': return dumps(await bank.pay_loan(msg['borrower'], msg['amount']))
-            elif msg['topic'] == 'get_loan': return dumps(await bank.get_loan(msg['borrower']))
+            elif msg['topic'] == 'pay_loan': return dumps(await bank.pay_loan(msg ['id'], msg['borrower'], msg['amount']))
+            elif msg['topic'] == 'get_loans': return dumps(await bank.get_loans(msg['borrower']))
             elif msg['topic'] == 'get_credit_score': return dumps(await bank.get_credit(msg['borrower']))
             elif msg['topic'] == 'open_savings_account': return dumps(await bank.open_savings_account(msg['agent'], msg['initial_balance']))
             elif msg['topic'] == 'update_prime_rate': return dumps(await bank.update_prime_rate())
@@ -46,10 +46,11 @@ async def run_banks(bank_channel=5581, bank_response_channel = 5582, exchange_ch
             msg = {
                 "get_reserve": dumps(bank.reserve),
                 "get_date": dumps(bank.current_date),
-                "get_loans": dumps(bank.loans),
+                "get_loans": dumps(await bank.get_loans()),
                 "get_deposits": dumps(bank.deposits),
-                "get_accounts": dumps(bank.accounts),
+                "get_accounts": dumps(await bank.get_accounts()),
                 "get_prime_rate": dumps(bank.prime_rate),
+                "get_credit": dumps(await bank.get_credit_scores()),
             }
             await pusher.push(msg)
             await responder.lazy_respond(callback=callback)

@@ -1,5 +1,6 @@
 from source.agents.BankRequests import BankRequests
 from source.Messaging import Requester
+import json
 import asyncio
 
 
@@ -17,16 +18,18 @@ async def RequestBank():
         loan = await requester.request_lazy({"topic": 'apply_for_loan', "borrower":"agent"})
         print( loan)
 
-        get_loan = await requester.request_lazy({"topic": "get_loan", "borrower": "agent"})
+        get_loan = await requester.request_lazy({"topic": "get_loans", "borrower": "agent"})
         print( get_loan)
 
-        pay_loan = await requester.request_lazy({"topic": "pay_loan", "borrower": "agent", "amount": 100})
+        parsed_loan = json.loads(get_loan)
+
+        pay_loan = await requester.request_lazy({"topic": "pay_loan", "id": parsed_loan[0]['id'], "borrower": "agent", "amount": 100})
         print( pay_loan)
 
         get_credit = await requester.request_lazy({"topic": "get_credit_score", "borrower": "agent"})
         print( get_credit)
 
-        afterpay_loan = await requester.request_lazy({"topic": "get_loan", "borrower": "agent"})
+        afterpay_loan = await requester.request_lazy({"topic": "get_loans", "borrower": "agent"})
         print( afterpay_loan)
         
         deposit = await requester.request_lazy({"topic": "deposit", "agent": "agent","amount": 100})

@@ -11,7 +11,7 @@ class Bank(Agent):
         super().__init__("Bank", initial_balance, requester=requester)
         self.reserve_requirement = 0.1 # TODO: for a USD bank these are updated by the Fed (central bank)
         self.prime_rate = random.uniform(0.01, 0.1) 
-        self.reserve = 0
+        self.reserve = initial_balance
         self.aum = initial_balance #TODO: will be set of loans from the Fed (central bank)
         self.assets = []
         self.deposits = []
@@ -86,19 +86,21 @@ class Bank(Agent):
             self.credit.append(credit)
         return {"credit": credit.to_dict()}
         
-    async def get_credit(self, agent):
+    async def get_credit(self, agent=None):
         """
         Gets an agent's credit score.
         """
         for index, credit in enumerate(self.credit):
             if credit.agent == agent:
                 return {"credit": credit.to_dict(), "index": index}
+            
         return None
 
     async def update_credit(self, amount, loan):
         repayment_factor = amount / loan.balance
         pre_payment_credit = (await self.get_credit(loan.borrower))["credit"]["score"]
         updated_score = pre_payment_credit + int(repayment_factor * 10)
+        if updated_score > 850: updated_score = 850
         await self.set_credit(loan.borrower, updated_score)
 
     def calculate_credit_factor(self, credit_score, rate_type="fixed"):
@@ -145,8 +147,11 @@ class Bank(Agent):
         """
         loan = Loan(borrower, amount, factored_rate+self.prime_rate, rate_type)
         self.loans.append(loan)
+        for account in self.accounts:
+            if account.owner == borrower:
+                await account.deposit(amount, self.current_date, "loan")
         self.reserve -= amount
-        return {"loan": amount}
+        return loan.to_dict()
 
     async def pay_loan(self, id, agent, amount):
         """
@@ -171,16 +176,57 @@ class Bank(Agent):
                 return {"pay": amount}
         return {"pay": "Loan not found."}
            
-    async def get_loans(self, agent):
+    async def get_loans(self, agent=None):
         """
-        Gets an agent's loan.
+        Gets an agent's loans.
         """
         loans = []
         for loan in self.loans:
+            if agent == None:
+                loans.append( loan.to_dict())
             if loan.borrower == agent:
                 loans.append( loan.to_dict())
         return loans
     
+    async def get_accounts(self, agent=None):
+        """
+        Gets an agent's accounts.
+        """
+        accounts = []
+        for account in self.accounts:
+            if agent == None:
+                accounts.append( account.to_dict())
+            if account.owner == agent:
+                accounts.append( account.to_dict())
+        return accounts
+    
+    async def get_credit_scores(self):
+        """
+        Gets all credit scores.
+        """
+        scores = []
+        for credit in self.credit:
+            scores.append( credit.to_dict())
+        return scores
+
+    async def get_total_amount_loaned(self):
+        """
+        Gets the total amount of loans issued.
+        """
+        total = 0
+        for loan in self.loans:
+            total += loan.balance
+        return total
+
+    async def get_total_amount_in_savings(self):
+        """
+        Gets the total amount of savings.
+        """
+        total = 0
+        for account in self.accounts:
+            total += account.balance
+        return total
+
     async def update_prime_rate(self, new_rate=random.uniform(0.01, 0.1)):
         """
         Update the interest rate with a random change.
