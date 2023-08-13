@@ -1,4 +1,4 @@
-from .AgentProcess import Agent
+from .Agent import Agent
 import random
 from time import sleep
 

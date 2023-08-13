@@ -3,7 +3,7 @@ import sys
 import os
 parent_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 sys.path.append(parent_dir)
-from source.agents.AgentProcess import Agent
+from source.agents.Agent import Agent
 from source.exchange.ExchangeRequests import ExchangeRequests as Requests
 from .MockRequester import MockRequester
 import asyncio

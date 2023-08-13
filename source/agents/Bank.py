@@ -1,5 +1,5 @@
 import random
-from .AgentProcess import Agent
+from .Agent import Agent
 from datetime import datetime
 from uuid import uuid4
 

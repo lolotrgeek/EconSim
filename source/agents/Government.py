@@ -1,4 +1,4 @@
-from .AgentProcess import Agent
+from .Agent import Agent
 from datetime import datetime, timedelta
 import sys
 import os
