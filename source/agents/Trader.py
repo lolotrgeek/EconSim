@@ -5,6 +5,7 @@ from .Agent import Agent
 class Trader(Agent):
     def __init__(self, name:str, aum:int=10_000, requester=None):
         super().__init__(name, aum, requester=requester)
+        self.company_requester 
 
     def __repr__(self):
         return f'<Trader: {self.name}>'
