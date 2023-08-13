@@ -14,8 +14,8 @@ class ExchangeRequests(Requests):
     async def get_price_bars(self, ticker, interval, limit):
         return await self.make_request('candles', {'ticker': ticker, 'interval': interval, 'limit': limit}, self.requester)
 
-    async def create_asset(self, ticker, qty, seed_price, seed_bid, seed_ask):
-        return await self.make_request('create_asset', {'ticker': ticker, 'qty': qty,'seed_price': seed_price, 'seed_bid': seed_bid, 'seed_ask': seed_ask}, self.requester)
+    async def create_asset(self, ticker,asset_type='stock', qty=1000, seed_price=100, seed_bid=.99, seed_ask=1.01):
+        return await self.make_request('create_asset', {'ticker': ticker, 'asset_type': asset_type, 'qty': qty,'seed_price': seed_price, 'seed_bid': seed_bid, 'seed_ask': seed_ask}, self.requester)
 
     async def get_mempool(self, limit):
         return await self.make_request('mempool', {'limit': limit}, self.requester)
