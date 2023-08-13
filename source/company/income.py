@@ -6,7 +6,7 @@ def generate_fake_income_statement(date, symbol, period) -> dict:
         "date": date,
         "symbol": symbol,
         "reportedCurrency": "USD",
-        "calendarYear": date[:4],
+        "calendarYear": date.year,
         "period": period,
     }
 

@@ -6,7 +6,7 @@ def generate_fake_balance_sheet(date, symbol, period) -> dict:
         "date": date,
         "symbol": symbol,
         "reportedCurrency": "USD",
-        "calendarYear": date[:4],
+        "calendarYear": date.year,
         "period": period,
     }
 
@@ -52,7 +52,7 @@ def generate_fake_balance_sheet(date, symbol, period) -> dict:
     retained_earnings = lambda x = 0: x if (random.randint(0,2) != 2) else random.randint(0, 10000000000)
     accumulated_other_comprehensive_income_loss = random.randint(-20000000000, 0)
     other_total_stockholders_equity = random.randint(0, 10000000000)
-    total_stockholders_equity = common_stock + retained_earnings + accumulated_other_comprehensive_income_loss + other_total_stockholders_equity
+    total_stockholders_equity = common_stock + retained_earnings() + accumulated_other_comprehensive_income_loss + other_total_stockholders_equity
 
     total_equity = total_stockholders_equity
     total_liabilities_and_stockholders_equity = total_liabilities + total_equity
