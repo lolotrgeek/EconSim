@@ -1,14 +1,14 @@
 import multiprocessing
 import asyncio
-from run_agent import run_agent
+from run_trader import run_trader
 import traceback
 if __name__ == '__main__':
     try:
-        print('starting agents')
+        print('starting traders')
         pool = multiprocessing.Pool(processes=500)
         results = []
         for _ in range(500):
-            result = pool.apply_async(asyncio.run, args=(run_agent(),))
+            result = pool.apply_async(asyncio.run, args=(run_trader(),))
             results.append(result)
         
         pool.close()
