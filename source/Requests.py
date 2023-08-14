@@ -31,13 +31,15 @@ class Requests():
             if msg is None:
                 raise Exception(f'{topic} is None, {msg}')
             elif isinstance(msg, str):
-                parsed_msg = json.loads(msg)
+                parsed_msg = json.loads(msg) 
             elif isinstance(msg, list):
                 parsed_msg = msg
             elif not isinstance(msg, dict):
                 raise Exception(f'{topic} got type {type(msg)}, expected dict. Message: {msg}')
             elif 'error' in msg:
                 raise Exception(f'{topic} error, {msg}')
+            elif 'warning' in msg:
+                if self.debug: print(f'{topic}warning {msg}')
             else:
                 parsed_msg = msg
 
@@ -52,7 +54,7 @@ class Requests():
                 error = {}
                 error[topic] = f"[Request Error] {e}"
                 if self.debug:
-                    print("[Request Error]", e)
+                    print("[Request Error]", e, topic, message)
                     print(traceback.format_exc())
                 return json.dumps(error)
             await asyncio.sleep(0.1)
