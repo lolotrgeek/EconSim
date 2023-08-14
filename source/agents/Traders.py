@@ -1,18 +1,35 @@
 from .Trader import Trader
 import random
-from time import sleep
+
+class Fundamental(Trader):
+    def __init__(self, name, aum, qty_per_order=1, requester=None):
+        Trader.__init__(self, name, aum, requester=requester)
+        self.qty_per_order = qty_per_order
+
+    async def next(self) -> bool:
+        self.tickers = await self.get_tickers()
+        if (await self.has_cash_and_assets()) == False: return False
+
+        for ticker in self.tickers:
+            await self.get_income_statement(ticker)
+            await self.get_balance_sheet(ticker)
+            await self.get_cash_flow(ticker)
+            await self.get_dividend_payment_date(ticker)
+            await self.get_ex_dividend_date(ticker)
+            await self.get_dividends_to_distribute(ticker)
+
+            
+
+        return True
 
 class RandomMarketTaker(Trader):
-    def __init__(self,name,tickers, aum=10000,prob_buy=.2,prob_sell=.2,qty_per_order=1,seed=None, requester=None):
+    def __init__(self,name , aum=10000,prob_buy=.2,prob_sell=.2,qty_per_order=1,seed=None, requester=None):
         Trader.__init__(self, name, aum, requester=requester)
         if  prob_buy + prob_sell> 1:
             raise ValueError("Sum of probabilities cannot be greater than 1.") 
         self.prob_buy = prob_buy
         self.prob_sell = prob_sell
         self.qty_per_order = qty_per_order
-        self.assets = {}
-        self.tickers = tickers
-        self.aum = aum
 
         # Allows for setting a different independent seed to each instance
         self.random = random
@@ -20,12 +37,8 @@ class RandomMarketTaker(Trader):
             self.random.seed = seed
 
     async def next(self) -> bool:
-        self.cash = (await self.get_cash())['cash']
-        self.assets = (await self.get_assets())['assets']
-
-        if self.cash <= 0 and all(asset == 0 for asset in self.assets.values()) == True:
-            print(self.name, "has no cash and no assets. Terminating.", self.cash, self.assets)
-            return False
+        self.tickers = await self.get_tickers()
+        if (await self.has_cash_and_assets()) == False: return False
 
         ticker = random.choice(self.tickers)
         action = None
@@ -49,19 +62,13 @@ class RandomMarketTaker(Trader):
         return True
 
 class LowBidder(Trader):
-    def __init__(self, name, tickers, aum, qty_per_order=1, requester=None):
+    def __init__(self, name, aum, qty_per_order=1, requester=None):
         Trader.__init__(self, name, aum, requester=requester)
         self.qty_per_order = qty_per_order
-        self.tickers = tickers
-        self.assets = {}
-        self.aum = aum
 
     async def next(self) -> bool:
-        self.cash = (await self.get_cash())['cash']
-        self.assets = (await self.get_assets())['assets']
-        if self.cash <= 0 and all(asset == 0 for asset in self.assets.values()) == True:
-            print(self.name, "has no cash and no assets. Terminating.", self.cash, self.assets)
-            return False
+        self.tickers = await self.get_tickers()
+        if (await self.has_cash_and_assets()) == False: return False
                 
         for ticker in self.tickers:
             latest_trade = await self.get_latest_trade(ticker)
@@ -85,6 +92,9 @@ class GreedyScalper(Trader):
         self.aum = aum
 
     async def next(self) -> bool:
+        self.tickers = await self.get_tickers()
+        if (await self.has_cash_and_assets()) == False: return False
+
         get_supply = await self.get_assets('init_seed')
 
         for ticker in self.tickers:
@@ -110,11 +120,8 @@ class NaiveMarketMaker(Trader):
         self.can_sell = {ticker: False for ticker in self.tickers}
 
     async def next(self) -> bool:
-        self.cash = (await self.get_cash())['cash']
-        self.assets = (await self.get_assets())['assets']
-        if self.cash <= 0:
-            print(self.name, "is out of cash:", self.cash)
-            return False
+        self.tickers = await self.get_tickers()
+        if (await self.has_cash_and_assets()) == False: return False
 
         for ticker in self.tickers:
             latest_trade = await self.get_latest_trade(ticker)
