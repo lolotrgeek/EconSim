@@ -65,9 +65,9 @@ async def run_companies(time_channel=5114, exchange_channel=5570, company_channe
                         elif msg['topic'] == 'get_ex_dividend_date': return dumps(company.ex_dividend_date)
                         elif msg['topic'] == 'get_dividends_to_distribute': return dumps(company.dividends_to_distribute)
                         break
-                    else: return f'unknown company {msg["company"]}'
+                    else: return dumps({"warning": f'unknown company {msg["company"]}'})
 
-            else: return f'unknown topic {msg["topic"]}'
+            else: return dumps({"warning":  f'unknown topic {msg["topic"]}'})
 
         for company in companies:
             await company.issue_initial_shares(random.randint(500,10000), random.randint(0,500))
