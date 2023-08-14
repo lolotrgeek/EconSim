@@ -9,8 +9,9 @@ import '../styles/MainContent.css'
 
 const base_url = 'http://127.0.0.1:5000'
 
-const Main = ({ ticker }) => {
+const Main = () => {
     const [agents, setAgents] = useState([])
+    const [ticker, setTicker] = useState('')
     const [orderBook, setOrderBook] = useState({ bids: [], asks: [] })
 
     useEffect(() => {
@@ -18,6 +19,10 @@ const Main = ({ ticker }) => {
             const agentsResponse = await fetch(`${base_url}/api/v1/get_agents`)
             const agentsData = await agentsResponse.json()
             setAgents(JSON.parse(agentsData))
+            
+            const tickersResponse = await fetch(`${base_url}/api/v1/get_tickers`)
+            const tickersData = await tickersResponse.json()
+            setTicker( JSON.parse(tickersData)[0])
 
             const orderBookResponse = await fetch(`${base_url}/api/v1/get_order_book?ticker=${ticker}`)
             const orderBookData = await orderBookResponse.json()

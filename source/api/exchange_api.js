@@ -13,6 +13,13 @@ app.get('/api/v1/sim_time', async (req, res) => {
     res.json(sim_time_requests.latest_result)
 })
 
+const get_tickers_requests = new Requester('5570')
+app.get('/api/v1/get_tickers', async (req, res) => {
+    await get_tickers_requests.request('get_tickers', {})
+    res.json(get_tickers_requests.latest_result)
+})
+
+
 const get_agents_requests = new Requester('5570')
 app.get('/api/v1/get_agents', async (req, res) => {
     await get_agents_requests.request('get_agents_simple', {})

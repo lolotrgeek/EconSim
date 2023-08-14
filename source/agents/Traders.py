@@ -8,6 +8,7 @@ class Fundamental(Trader):
 
     async def next(self) -> bool:
         self.tickers = await self.get_tickers()
+        if len(self.tickers) == 0: return True
         if (await self.has_cash_and_assets()) == False: return False
 
         for ticker in self.tickers:
@@ -35,6 +36,7 @@ class RandomMarketTaker(Trader):
 
     async def next(self) -> bool:
         self.tickers = await self.get_tickers()
+        if len(self.tickers) == 0: return True
         if (await self.has_cash_and_assets()) == False: return False
 
         ticker = random.choice(self.tickers)
@@ -65,6 +67,7 @@ class LowBidder(Trader):
 
     async def next(self) -> bool:
         self.tickers = await self.get_tickers()
+        if len(self.tickers) == 0: return True
         if (await self.has_cash_and_assets()) == False: return False
                 
         for ticker in self.tickers:
@@ -89,6 +92,7 @@ class GreedyScalper(Trader):
 
     async def next(self) -> bool:
         self.tickers = await self.get_tickers()
+        if len(self.tickers) == 0: return True
         if (await self.has_cash_and_assets()) == False: return False
 
         get_supply = await self.get_assets('init_seed')
@@ -116,6 +120,7 @@ class NaiveMarketMaker(Trader):
 
     async def next(self) -> bool:
         self.tickers = await self.get_tickers()
+        if len(self.tickers) == 0: return True
         if (await self.has_cash_and_assets()) == False: return False
 
         for ticker in self.tickers:
