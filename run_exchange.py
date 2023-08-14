@@ -14,7 +14,6 @@ asyncio.set_event_loop_policy(asyncio.WindowsSelectorEventLoopPolicy())
 async def run_exchange(exchange_channel = 5570, time_channel = 5114) -> None:
     try: 
         exchange = Exchange(datetime=datetime(1700,1,1))
-        await exchange.create_asset("XYZ", 'stock')
         time_puller = Subscriber(time_channel)
         responder = Responder(exchange_channel)
         requester = Requester(exchange_channel)
@@ -66,7 +65,7 @@ async def run_exchange(exchange_channel = 5570, time_channel = 5114) -> None:
             elif msg['topic'] == 'get_agents_simple': result = dumps(await exchange.get_agents_simple())
             elif msg['topic'] == 'get_positions': result = dumps(await exchange.get_positions(msg['agent'], msg['page_size'], msg['page']))
             #TODO: exchange topic to get general exchange data
-            else: result = f'unknown topic {msg["topic"]}'
+            else: result = dumps({"warning":  f'unknown topic {msg["topic"]}'})
 
             topic_end_time = time.time()
             topic_time = topic_end_time - topic_start_time
