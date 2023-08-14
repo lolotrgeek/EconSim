@@ -8,6 +8,13 @@ class PublicCompanyRequests(Requests):
     def __init__(self, requester, cache=False):
         super().__init__(requester, cache)
 
+
+    async def get_company_list(self) -> str:
+        return await self.make_request('get_companies', {}, self.requester)
+
+    async def get_company(self, company) -> str:
+        return await self.make_request('get_company', {'company': company}, self.requester)
+
     async def get_income_statement(self, company) -> str:
         return await self.make_request('get_income_statement', {'company': company}, self.requester)
     

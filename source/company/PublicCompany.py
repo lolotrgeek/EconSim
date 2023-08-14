@@ -28,6 +28,19 @@ class PublicCompany:
         self.dividends_to_distribute = 0
         self.requests = requester
 
+    def __str__(self):
+        return f"PublicCompany({self.name}, {self.symbol}, {self.startdate}, {self.currentdate}, {self.outstanding_shares}, {self.shareholders}, {self.balance_sheet}, {self.income_statement}, {self.cash_flow}, {self.ex_dividend_date}, {self.dividend_payment_date}, {self.dividends_to_distribute})"
+    
+    def __repr__(self):
+        return f"PublicCompany({self.name}, {self.symbol}, {self.startdate}, {self.currentdate}, {self.outstanding_shares}, {self.shareholders}, {self.balance_sheet}, {self.income_statement}, {self.cash_flow}, {self.ex_dividend_date}, {self.dividend_payment_date}, {self.dividends_to_distribute})"
+    
+    def to_dict(self):
+        return {
+            "name": self.name,
+            "symbol": self.symbol,
+            "startdate": self.startdate,
+            "currentdate": self.currentdate,
+        }        
 
     async def initial_financials(self) -> None:
         await self.generate_financial_report(self.currentdate, "annual", self.symbol)
@@ -94,7 +107,7 @@ class PublicCompany:
         if self.dividends_to_distribute > 0:
             self.ex_dividend_date = self.ex_dividend_date = self.currentdate + timedelta(weeks=2)
             self.dividend_payment_date = self.ex_dividend_date + timedelta(weeks=4)
-    
+
     async def next(self, current_date) -> None:
         self.currentdate = current_date
         

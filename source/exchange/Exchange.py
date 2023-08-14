@@ -546,3 +546,9 @@ class Exchange():
             'positions': paginated_positions,
             'next_page': next_page
         }
+    
+    async def get_tickers(self) -> list:
+        """
+        Returns a list of tickers
+        """
+        return list(self.assets.keys())

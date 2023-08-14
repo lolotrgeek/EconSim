@@ -36,6 +36,7 @@ async def run_exchange(exchange_channel = 5570, time_channel = 5114) -> None:
             topic_start_time = time.time()
             if msg['topic'] == 'create_asset': result = dumps((await exchange.create_asset(msg['ticker'],msg['asset_type'],msg['qty'], msg['seed_price'], msg['seed_bid'], msg['seed_ask'])))
             elif msg['topic'] == 'sim_time': result = dumps(exchange.datetime)
+            elif msg['topic'] == 'get_tickers': result = dumps((await exchange.get_tickers()))
             elif msg['topic'] == 'limit_buy': result = dumps((await exchange.limit_buy(msg['ticker'], msg['price'], msg['qty'], msg['creator'], msg['fee'])).to_dict())
             elif msg['topic'] == 'limit_sell': result = dumps((await exchange.limit_sell(msg['ticker'], msg['price'], msg['qty'], msg['creator'], msg['fee'])).to_dict())
             elif msg['topic'] == 'market_buy': result = await exchange.market_buy(msg['ticker'], msg['qty'], msg['buyer'], msg['fee'])

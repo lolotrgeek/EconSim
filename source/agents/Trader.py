@@ -5,6 +5,9 @@ from .Agent import Agent
 class Trader(Agent):
     def __init__(self, name:str, aum:int=10_000, requester=None):
         super().__init__(name, aum, requester=requester)
+        self.assets = {}
+        self.tickers = []
+        self.aum = aum
 
     def __repr__(self):
         return f'<Trader: {self.name}>'
@@ -12,6 +15,14 @@ class Trader(Agent):
     def __str__(self):
         return f'<Trader: {self.name}>'
 
+    async def get_tickers(self) -> dict:
+        """returns a list of all tickers in the market
+
+        returns:
+            dict: a list of all tickers in the market
+        """
+        return await self.requests.get_tickers()
+    
     async def get_income_statement(self, company) -> str:
         return await self.requests.get_income_statement(company)
     
@@ -183,7 +194,13 @@ class Trader(Agent):
         await self.requests.remove_cash(self.name, amount)
         return await self.requests.add_cash(recipient, amount)
 
+    async def has_cash_and_assets(self) -> bool:
+        self.cash = (await self.get_cash())['cash']
+        self.assets = (await self.get_assets())['assets']
+        if self.cash <= 0 and all(asset == 0 for asset in self.assets.values()) == True:
+            print(self.name, "has no cash and no assets. Terminating.", self.cash, self.assets)
+            return False
+        else: return True
 
     async def next(self) -> None:  
         pass
-

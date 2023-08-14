@@ -10,6 +10,9 @@ class ExchangeRequests(Requests):
 
     async def get_sim_time(self):
         return await self.make_request('sim_time', {}, self.requester)
+    
+    async def get_tickers(self):
+        return await self.make_request('get_tickers', {}, self.requester)
 
     async def get_price_bars(self, ticker, interval, limit):
         return await self.make_request('candles', {'ticker': ticker, 'interval': interval, 'limit': limit}, self.requester)

@@ -57,7 +57,8 @@ async def run_companies(time_channel=5114, exchange_channel=5570, company_channe
             elif "company" in msg:
                 for company in companies:
                     if company.name == msg['company']:
-                        if msg['topic'] == 'get_income_statement': return dumps(company.income_statement)
+                        if msg['topic'] == 'get_company': return dumps(company.to_dict())
+                        elif msg['topic'] == 'get_income_statement': return dumps(company.income_statement)
                         elif msg['topic'] == 'get_balance_sheet': return dumps(company.balance_sheet)
                         elif msg['topic'] == 'get_cash_flow': return dumps(company.cash_flow)
                         elif msg['topic'] == 'get_dividend_payment_date': return dumps(company.dividend_payment_date)
