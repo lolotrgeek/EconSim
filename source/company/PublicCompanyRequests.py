@@ -5,11 +5,8 @@ sys.path.append(parent_dir)
 from source.Requests import Requests
 
 class PublicCompanyRequests(Requests):
-    def __init__(self, requester):
-        super().__init__(requester)
-
-    async def get_price_bars(self, ticker, interval, limit) -> str:
-        return await self.make_request('candles', {'ticker': ticker, 'interval': interval, 'limit': limit}, self.requester)
+    def __init__(self, requester, cache=False):
+        super().__init__(requester, cache)
 
     async def get_income_statement(self, company) -> str:
         return await self.make_request('get_income_statement', {'company': company}, self.requester)

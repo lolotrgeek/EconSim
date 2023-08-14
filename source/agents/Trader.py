@@ -5,13 +5,30 @@ from .Agent import Agent
 class Trader(Agent):
     def __init__(self, name:str, aum:int=10_000, requester=None):
         super().__init__(name, aum, requester=requester)
-        self.company_requester 
 
     def __repr__(self):
         return f'<Trader: {self.name}>'
 
     def __str__(self):
         return f'<Trader: {self.name}>'
+
+    async def get_income_statement(self, company) -> str:
+        return await self.requests.get_income_statement(company)
+    
+    async def get_balance_sheet(self, company) -> str:
+        return await self.requests.get_balance_sheet(company)
+
+    async def get_cash_flow(self, company) -> str:
+        return await self.requests.get_cash_flow(company)
+    
+    async def get_dividend_payment_date(self, company) -> str:
+        return await self.requests.get_dividend_payment_date(company)
+    
+    async def get_ex_dividend_date(self, company) -> str:
+        return await self.requests.get_ex_dividend_date(company)
+    
+    async def get_dividends_to_distribute(self, company) -> str:
+        return await self.requests.get_dividends_to_distribute(company)
 
     async def get_latest_trade(self, ticker:str) -> dict:
         """returns the most recent trade of a given asset
@@ -165,6 +182,7 @@ class Trader(Agent):
     async def send_cash(self, amount, recipient) -> dict:
         await self.requests.remove_cash(self.name, amount)
         return await self.requests.add_cash(recipient, amount)
+
 
     async def next(self) -> None:  
         pass

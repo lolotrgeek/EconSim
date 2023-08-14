@@ -4,7 +4,7 @@ import os
 parent_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 sys.path.append(parent_dir)
 from source.agents.Trader import Trader
-from source.exchange.ExchangeRequests import ExchangeRequests as Requests
+from source.agents.TraderRequests import TraderRequests as Requests
 from .MockRequester import MockRequester
 import asyncio
 
@@ -14,7 +14,7 @@ class TestTrader(unittest.IsolatedAsyncioTestCase):
         self.aum = 10000
         self.mock_requester = MockRequester()
         await self.mock_requester.init()
-        self.requester = Requests(self.mock_requester)
+        self.requester = Requests(self.mock_requester, self.mock_requester)
         self.trader = Trader(self.trader_name, self.aum, requester=self.requester)
 
     async def test_init(self):
@@ -29,16 +29,16 @@ class RegisterTraderTest(unittest.IsolatedAsyncioTestCase):
         self.aum = 10000
         self.mock_requester = MockRequester()
         await self.mock_requester.init()
-        self.requester = Requests(self.mock_requester)
+        self.requester = Requests(self.mock_requester, self.mock_requester)
         self.trader = Trader(self.trader_name,  self.aum, requester=self.requester)
         self.local_register = await self.trader.register()
-        self.remote_register = await self.requester.register_trader(self.trader.name, self.aum)
+        self.remote_register = await self.requester.register_agent(self.trader.name, self.aum)
 
     async def test_register_trader(self):
-        self.assertEqual('registered_trader' in self.local_register, True)
-        self.assertEqual('registered_trader' in self.remote_register, True)
-        self.assertEqual(self.local_register['registered_trader'][:9], self.trader_name)
-        self.assertEqual(self.remote_register['registered_trader'][:9], self.trader_name)
+        self.assertEqual('registered_agent' in self.local_register, True)
+        self.assertEqual('registered_agent' in self.remote_register, True)
+        self.assertEqual(self.local_register['registered_agent'][:10], self.trader_name)
+        self.assertEqual(self.remote_register['registered_agent'][:10], self.trader_name)
 
 class GetLatestTradeTest(unittest.IsolatedAsyncioTestCase):
     async def asyncSetUp(self) -> None:
@@ -47,7 +47,7 @@ class GetLatestTradeTest(unittest.IsolatedAsyncioTestCase):
         self.aum = 10000
         self.mock_requester = MockRequester()
         await self.mock_requester.init()
-        self.requester = Requests(self.mock_requester)
+        self.requester = Requests(self.mock_requester, self.mock_requester)
         self.trader = Trader(self.trader_name,  self.aum, requester=self.requester)
 
     async def test_get_latest_trade(self):
@@ -61,7 +61,7 @@ class GetBestBidTest(unittest.IsolatedAsyncioTestCase):
         self.aum = 10000
         self.mock_requester = MockRequester()
         await self.mock_requester.init()
-        self.requester = Requests(self.mock_requester)
+        self.requester = Requests(self.mock_requester, self.mock_requester)
         self.trader = Trader(self.trader_name,  self.aum, requester=self.requester)
 
     async def test_get_best_bid(self):
@@ -74,7 +74,7 @@ class GetBestAskTest(unittest.IsolatedAsyncioTestCase):
         self.aum = 10000
         self.mock_requester = MockRequester()
         await self.mock_requester.init()
-        self.requester = Requests(self.mock_requester)
+        self.requester = Requests(self.mock_requester, self.mock_requester)
         self.trader = Trader(self.trader_name,  self.aum, requester=self.requester)
 
     async def test_get_best_ask(self):
@@ -87,7 +87,7 @@ class GetMidpriceTest(unittest.IsolatedAsyncioTestCase):
         self.aum = 10000
         self.mock_requester = MockRequester()
         await self.mock_requester.init()
-        self.requester = Requests(self.mock_requester)
+        self.requester = Requests(self.mock_requester, self.mock_requester)
         self.trader = Trader(self.trader_name,  self.aum, requester=self.requester)
 
     async def test_get_midprice(self):
@@ -100,7 +100,7 @@ class LimitBuyTest(unittest.IsolatedAsyncioTestCase):
         self.aum = 10000
         self.mock_requester = MockRequester()
         await self.mock_requester.init()
-        self.requester = Requests(self.mock_requester)
+        self.requester = Requests(self.mock_requester, self.mock_requester)
         self.trader = Trader(self.trader_name,  self.aum, requester=self.requester)
         await self.trader.register()
 
@@ -126,11 +126,11 @@ class LimitSellTest(unittest.IsolatedAsyncioTestCase):
         self.aum = 10000
         self.mock_requester = MockRequester()
         await self.mock_requester.init()
-        self.requester = Requests(self.mock_requester)
+        self.requester = Requests(self.mock_requester, self.mock_requester)
         self.requester.debug = True
 
         self.trader = Trader(self.trader_name,  self.aum, requester=self.requester)
-        self.trader_registered = (await self.trader.register())['registered_trader']
+        self.trader_registered = (await self.trader.register())['registered_agent']
 
     async def test_limit_sell(self):
         await self.trader.limit_buy("AAPL", 152, 1)
@@ -156,7 +156,7 @@ class CancelOrderTest(unittest.IsolatedAsyncioTestCase):
         self.aum = 10000
         self.mock_requester = MockRequester()
         await self.mock_requester.init()
-        self.requester = Requests(self.mock_requester)
+        self.requester = Requests(self.mock_requester, self.mock_requester)
         self.trader = Trader(self.trader_name,  self.aum, requester=self.requester)
         await self.trader.register()
 
@@ -172,7 +172,7 @@ class CancelAllOrdersTest(unittest.IsolatedAsyncioTestCase):
         self.aum = 10000
         self.mock_requester = MockRequester()
         await self.mock_requester.init()
-        self.requester = Requests(self.mock_requester)
+        self.requester = Requests(self.mock_requester, self.mock_requester)
         self.trader = Trader(self.trader_name,  self.aum, requester=self.requester)
         await self.trader.register()
 
@@ -188,7 +188,7 @@ class GetPriceBarsTest(unittest.IsolatedAsyncioTestCase):
         self.limit = 1
         self.mock_requester = MockRequester()
         await self.mock_requester.init()
-        self.requester = Requests(self.mock_requester)
+        self.requester = Requests(self.mock_requester, self.mock_requester)
         self.trader = Trader(self.trader_name,  self.aum, requester=self.requester)
         await self.trader.register()
 
@@ -205,7 +205,7 @@ class GetMempoolTest(unittest.IsolatedAsyncioTestCase):
         self.limit = 1
         self.mock_requester = MockRequester()
         await self.mock_requester.init()
-        self.requester = Requests(self.mock_requester)
+        self.requester = Requests(self.mock_requester, self.mock_requester)
         self.trader = Trader(self.trader_name,  self.aum, requester=self.requester)
         await self.trader.register()
 
@@ -222,7 +222,7 @@ class GetOrderBookTest(unittest.IsolatedAsyncioTestCase):
         self.limit = 1
         self.mock_requester = MockRequester()
         await self.mock_requester.init()
-        self.requester = Requests(self.mock_requester)
+        self.requester = Requests(self.mock_requester, self.mock_requester)
         self.trader = Trader(self.trader_name,  self.limit, requester=self.requester)
         await self.trader.register()
 
@@ -237,7 +237,7 @@ class GetTradesTest(unittest.IsolatedAsyncioTestCase):
         self.limit = 1
         self.mock_requester = MockRequester()
         await self.mock_requester.init()
-        self.requester = Requests(self.mock_requester)
+        self.requester = Requests(self.mock_requester, self.mock_requester)
         self.trader = Trader(self.trader_name,  self.limit, requester=self.requester)
         await self.trader.register()
 
@@ -252,7 +252,7 @@ class GetQuotesTest(unittest.IsolatedAsyncioTestCase):
         self.limit = 1
         self.mock_requester = MockRequester()
         await self.mock_requester.init()
-        self.requester = Requests(self.mock_requester)
+        self.requester = Requests(self.mock_requester, self.mock_requester)
         self.trader = Trader(self.trader_name,  self.limit, requester=self.requester)
         await self.trader.register()
 
@@ -266,7 +266,7 @@ class MarketBuyTest(unittest.IsolatedAsyncioTestCase):
         
         self.mock_requester = MockRequester()
         await self.mock_requester.init()
-        self.requester = Requests(self.mock_requester)
+        self.requester = Requests(self.mock_requester, self.mock_requester)
         self.trader = Trader(self.trader_name,  requester=self.requester)
         await self.trader.register()
 
@@ -280,7 +280,7 @@ class MarketSellTest(unittest.IsolatedAsyncioTestCase):
         
         self.mock_requester = MockRequester()
         await self.mock_requester.init()
-        self.requester = Requests(self.mock_requester)
+        self.requester = Requests(self.mock_requester, self.mock_requester)
         self.trader = Trader(self.trader_name,  requester=self.requester)
         await self.trader.register()
 
@@ -295,7 +295,7 @@ class GetCashTest(unittest.IsolatedAsyncioTestCase):
         # self.aum = 10000
         self.mock_requester = MockRequester()
         await self.mock_requester.init()
-        self.requester = Requests(self.mock_requester)
+        self.requester = Requests(self.mock_requester, self.mock_requester)
         self.trader = Trader(self.trader_name,  requester=self.requester)
         await self.trader.register()
 
@@ -309,7 +309,7 @@ class GetPositionTest(unittest.IsolatedAsyncioTestCase):
         self.tickers = ["AAPL", "GOOGL", "MSFT", "TSLA"]
         self.mock_requester = MockRequester()
         await self.mock_requester.init()
-        self.requester = Requests(self.mock_requester)
+        self.requester = Requests(self.mock_requester, self.mock_requester)
         self.requester.debug = True
         self.trader = Trader(self.trader_name, requester=self.requester)
         await self.trader.register()
@@ -327,12 +327,90 @@ class GetAssetsTest(unittest.IsolatedAsyncioTestCase):
         self.tickers = ["AAPL", "GOOGL", "MSFT", "TSLA"]
         self.mock_requester = MockRequester()
         await self.mock_requester.init()
-        self.requester = Requests(self.mock_requester)
+        self.requester = Requests(self.mock_requester, self.mock_requester)
         self.trader = Trader(self.trader_name, requester=self.requester)
         await self.trader.register()
 
     async def test_get_assets(self):
         self.assertEqual(await self.trader.get_assets(), await self.requester.get_assets(self.trader.name))
+
+class GetIncomeStatement(unittest.IsolatedAsyncioTestCase):
+    async def asyncSetUp(self) -> None:
+        self.trader_name = "TestTrader"
+        self.tickers = ["AAPL", "GOOGL", "MSFT", "TSLA"]
+        self.mock_requester = MockRequester()
+        await self.mock_requester.init()
+        self.requester = Requests(self.mock_requester, self.mock_requester)
+        self.trader = Trader(self.trader_name, requester=self.requester)
+        await self.trader.register()
+
+    async def test_get_income_statement(self):
+        self.assertEqual(await self.trader.get_income_statement("AAPL"), await self.requester.get_income_statement("AAPL"))
+
+class GetBalanceSheet(unittest.IsolatedAsyncioTestCase):
+    async def asyncSetUp(self) -> None:
+        self.trader_name = "TestTrader"
+        self.tickers = ["AAPL", "GOOGL", "MSFT", "TSLA"]
+        self.mock_requester = MockRequester()
+        await self.mock_requester.init()
+        self.requester = Requests(self.mock_requester, self.mock_requester)
+        self.trader = Trader(self.trader_name, requester=self.requester)
+        await self.trader.register()
+
+    async def test_get_balance_sheet(self):
+        self.assertEqual(await self.trader.get_balance_sheet("AAPL"), await self.requester.get_balance_sheet("AAPL"))
+
+class GetCashFlow(unittest.IsolatedAsyncioTestCase):
+    async def asyncSetUp(self) -> None:
+        self.trader_name = "TestTrader"
+        self.tickers = ["AAPL", "GOOGL", "MSFT", "TSLA"]
+        self.mock_requester = MockRequester()
+        await self.mock_requester.init()
+        self.requester = Requests(self.mock_requester, self.mock_requester)
+        self.trader = Trader(self.trader_name, requester=self.requester)
+        await self.trader.register()
+
+    async def test_get_cash_flow(self):
+        self.assertEqual(await self.trader.get_cash_flow("AAPL"), await self.requester.get_cash_flow("AAPL"))
+
+class GetDividendPaymentDate(unittest.IsolatedAsyncioTestCase):
+    async def asyncSetUp(self) -> None:
+        self.trader_name = "TestTrader"
+        self.tickers = ["AAPL", "GOOGL", "MSFT", "TSLA"]
+        self.mock_requester = MockRequester()
+        await self.mock_requester.init()
+        self.requester = Requests(self.mock_requester, self.mock_requester)
+        self.trader = Trader(self.trader_name, requester=self.requester)
+        await self.trader.register()
+
+    async def test_get_dividend_payment_date(self):
+        self.assertEqual(await self.trader.get_dividend_payment_date("AAPL"), await self.requester.get_dividend_payment_date("AAPL"))
+
+class getExDividendDate(unittest.IsolatedAsyncioTestCase):
+    async def asyncSetUp(self) -> None:
+        self.trader_name = "TestTrader"
+        self.tickers = ["AAPL", "GOOGL", "MSFT", "TSLA"]
+        self.mock_requester = MockRequester()
+        await self.mock_requester.init()
+        self.requester = Requests(self.mock_requester, self.mock_requester)
+        self.trader = Trader(self.trader_name, requester=self.requester)
+        await self.trader.register()
+
+    async def test_get_ex_dividend_date(self):
+        self.assertEqual(await self.trader.get_ex_dividend_date("AAPL"), await self.requester.get_ex_dividend_date("AAPL"))
+
+class GetDividendsToDistribute(unittest.IsolatedAsyncioTestCase):
+    async def asyncSetUp(self) -> None:
+        self.trader_name = "TestTrader"
+        self.tickers = ["AAPL", "GOOGL", "MSFT", "TSLA"]
+        self.mock_requester = MockRequester()
+        await self.mock_requester.init()
+        self.requester = Requests(self.mock_requester, self.mock_requester)
+        self.trader = Trader(self.trader_name, requester=self.requester)
+        await self.trader.register()
+
+    async def test_get_dividends_to_distribute(self):
+        self.assertEqual(await self.trader.get_dividends_to_distribute("AAPL"), await self.requester.get_dividends_to_distribute("AAPL"))
 
 if __name__ == '__main__':
     asyncio.run(unittest.main())
