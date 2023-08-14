@@ -97,7 +97,7 @@ def generate_fake_balance_sheet(date, symbol, period) -> dict:
     balance_sheet["totalLiabilities"] = total_liabilities
     balance_sheet["preferredStock"] = preferred_stock
     balance_sheet["commonStock"] = common_stock
-    balance_sheet["retainedEarnings"] = retained_earnings
+    balance_sheet["retainedEarnings"] = retained_earnings()
     balance_sheet["accumulatedOtherComprehensiveIncomeLoss"] = accumulated_other_comprehensive_income_loss
     balance_sheet["othertotalStockholdersEquity"] = other_total_stockholders_equity
     balance_sheet["totalStockholdersEquity"] = total_stockholders_equity
