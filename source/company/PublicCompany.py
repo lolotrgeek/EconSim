@@ -79,25 +79,23 @@ class PublicCompany:
         self.dividends_to_distribute = self.cash_flow["dividendsPaid"] * -1
     
     async def distribute_dividends(self, eligible_shareholders, dividends_paid) -> None:
-        total_shares = sum(sum(shareholder["shares"]) for shareholder in self.shareholders)
-        for shareholder in eligible_shareholders:
-            shares = sum(shareholder["shares"])
-            dividend = (shares / total_shares) * dividends_paid
-            shareholder["dividend"] = dividend
-            self.requests.add_cash(shareholder["name"], dividend)
+        total_shares_held_by_all_shareholders = sum(sum(shareholder["shares"]) for shareholder in self.shareholders)
+        for eligible_shareholder in eligible_shareholders:
+            eligible_shares = sum(eligible_shareholder["shares"])
+            dividend = (eligible_shares / total_shares_held_by_all_shareholders) * dividends_paid
+            eligible_shareholder["dividend"] = dividend
+            self.requests.add_cash(eligible_shareholder["name"], dividend)
     
     async def get_eligible_shareholders(self) -> list:
         eligible_shareholders = []
         for shareholder in self.shareholders:
-            for position in self.shareholders["positions"]:
+            for position in shareholder["positions"]:
                 # ignore positions bought after exdividend date
-                if position["dt"] > self.ex_dividend_date:
-                    shareholder["positions"].remove(position)
-                else:
+                if position["dt"] <= self.ex_dividend_date:
                     # calculate the number of shares eligible for dividends
                     eligible_shareholder = {'name': shareholder['agent'] ,'shares':0}
                     for transaction in position["transactions"]:
-                        if transaction["dt"] < self.ex_dividend_date:
+                        if transaction["dt"] <= self.ex_dividend_date:
                             eligible_shareholder["shares"] += transaction["qty"]
                     eligible_shareholders.append(eligible_shareholder)
         return eligible_shareholders
