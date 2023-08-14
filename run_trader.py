@@ -1,38 +1,41 @@
 from random import randint
 import traceback
 from source.Messaging import Requester
-from source.agents.Traders import NaiveMarketMaker, RandomMarketTaker, LowBidder
-from source.agents.TraderRequests import TraderRequests
+from source.agents.Traders import NaiveMarketMaker, RandomMarketTaker, LowBidder, Fundamental
 from rich import print
 import asyncio
+from source.exchange.ExchangeRequests import ExchangeRequests
+from source.company.PublicCompanyRequests import PublicCompanyRequests
 asyncio.set_event_loop_policy(asyncio.WindowsSelectorEventLoopPolicy())
-
-tickers = ['XYZ']
-
 
 async def run_trader(exchange_channel = 5570, company_channel=5572) -> None:
     try:
         trader = None
-        picker = randint(0,3)
+        picker = randint(0,4)
         exchange_requester = Requester(channel=exchange_channel)
         company_requester = Requester(channel=company_channel)
         await exchange_requester.connect()
         await company_requester.connect()
+        exchange_requests = ExchangeRequests(requester=exchange_requester)
+        company_requests = PublicCompanyRequests(requester=company_requester)
         if picker == 0:
-            trader =  NaiveMarketMaker(name='market_maker', tickers=tickers, aum=1_000, spread_pct=0.005, qty_per_order=4, requester=TraderRequests(exchange_requester, company_requester))
+            trader =  NaiveMarketMaker(name='market_maker', aum=1_000, spread_pct=0.005, qty_per_order=4, requests=(exchange_requests, company_requests))
         elif picker == 1:
-            trader = RandomMarketTaker(name='market_taker', tickers=tickers, aum=1_000, prob_buy=.2, prob_sell=.2, qty_per_order=1, requester=TraderRequests(exchange_requester, company_requester))
+            trader = RandomMarketTaker(name='market_taker', aum=1_000, prob_buy=.2, prob_sell=.2, qty_per_order=1 , requests=(exchange_requests, company_requests))
+        elif picker == 2:
+            trader = LowBidder(name='low_bidder', aum=1_000, qty_per_order=1, requests=(exchange_requests, company_requests)) 
         else:
-            trader = LowBidder(name='low_bidder', tickers=tickers, aum=1_000, requester=TraderRequests(exchange_requester, company_requester))
+            trader = Fundamental(name='fundamental', aum=1_000, requests=(exchange_requests, company_requests))
+
         registered = await trader.register()
         if registered is None:
-            raise Exception("Agent not registered")
+            raise Exception("Trader not registered")
         while True:
             next = await trader.next()
             if not next:
                 break
     except Exception as e:
-        print("[Agent Error] ", e)
+        print("[Trader Error] ", e)
         traceback.print_exc()
         return None
     except KeyboardInterrupt:
@@ -45,6 +48,6 @@ if __name__ == '__main__':
         print('starting trader')
         asyncio.run(run_trader())
     except Exception as e:
-        print("[Agent Error] ", e)
+        print("[Trader Error] ", e)
         traceback.print_exc()
         exit()

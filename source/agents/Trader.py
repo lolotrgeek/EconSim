@@ -1,10 +1,17 @@
 import pandas as pd
 from typing import List, Union
 from .Agent import Agent
+import sys
+import os
+parent_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+sys.path.append(parent_dir)
+
 
 class Trader(Agent):
-    def __init__(self, name:str, aum:int=10_000, requester=None):
-        super().__init__(name, aum, requester=requester)
+    def __init__(self, name:str, aum:int=10_000, requests=(None, None)):
+        super().__init__(name, aum, requester=None)
+        self.exchange_requests = requests[0]
+        self.public_company_requests = requests[1]
         self.assets = {}
         self.tickers = []
         self.aum = aum
@@ -21,25 +28,25 @@ class Trader(Agent):
         returns:
             dict: a list of all tickers in the market
         """
-        return await self.requests.get_tickers()
+        return await self.exchange_requests.get_tickers()
     
     async def get_income_statement(self, company) -> str:
-        return await self.requests.get_income_statement(company)
+        return await self.public_company_requests.get_income_statement(company)
     
     async def get_balance_sheet(self, company) -> str:
-        return await self.requests.get_balance_sheet(company)
+        return await self.public_company_requests.get_balance_sheet(company)
 
     async def get_cash_flow(self, company) -> str:
-        return await self.requests.get_cash_flow(company)
+        return await self.public_company_requests.get_cash_flow(company)
     
     async def get_dividend_payment_date(self, company) -> str:
-        return await self.requests.get_dividend_payment_date(company)
+        return await self.public_company_requests.get_dividend_payment_date(company)
     
     async def get_ex_dividend_date(self, company) -> str:
-        return await self.requests.get_ex_dividend_date(company)
+        return await self.public_company_requests.get_ex_dividend_date(company)
     
     async def get_dividends_to_distribute(self, company) -> str:
-        return await self.requests.get_dividends_to_distribute(company)
+        return await self.public_company_requests.get_dividends_to_distribute(company)
 
     async def get_latest_trade(self, ticker:str) -> dict:
         """returns the most recent trade of a given asset
@@ -50,7 +57,7 @@ class Trader(Agent):
         returns:
             Trade: the most recent trade
         """
-        return await self.requests.get_latest_trade(ticker)
+        return await self.exchange_requests.get_latest_trade(ticker)
 
     async def get_best_bid(self, ticker:str) -> dict:
         """returns the current best limit buy order
@@ -61,7 +68,7 @@ class Trader(Agent):
         returns:
             LimitOrder: the current best limit buy order
         """
-        return await self.requests.get_best_bid(ticker)
+        return await self.exchange_requests.get_best_bid(ticker)
 
     async def get_best_ask(self, ticker:str) -> dict:
         """returns the current best limit sell order
@@ -72,7 +79,7 @@ class Trader(Agent):
         returns:
             LimitOrder: the current best limit sell order
         """
-        return await self.requests.get_best_ask(ticker)
+        return await self.exchange_requests.get_best_ask(ticker)
         
     async def get_midprice(self, ticker:str) -> float:
         """returns the current midprice of the best bid and ask orders in the orderbook of an asset
@@ -83,16 +90,16 @@ class Trader(Agent):
         returns:
             float: the current midprice
         """
-        return await self.requests.get_midprice(ticker)
+        return await self.exchange_requests.get_midprice(ticker)
 
     async def get_order_book(self,ticker) -> dict:
-        return await self.requests.get_order_book(ticker)
+        return await self.exchange_requests.get_order_book(ticker)
 
     async def get_quotes(self,ticker) -> dict:
-        return await self.requests.get_quotes(ticker)
+        return await self.exchange_requests.get_quotes(ticker)
 
     async def get_trades(self, ticker, limit=20) -> List[dict]:
-        return await self.requests.get_trades(ticker, limit=limit)
+        return await self.exchange_requests.get_trades(ticker, limit=limit)
 
     async def market_buy(self, ticker:str, qty:int, fee=0.0) -> Union[dict,None]:
         """Places a market buy order. The order executes automatically at the best sell price if ask quotes are available.
@@ -102,7 +109,7 @@ class Trader(Agent):
             qty (int): the quantity of the asset to be acquired (in units)
 
         """
-        order = await self.requests.market_buy(ticker, qty, self.name, fee)
+        order = await self.exchange_requests.market_buy(ticker, qty, self.name, fee)
         return order
 
     async def market_sell(self, ticker:str, qty:int, fee=0.0) -> Union[dict,None]:
@@ -113,7 +120,7 @@ class Trader(Agent):
             qty (int): the quantity of the asset to be sold (in units)
 
         """
-        order = await self.requests.market_sell(ticker, qty, self.name, fee)
+        order = await self.exchange_requests.market_sell(ticker, qty, self.name, fee)
         return order
 
     async def limit_buy(self, ticker:str, price:float, qty:int, fee=0.0) -> Union[dict,None]:
@@ -127,7 +134,7 @@ class Trader(Agent):
         returns:
             LimitOrder
         """
-        order = await self.requests.limit_buy(ticker,price,qty,self.name, fee)
+        order = await self.exchange_requests.limit_buy(ticker,price,qty,self.name, fee)
         return order
 
     async def limit_sell(self, ticker:str, price:float, qty:int, fee=0.0) -> Union[dict,None]:
@@ -141,11 +148,11 @@ class Trader(Agent):
         returns:
             LimitOrder
         """
-        order = await self.requests.limit_sell(ticker,price,qty,self.name, fee)
+        order = await self.exchange_requests.limit_sell(ticker,price,qty,self.name, fee)
         return order
 
     async def get_position(self,ticker) -> dict:
-        agent = (await self.requests.get_agent(self.name))
+        agent = (await self.exchange_requests.get_agent(self.name))
         _transactions = agent['_transactions']
         return sum(t['qty'] for t in _transactions if t['ticker'] == ticker)
 
@@ -158,7 +165,7 @@ class Trader(Agent):
         returns:
             Union[LimitOrder,None]: the cancelled order if it is still pending. None if it does not exists or has already been filled/cancelled
         """
-        return await self.requests.cancel_order(id=id)
+        return await self.exchange_requests.cancel_order(id=id)
 
     async def cancel_all_orders(self, ticker:str) -> dict:
         """Cancels all remaining orders that the agent has on an asset.
@@ -166,24 +173,24 @@ class Trader(Agent):
         Args:
             ticker (str): the ticker of the asset.
         """
-        return await self.requests.cancel_all_orders(ticker, self.name)
+        return await self.exchange_requests.cancel_all_orders(ticker, self.name)
 
     async def get_price_bars(self,ticker, bar_size='1D', limit=20) -> pd.DataFrame:
-        return await self.requests.get_price_bars(ticker, bar_size, limit=limit)
+        return await self.exchange_requests.get_price_bars(ticker, bar_size, limit=limit)
     
     async def get_cash(self) -> float:
         """
         returns: {cash: float}
         """
-        return await self.requests.get_cash(self.name)
+        return await self.exchange_requests.get_cash(self.name)
     
     async def get_assets(self) -> dict:
         """
         returns: {assets: {ticker, amount}}"""
-        return await self.requests.get_assets(self.name)
+        return await self.exchange_requests.get_assets(self.name)
     
     async def register(self) -> dict:
-        agent = await self.requests.register_agent(self.name, self.initial_cash)
+        agent = await self.exchange_requests.register_agent(self.name, self.initial_cash)
         if 'registered_agent' in agent:
             self.name = agent['registered_agent']
             return agent
@@ -191,8 +198,8 @@ class Trader(Agent):
             return 'UnRegistered Agent'
 
     async def send_cash(self, amount, recipient) -> dict:
-        await self.requests.remove_cash(self.name, amount)
-        return await self.requests.add_cash(recipient, amount)
+        await self.exchange_requests.remove_cash(self.name, amount)
+        return await self.exchange_requests.add_cash(recipient, amount)
 
     async def has_cash_and_assets(self) -> bool:
         self.cash = (await self.get_cash())['cash']

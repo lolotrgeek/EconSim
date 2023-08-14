@@ -2,8 +2,8 @@ from .Trader import Trader
 import random
 
 class Fundamental(Trader):
-    def __init__(self, name, aum, qty_per_order=1, requester=None):
-        Trader.__init__(self, name, aum, requester=requester)
+    def __init__(self, name, aum, qty_per_order=1, requests=()):
+        Trader.__init__(self, name, aum, requests=requests)
         self.qty_per_order = qty_per_order
 
     async def next(self) -> bool:
@@ -17,14 +17,11 @@ class Fundamental(Trader):
             await self.get_dividend_payment_date(ticker)
             await self.get_ex_dividend_date(ticker)
             await self.get_dividends_to_distribute(ticker)
-
-            
-
         return True
 
 class RandomMarketTaker(Trader):
-    def __init__(self,name , aum=10000,prob_buy=.2,prob_sell=.2,qty_per_order=1,seed=None, requester=None):
-        Trader.__init__(self, name, aum, requester=requester)
+    def __init__(self,name , aum=10000,prob_buy=.2,prob_sell=.2,qty_per_order=1,seed=None, requests=()):
+        Trader.__init__(self, name, aum, requests=requests)
         if  prob_buy + prob_sell> 1:
             raise ValueError("Sum of probabilities cannot be greater than 1.") 
         self.prob_buy = prob_buy
@@ -62,8 +59,8 @@ class RandomMarketTaker(Trader):
         return True
 
 class LowBidder(Trader):
-    def __init__(self, name, aum, qty_per_order=1, requester=None):
-        Trader.__init__(self, name, aum, requester=requester)
+    def __init__(self, name, aum, qty_per_order=1, requests=()):
+        Trader.__init__(self, name, aum, requests=requests)
         self.qty_per_order = qty_per_order
 
     async def next(self) -> bool:
@@ -85,10 +82,9 @@ class LowBidder(Trader):
 
 class GreedyScalper(Trader):
     '''waits for initial supply to dry up, then starts inserting bids very low and asks very high'''
-    def __init__(self, name, tickers, aum, qty_per_order=1, requester=None):
-        Trader.__init__(self, name, aum, requester=requester)
+    def __init__(self, name, aum, qty_per_order=1, requests=()):
+        Trader.__init__(self, name, aum, requests=requests)
         self.qty_per_order = qty_per_order
-        self.tickers = tickers
         self.aum = aum
 
     async def next(self) -> bool:
@@ -109,10 +105,9 @@ class GreedyScalper(Trader):
         return True
 
 class NaiveMarketMaker(Trader):
-    def __init__(self, name, tickers, aum, spread_pct=.005, qty_per_order=1, requester=None):
-        Trader.__init__(self, name, aum, requester=requester)
+    def __init__(self, name, aum, spread_pct=.005, qty_per_order=1, requests=()):
+        Trader.__init__(self, name, aum, requests=requests)
         self.qty_per_order = qty_per_order
-        self.tickers = tickers
         self.spread_pct = spread_pct
         self.aum = aum
         self.assets = None
