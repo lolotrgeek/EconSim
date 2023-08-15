@@ -469,7 +469,14 @@ class Exchange():
         Args: 
         ticker: the ticker of the asset
         """
-        market_cap = (await self.get_midprice(ticker))['midprice'] * (await self.get_outstanding_shares(ticker))
+        price = 0
+        latest_trade = (await self.get_latest_trade(ticker))
+        if "price" in latest_trade:
+            price = latest_trade["price"]
+        else:
+            price = (await self.get_midprice(ticker))['midprice']
+
+        market_cap = price  * (await self.get_outstanding_shares(ticker))
         return market_cap
     
     async def get_outstanding_shares(self, ticker) -> int:
@@ -483,7 +490,6 @@ class Exchange():
         for agent in self.agents:
             if agent['name'] != 'init_seed_'+ticker and ticker in agent['assets']:
                 shares_outstanding += agent['assets'][ticker]
-                
         return shares_outstanding
     
     async def get_agents_holding(self, ticker) -> list:
