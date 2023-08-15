@@ -75,7 +75,7 @@ class MockResponder():
         elif msg['topic'] == 'register_agent': return await self.exchange.register_agent(msg['name'], msg['initial_cash'])
         elif msg['topic'] == 'get_agent': return dumps(await self.exchange.get_agent(msg['name']))
         elif msg['topic'] == 'get_agents': return dumps(await self.exchange.get_agents())
-        elif msg['topic'] == 'add_cash': return dumps(await self.exchange.add_cash(msg['agent'], msg['amount']))
+        elif msg['topic'] == 'add_cash': return dumps(await self.exchange.add_cash(msg['agent'], msg['amount'], msg['note']))
         elif msg['topic'] == 'remove_cash': return dumps(await self.exchange.remove_cash(msg['agent'], msg['amount']))
         elif msg['topic'] == 'get_cash': return dumps(await self.exchange.get_cash(msg['agent']))
         elif msg['topic'] == 'get_assets': return dumps(await self.exchange.get_assets(msg['agent']))
@@ -83,6 +83,7 @@ class MockResponder():
         elif msg['topic'] == 'get_agents_positions': return dumps(await self.exchange.get_agents_positions(msg['ticker']))
         elif msg['topic'] == 'get_agents_simple': return dumps(await self.exchange.get_agents_simple())
         elif msg['topic'] == 'get_positions': return dumps(await self.exchange.get_positions(msg['agent'], msg['page_size'], msg['page']))
+        elif msg['topic'] == 'get_outstanding_shares': return dumps(await self.exchange.get_outstanding_shares(msg['ticker']))
 
         #TODO: exchange topic to get general exchange data
         else: return f'unknown topic {msg["topic"]}'
