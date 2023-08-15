@@ -447,7 +447,7 @@ class Exchange():
                 info.append({agent['name']: {'cash':agent['cash'],'assets':agent['assets'], 'last_action': last_action }})
         return info
     
-    async def add_cash(self, agent, amount) -> dict:
+    async def add_cash(self, agent, amount, note='') -> dict:
         agent_idx = await self.__get_agent_index(agent)
         if agent_idx is not None:
             self.agents[agent_idx]['cash'] += amount
@@ -469,10 +469,10 @@ class Exchange():
         Args: 
         ticker: the ticker of the asset
         """
-        market_cap = (await self.get_midprice(ticker))['midprice'] * (await self.get_shares_outstanding(ticker))
+        market_cap = (await self.get_midprice(ticker))['midprice'] * (await self.get_outstanding_shares(ticker))
         return market_cap
     
-    async def get_shares_outstanding(self, ticker) -> int:
+    async def get_outstanding_shares(self, ticker) -> int:
         """
         Calculates the number of shares outstanding for a given ticker
         Args: 
@@ -481,8 +481,9 @@ class Exchange():
         """
         shares_outstanding = 0
         for agent in self.agents:
-            if ticker in agent['assets']:
+            if agent['name'] != 'init_seed_'+ticker and ticker in agent['assets']:
                 shares_outstanding += agent['assets'][ticker]
+                
         return shares_outstanding
     
     async def get_agents_holding(self, ticker) -> list:

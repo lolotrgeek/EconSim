@@ -569,8 +569,8 @@ class getSharesOutstandingTest(unittest.IsolatedAsyncioTestCase):
         self.exchange = Exchange(datetime=datetime(2023, 1, 1))
         await self.exchange.create_asset("AAPL", seed_price=150, seed_bid=0.99, seed_ask=1.01)
 
-    async def test_get_shares_outstanding(self):
-        result = await self.exchange.get_shares_outstanding("AAPL")
+    async def test_get_outstanding_shares(self):
+        result = await self.exchange.get_outstanding_shares("AAPL")
         self.assertEqual(result, 1000)
 
 class getAgentsHoldingTest(unittest.IsolatedAsyncioTestCase):

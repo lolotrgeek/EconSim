@@ -56,7 +56,7 @@ async def run_exchange(exchange_channel = 5570, time_channel = 5114) -> None:
             elif msg['topic'] == 'register_agent': result = await exchange.register_agent(msg['name'], msg['initial_cash'])
             elif msg['topic'] == 'get_agent': result = dumps(await exchange.get_agent(msg['name']))
             elif msg['topic'] == 'get_agents': result = dumps(await exchange.get_agents())
-            elif msg['topic'] == 'add_cash': result = dumps(await exchange.add_cash(msg['agent'], msg['amount']))
+            elif msg['topic'] == 'add_cash': result = dumps(await exchange.add_cash(msg['agent'], msg['amount'], msg['note']))
             elif msg['topic'] == 'remove_cash': result = dumps(await exchange.remove_cash(msg['agent'], msg['amount']))
             elif msg['topic'] == 'get_cash': result = dumps(await exchange.get_cash(msg['agent']))
             elif msg['topic'] == 'get_assets': result = dumps(await exchange.get_assets(msg['agent']))
@@ -64,6 +64,7 @@ async def run_exchange(exchange_channel = 5570, time_channel = 5114) -> None:
             elif msg['topic'] == 'get_agents_positions': result = dumps(await exchange.get_agents_positions(msg['ticker']))
             elif msg['topic'] == 'get_agents_simple': result = dumps(await exchange.get_agents_simple())
             elif msg['topic'] == 'get_positions': result = dumps(await exchange.get_positions(msg['agent'], msg['page_size'], msg['page']))
+            elif msg['topic'] == 'get_outstanding_shares': result = dumps(await exchange.get_outstanding_shares(msg['ticker']))
             #TODO: exchange topic to get general exchange data
             else: result = dumps({"warning":  f'unknown topic {msg["topic"]}'})
 

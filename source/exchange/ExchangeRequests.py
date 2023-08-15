@@ -77,8 +77,8 @@ class ExchangeRequests(Requests):
     async def get_agents(self):
         return await self.make_request('get_agents', {}, self.requester)
     
-    async def add_cash(self, agent, amount):
-        return await self.make_request('add_cash', {'agent': agent, 'amount': amount}, self.requester)
+    async def add_cash(self, agent, amount, note):
+        return await self.make_request('add_cash', {'agent': agent, 'amount': amount, 'note': note}, self.requester)
     
     async def remove_cash(self, agent, amount, notes=''):
         return await self.make_request('remove_cash', {'agent': agent, 'amount': amount, 'notes': notes}, self.requester)
@@ -94,3 +94,6 @@ class ExchangeRequests(Requests):
     
     async def get_positions(self, agent, page_size=10, page=1):
         return await self.make_request('get_positions', {'agent': agent, 'page_size': page_size, "page": page}, self.requester)
+    
+    async def get_outstanding_shares(self, ticker):
+        return await self.make_request('get_outstanding_shares', {'ticker': ticker}, self.requester)
