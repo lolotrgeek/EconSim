@@ -187,6 +187,7 @@ class Exchange():
                 price = round(price,2)
             # check if we can match trades before submitting the limit order
             unfilled_qty = qty
+            fills=[]
             while unfilled_qty > 0:
                 if tif == 'TEST':
                     break
@@ -196,6 +197,7 @@ class Exchange():
                     taker_fee = self.fees.taker_fee(trade_qty)
                     self.fees.total_fee_revenue += taker_fee
                     if(type(fee) is str): fee = float(fee)
+                    fills.append({'qty': trade_qty, 'price': best_ask.price, 'fee': fee+taker_fee})
                     await self._process_trade(ticker, trade_qty, best_ask.price, creator, best_ask.creator, fee=fee+taker_fee, position_id=position_id)
                     unfilled_qty -= trade_qty
                     self.books[ticker].asks[0].qty -= trade_qty
@@ -211,7 +213,7 @@ class Exchange():
             if unfilled_qty > 0:
                 maker_fee = self.fees.maker_fee(unfilled_qty)
                 self.fees.total_fee_revenue += maker_fee
-            new_order = LimitOrder(ticker, price, unfilled_qty, creator, OrderSide.BUY, self.datetime,fee=fee+maker_fee, position_id=position_id)
+            new_order = LimitOrder(ticker, price, unfilled_qty, creator, OrderSide.BUY, self.datetime,fee=fee+maker_fee, position_id=position_id, fills=fills)
             self.books[ticker].bids.insert(queue, new_order)
             initial_order = new_order
             initial_order.qty = qty
@@ -226,6 +228,7 @@ class Exchange():
                 price = round(price,2)
             unfilled_qty = qty
             # check if we can match trades before submitting the limit order
+            fills = []
             while unfilled_qty > 0:
                 if tif == 'TEST':
                     break
@@ -235,6 +238,7 @@ class Exchange():
                     taker_fee = self.fees.taker_fee(trade_qty)
                     self.fees.total_fee_revenue += taker_fee
                     if(type(fee) is str): fee = float(fee)
+                    fills.append({'qty': trade_qty, 'price': best_bid.price, 'fee': fee+taker_fee})
                     await self._process_trade(ticker, trade_qty, best_bid.price, best_bid.creator, creator, accounting, fee=fee+taker_fee)
                     unfilled_qty -= trade_qty
                     self.books[ticker].bids[0].qty -= trade_qty
@@ -250,7 +254,7 @@ class Exchange():
             if unfilled_qty > 0:
                 maker_fee = self.fees.maker_fee(unfilled_qty)
                 self.fees.total_fee_revenue += maker_fee
-            new_order = LimitOrder(ticker, price, unfilled_qty, creator, OrderSide.SELL, self.datetime, fee=fee+maker_fee, accounting=accounting)
+            new_order = LimitOrder(ticker, price, unfilled_qty, creator, OrderSide.SELL, self.datetime, fee=fee+maker_fee, accounting=accounting, fills=fills)
             self.books[ticker].asks.insert(queue, new_order)
             initial_order = new_order
             initial_order.qty = qty
@@ -358,7 +362,14 @@ class Exchange():
     async def register_agent(self, name, initial_cash) -> dict:
         #TODO: use an agent class???
         registered_name = name + str(UUID())[0:8]
-        self.agents.append({'name':registered_name,'cash':initial_cash,'_transactions':[], 'positions':[], 'assets': {}})
+        self.agents.append(
+            {'name':registered_name,
+             'cash':initial_cash,
+             '_transactions':[], 
+             'positions': [
+                 Position(UUID(), "CASH", initial_cash, self.datetime).to_dict()
+                ], 
+                'assets': {}})
         return {'registered_agent':registered_name}
 
     async def get_cash(self, agent_name) -> dict:
@@ -450,6 +461,7 @@ class Exchange():
     async def add_cash(self, agent, amount, note='') -> dict:
         agent_idx = await self.__get_agent_index(agent)
         if agent_idx is not None:
+            self.agents[agent_idx]['positions'][0]['exits'].append(Exit(amount, "CASH", amount, self.datetime, 'sell', amount, None, self.datetime).to_dict())
             self.agents[agent_idx]['cash'] += amount
             return {'cash':self.agents[agent_idx]['cash']}
         else:
