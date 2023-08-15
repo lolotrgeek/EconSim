@@ -128,7 +128,6 @@ class GetBestBidTestCase(unittest.IsolatedAsyncioTestCase):
     async def test_get_best_bid_error(self):
         self.exchange.books["AAPL"].bids.clear()
         best_bid = await self.exchange.get_best_bid("AAPL")
-        print(self.exchange.books["AAPL"].bids)
         self.assertEqual(best_bid.ticker, "AAPL")
         self.assertEqual(best_bid.price, 0)
         self.assertEqual(best_bid.qty, 0)
@@ -477,7 +476,6 @@ class GetAgentsTest(unittest.IsolatedAsyncioTestCase):
 
     async def test_get_agents(self):
         result = await self.exchange.get_agents()
-        print(result)
         self.assertEqual(result, [{'name': self.agent, 'cash': 10000, '_transactions': [], "positions":[], 'assets': {}}])
 
 class HasAssetTest(unittest.IsolatedAsyncioTestCase):
@@ -568,6 +566,8 @@ class getSharesOutstandingTest(unittest.IsolatedAsyncioTestCase):
     async def asyncSetUp(self) -> None:
         self.exchange = Exchange(datetime=datetime(2023, 1, 1))
         await self.exchange.create_asset("AAPL", seed_price=150, seed_bid=0.99, seed_ask=1.01)
+        self.agent = (await self.exchange.register_agent("agentoutstand", initial_cash=200000))['registered_agent']
+        await self.exchange.market_buy("AAPL", qty=1000, buyer=self.agent, fee=0)
 
     async def test_get_outstanding_shares(self):
         result = await self.exchange.get_outstanding_shares("AAPL")
@@ -619,13 +619,13 @@ class getAgentsPositionsTest(unittest.IsolatedAsyncioTestCase):
 class calculateMarketCapTest(unittest.IsolatedAsyncioTestCase):
     async def asyncSetUp(self) -> None:
         self.exchange = Exchange(datetime=datetime(2023, 1, 1))
+        await self.exchange.create_asset("AAPL", seed_price=150, seed_bid=0.99, seed_ask=1.01)
+        self.agent1 = (await self.exchange.register_agent("agentcap", initial_cash=1000000))['registered_agent']
+        await self.exchange.market_buy("AAPL", qty=1000, buyer=self.agent1, fee=0)
 
     async def test_calculate_market_cap(self):
-        await self.exchange.create_asset("AAPL", seed_price=150, seed_bid=0.99, seed_ask=1.01)
-        await self.exchange.create_asset("TSLA", seed_price=150, seed_bid=0.99, seed_ask=1.01)
         result = await self.exchange.calculate_market_cap("AAPL")
-        result = await self.exchange.calculate_market_cap("AAPL")
-        self.assertEqual(result, 150000)
+        self.assertEqual(result, 151500.0)
 
 class getAgentsSimpleTest(unittest.IsolatedAsyncioTestCase):
     async def asyncSetUp(self) -> None:
@@ -651,7 +651,6 @@ class getPositionsTest(unittest.IsolatedAsyncioTestCase):
     async def test_get_positions(self):
         await self.exchange.limit_buy("AAPL", price=152, qty=2, creator=self.agent, fee=0)
         result = await self.exchange.get_positions(self.agent)
-        print(result)
         self.assertEqual(result['agent'], self.agent)
         self.assertEqual(result['total_positions'] , 1)
         self.assertEqual(result['page'], 1)

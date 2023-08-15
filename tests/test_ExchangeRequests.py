@@ -305,7 +305,7 @@ class AddCashTest(unittest.IsolatedAsyncioTestCase):
         self.requests = Requests(self.mock_requester)
 
     async def test_add_cash(self):
-        response = await self.requests.make_request('add_cash', {'agent': self.mock_requester.responder.agent, 'amount': 1000}, self.mock_requester)
+        response = await self.requests.make_request('add_cash', {'agent': self.mock_requester.responder.agent, 'amount': 1000, 'note': 'test'}, self.mock_requester)
         self.assertEqual(response, {'cash': 101000})
 
 class RemoveCashTest(unittest.IsolatedAsyncioTestCase):
