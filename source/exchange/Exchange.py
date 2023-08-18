@@ -472,7 +472,16 @@ class Exchange():
             #TODO: refactor to use add_cash here instead of += with a note that the transaction is long or short term, also works to treat cash as a position
             self.agents[agent_idx]['cash'] += side['cash_flow']
             await self.update_assets(side, agent_idx)
-            sided_transaction = Transaction(side['cash_flow'], side['ticker'],side['price'], side['qty'], side['dt'], side['type']).to_dict()
+            sided_transaction= {
+                'id': str(UUID()),
+                'cash_flow': side['cash_flow'],
+                'ticker': side['ticker'],
+                'price': side['price'],
+                'initial_qty': side['qty'], #NOTE: keep this for historical purposes, because the qty will change as we exit this position
+                'qty': side['qty'],
+                'dt': side['dt'],
+                'type': side['type']
+            }
             if side['type'] == 'buy':
                 await self.enter_position(sided_transaction, agent_idx, position_id)
             elif side['type'] == 'sell':
