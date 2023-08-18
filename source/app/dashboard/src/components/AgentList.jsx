@@ -18,7 +18,7 @@ const AgentList = ({ agents }) => {
     <div className="agent-list">
         <h2>Agents</h2>
       <List
-        height={800} // Set the height of the scrollable area
+        height={1080} // Set the height of the scrollable area
         width={400} // Set the width of the list
         rowCount={agents.length}
         rowHeight={130} // Set the height of each row (agent card)

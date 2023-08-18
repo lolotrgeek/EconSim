@@ -1,0 +1,25 @@
+/* Styles for the TickerGrid component */
+.ticker-grid {
+    display: flex;
+  }
+  
+  .ticker-list {
+    display: flex;
+    flex-direction: column;
+  }
+  
+  .ticker {
+    flex: 1;
+    padding: 10px;
+    text-align: center;
+    border: 1px solid #ccc;
+    cursor: pointer;
+    transition: background-color 0.3s;
+    width: 70px;
+  }
+  
+  .ticker.selected {
+    background-color: #f9f9f9;
+    color:black;
+  }
+  
