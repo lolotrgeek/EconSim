@@ -43,7 +43,7 @@ class Exchange():
         self.assets[ticker] = {'type':asset_type}
         self.books[ticker] = OrderBook(ticker)
         self.agents.append({'name':'init_seed_'+ticker,'cash':market_qty * seed_price,'_transactions':[], 'positions':[], 'assets': {ticker: market_qty}})
-        await self._process_trade(ticker, market_qty, seed_price, 'init_seed_'+ticker, 'init_seed_'+ticker)
+        await self._process_trade(ticker, market_qty, seed_price, 'init_seed_'+ticker, 'init_seed_'+ticker, position_id='init_seed_'+ticker)
         await self.limit_buy(ticker, seed_price * seed_bid, 1, 'init_seed_'+ticker)
         await self.limit_sell(ticker, seed_price * seed_ask, market_qty, 'init_seed_'+ticker)
         return self.assets[ticker]
@@ -57,22 +57,16 @@ class Exchange():
         
         trade = Trade(ticker, qty, price, buyer, seller, self.datetime, fee=fee)
         self.trade_log.append(trade)
-        if ticker in self.assets and (self.assets[ticker]['type'] == 'crypto'):
-            # TODO: send request to add transaction to blockchain
-            # blockchain.add_transaction(ticker, fee, amount=qty*price, sender=seller, recipient=buyer, dt=datetime)
-            response = None
-            await self.__update_agents_currency(response)
 
-        else:
-            txn_time = self.datetime
-            transaction = [
-                {'agent':buyer,'cash_flow':-qty*price,'ticker':ticker,'qty': qty, 'fee':fee, 'dt': txn_time, 'type': 'buy'},
-                {'agent':seller,'cash_flow':qty*price,'ticker':ticker,'qty': -qty, 'fee':fee, 'dt': txn_time, 'type': 'sell'}
-            ]
-            # self.agents_cash_updates.extend(transaction)
-            await self.__update_agents(transaction, accounting, position_id=position_id)
-            # print('transaction: ',transaction)
-            return transaction
+        txn_time = self.datetime
+        transaction = [
+            {'agent':buyer,'cash_flow':-qty*price, 'price': price, 'ticker':ticker,'qty': qty, 'fee':fee, 'dt': txn_time, 'type': 'buy'},
+            {'agent':seller,'cash_flow':qty*price, 'price': price, 'ticker':ticker,'qty': -qty, 'fee':fee, 'dt': txn_time, 'type': 'sell'}
+        ]
+        # self.agents_cash_updates.extend(transaction)
+        await self.update_agents(transaction, accounting, position_id=position_id)
+        # print('transaction: ',transaction)
+        return transaction
 
     async def get_order_book(self, ticker: str) -> OrderBook:
         """returns the OrderBook of a given Asset
@@ -197,7 +191,7 @@ class Exchange():
                     taker_fee = self.fees.taker_fee(trade_qty)
                     self.fees.total_fee_revenue += taker_fee
                     if(type(fee) is str): fee = float(fee)
-                    fills.append({'qty': trade_qty, 'price': best_ask.price, 'fee': fee+taker_fee})
+                    fills.append({'qty': trade_qty, 'price': best_ask.price, 'fee': fee+taker_fee, 'creator': best_ask.creator})
                     await self._process_trade(ticker, trade_qty, best_ask.price, creator, best_ask.creator, fee=fee+taker_fee, position_id=position_id)
                     unfilled_qty -= trade_qty
                     self.books[ticker].asks[0].qty -= trade_qty
@@ -213,11 +207,12 @@ class Exchange():
             if unfilled_qty > 0:
                 maker_fee = self.fees.maker_fee(unfilled_qty)
                 self.fees.total_fee_revenue += maker_fee
-            new_order = LimitOrder(ticker, price, unfilled_qty, creator, OrderSide.BUY, self.datetime,fee=fee+maker_fee, position_id=position_id, fills=fills)
-            self.books[ticker].bids.insert(queue, new_order)
-            initial_order = new_order
-            initial_order.qty = qty
-            return initial_order
+                maker_order = LimitOrder(ticker, price, unfilled_qty, creator, OrderSide.BUY, self.datetime,fee=fee+maker_fee, position_id=position_id, fills=fills)
+                self.books[ticker].bids.insert(queue, maker_order)
+                return maker_order
+            else:
+                filled_taker_order = LimitOrder(ticker, price, qty, creator, OrderSide.BUY, self.datetime,fee=fee+maker_fee, position_id=position_id, fills=fills)
+                return filled_taker_order
         else:
             return LimitOrder("error", 0, 0, 'insufficient_funds', OrderSide.BUY, self.datetime)
 
@@ -238,7 +233,7 @@ class Exchange():
                     taker_fee = self.fees.taker_fee(trade_qty)
                     self.fees.total_fee_revenue += taker_fee
                     if(type(fee) is str): fee = float(fee)
-                    fills.append({'qty': trade_qty, 'price': best_bid.price, 'fee': fee+taker_fee})
+                    fills.append({'qty': trade_qty, 'price': best_bid.price, 'fee': fee+taker_fee, 'creator': best_bid.creator})
                     await self._process_trade(ticker, trade_qty, best_bid.price, best_bid.creator, creator, accounting, fee=fee+taker_fee)
                     unfilled_qty -= trade_qty
                     self.books[ticker].bids[0].qty -= trade_qty
@@ -254,11 +249,12 @@ class Exchange():
             if unfilled_qty > 0:
                 maker_fee = self.fees.maker_fee(unfilled_qty)
                 self.fees.total_fee_revenue += maker_fee
-            new_order = LimitOrder(ticker, price, unfilled_qty, creator, OrderSide.SELL, self.datetime, fee=fee+maker_fee, accounting=accounting, fills=fills)
-            self.books[ticker].asks.insert(queue, new_order)
-            initial_order = new_order
-            initial_order.qty = qty
-            return initial_order
+                maker_order = LimitOrder(ticker, price, unfilled_qty, creator, OrderSide.SELL, self.datetime, fee=fee+maker_fee, accounting=accounting, fills=fills)
+                self.books[ticker].asks.insert(queue, maker_order)
+                return maker_order
+            else:
+                filled_taker_order = LimitOrder(ticker, price, qty, creator, OrderSide.SELL, self.datetime, fee=fee+maker_fee, accounting=accounting, fills=fills)
+                return filled_taker_order
         else:
             return LimitOrder("error", 0, 0, 'insufficient_assets', OrderSide.SELL, self.datetime)
 
@@ -362,14 +358,13 @@ class Exchange():
     async def register_agent(self, name, initial_cash) -> dict:
         #TODO: use an agent class???
         registered_name = name + str(UUID())[0:8]
-        self.agents.append(
-            {'name':registered_name,
-             'cash':initial_cash,
-             '_transactions':[], 
-             'positions': [
-                 Position(UUID(), "CASH", initial_cash, self.datetime).to_dict()
-                ], 
-                'assets': {}})
+        self.agents.append({
+            'name':registered_name,
+            'cash':initial_cash,
+            '_transactions':[], 
+            'positions': [ Position(UUID(), "CASH", 1, initial_cash, self.datetime).to_dict()], 
+            'assets': {}
+        })
         return {'registered_agent':registered_name}
 
     async def get_cash(self, agent_name) -> dict:
@@ -380,64 +375,117 @@ class Exchange():
         agent_info = await self.get_agent(agent)
         return {'assets': agent_info['assets']}
     
-    async def __update_agents(self, transaction, accounting, position_id) -> None:
-        for side in transaction:
-            agent_idx = await self.__get_agent_index(side['agent'])
-            if agent_idx is not None:
-                self.agents[agent_idx]['cash'] += side['cash_flow']
-                sided_transaction = Transaction(side['cash_flow'], side['ticker'], side['qty'], side['dt'], side['type']).to_dict()
-                if side['type'] == 'buy':
-                    new_position = True
-                    for position in self.agents[agent_idx]['positions']:
-                        if position['id'] == position_id:
-                            new_position = False
-                            self.agents[agent_idx]['positions'][idx]['qty'] += side['qty']
-                            self.agents[agent_idx]['positions'][idx]['enters'].append(sided_transaction)
-                            break
-                    if new_position:
-                        self.agents[agent_idx]['positions'].append(Position(UUID(), side['ticker'], side['qty'], side['dt'], enters=[sided_transaction]).to_dict())
-                        
-                elif side['type'] == 'sell':
-                    if accounting == 'FIFO':
-                        self.agents[agent_idx]['positions'].sort(key=lambda x: x['dt'])
-                    if accounting == 'LIFO':
-                        self.agents[agent_idx]['positions'].sort(key=lambda x: x['dt'], reverse=True)
-                    for idx, position in enumerate(self.agents[agent_idx]['positions']):
-                        if position['ticker'] == side['ticker']:
-                            while side['qty'] > 0:
-                                for enter in self.agents[agent_idx]['positions'][idx]['enters']:
-                                    if enter['qty'] >= side['qty']:
-                                        self.agents[agent_idx]['positions'][idx]['qty'] -= side['qty']
-                                        self.agents[agent_idx]['positions'][idx]['exits'].append(Exit(side['cash_flow'], side['ticker'], side['qty'], side['dt'], side['type'], side['cash_flow']-enter['cash_flow'], enter['id'], enter['dt']).to_dict())
-                                        side['qty'] = 0
-                                        break
-                                    else:
-                                        self.agents[agent_idx]['positions'][idx]['exits'].append(Exit(side['cash_flow'], side['ticker'], side['qty'], side['dt'], side['type'], side['cash_flow']-enter['cash_flow'], enter['id'], enter['dt']).to_dict())
-                                        side['qty'] -= self.agents[agent_idx]['positions'][idx]['qty']
-                                        self.agents[agent_idx]['positions'][idx]['qty'] = 0
-                            break
-                self.agents[agent_idx]['_transactions'].append(sided_transaction)
-                if side['ticker'] in self.agents[agent_idx]['assets']: 
-                    self.agents[agent_idx]['assets'][side['ticker']] += side['qty']
-                else: 
-                    self.agents[agent_idx]['assets'][side['ticker']] = side['qty']
-                
-    async def __update_agents_currency(self, transaction) -> None:
-        if transaction.confirmed:
-            buyer_idx = await self.__get_agent_index(transaction.recipient)
-            seller_idx = await self.__get_agent_index(transaction.sender)
-            if(buyer_idx is None or seller_idx is None):
-                return None
-            buyer = self.agents[buyer_idx]
-            seller = self.agents[seller_idx]
-            #TODO: have cash be an asset that is some currency
-            buyer['cash'] -= transaction.amount + transaction.fee #NOTE: transaction.fee includes the exchange fee and the network fee
-            seller['cash'] += transaction.amount
-            buyer['_transactions'].append({'dt':self.datetime,'cash_flow':-(transaction.amount+transaction.fee),'ticker':transaction.ticker,'qty':transaction.amount})
-            seller['_transactions'].append({'dt':self.datetime,'cash_flow':transaction.amount,'ticker':transaction.ticker,'qty':transaction.amount})
+    async def get_position(self, agent, position_id) -> dict:
+        agent_info = await self.get_agent(agent)
+        for position in agent_info['positions']:
+            if position['id'] == position_id:
+                return position
+        return None
 
+    async def enter_position(self, transaction, agent_idx, position_id) -> dict:
+        start_new_position = True
+        agent = self.agents[agent_idx]
+        positions = agent['positions']
+        for position in positions:
+            if position['id'] == position_id:
+                print('found position', position)
+                start_new_position = False
+                position['qty'] += transaction['qty']
+                position['enters'].append(transaction)
+                return {'enter_position': 'existing success'}
+            
+        if start_new_position:
+            # new_position = Position(UUID(), transaction['ticker'], transaction['price'], transaction['qty'], transaction['dt'], enters=[transaction]).to_dict()
+            new_position = {
+                'id': str(UUID()),
+                'ticker': transaction['ticker'],
+                'price': transaction['price'],
+                'qty': transaction['qty'],
+                'dt': transaction['dt'],
+                'enters': [transaction],
+                'exits': []
+            }
+            positions.append(new_position)        
+            return {'enter_position': 'new success'}
+    
+    async def exit_position(self, side, agent_idx) -> None:
+        agent = self.agents[agent_idx]
+        print("exit_agent", agent['name'], "side", side)
+        positions = agent['positions']
+        viable_positions = [position for position in positions if position['ticker'] == side['ticker'] and position['qty'] > 0]
+        if len(viable_positions) == 0: 
+            return {'exit_position': 'no viable positions'}
+        #NOTE: sell side['qty'] comes in negative, so we need to flip the sign and add the quantity flow to the side['qty'] as we pull from enters 
+        while side['qty'] < 0:
+            for position in viable_positions:
+                enters = position['enters']
+                if len(enters) == 0:
+                    return {'exit_position': 'no enters'}
+                for enter in enters:
+                    normalised_qty = side['qty'] * -1
+                    exit = {
+                        'id': UUID(),
+                        'agent': agent['name'],
+                        'cash_flow': side['cash_flow'],
+                        'ticker': side['ticker'],
+                        'qty': normalised_qty,
+                        'dt': side['dt'],
+                        'type': side['type'],
+                        'pnl': (side['price']*normalised_qty)-(enter['price']*normalised_qty), 
+                        'enter_id': enter['id'],
+                        'enter_date': enter['dt']
+                    }
+                    if enter['qty'] >= normalised_qty:
+                        position['qty'] += side['qty']
+                        enter['qty'] += side['qty']
+                        position['exits'].append(exit)
+                        side['qty'] = 0
+                        return {'exit_position': 'success'}
+                    else:
+                        position['exits'].append(exit)
+                        side['qty'] += position['qty']
+                        enter['qty'] += side['qty']
+                        position['qty'] = 0
+        return {'exit_position': 'no position to exit'}                            
+
+    async def sort_positions(self, agent_idx, accounting) -> None:
+        """Sorts the positions of an agent by date"""
+        if accounting == 'FIFO':
+            self.agents[agent_idx]['positions'].sort(key=lambda x: x['dt'])
+        if accounting == 'LIFO':
+            self.agents[agent_idx]['positions'].sort(key=lambda x: x['dt'], reverse=True)
+
+    async def __update_agents(self, transaction, accounting, position_id) -> None:
+        await self.update_agents(transaction, accounting, position_id)
+
+    async def update_assets(self, side, agent_idx) -> None:
+        if side['ticker'] in self.agents[agent_idx]['assets']: 
+            self.agents[agent_idx]['assets'][side['ticker']] += side['qty']
+        else: 
+            self.agents[agent_idx]['assets'][side['ticker']] = side['qty']        
+
+    async def update_agents(self, transaction, accounting, position_id) -> None:
+        for side in transaction:
+            agent_idx = await self.get_agent_index(side['agent'])
+            if agent_idx is None:
+                return {'update_agents': 'agent not found'}
+            #TODO: refactor to use add_cash here instead of += with a note that the transaction is long or short term, also works to treat cash as a position
+            self.agents[agent_idx]['cash'] += side['cash_flow']
+            await self.update_assets(side, agent_idx)
+            sided_transaction = Transaction(side['cash_flow'], side['ticker'],side['price'], side['qty'], side['dt'], side['type']).to_dict()
+            if side['type'] == 'buy':
+                await self.enter_position(sided_transaction, agent_idx, position_id)
+            elif side['type'] == 'sell':
+                await self.sort_positions(agent_idx, accounting)
+                exited = await self.exit_position(side, agent_idx)
+                print(exited)
+            self.agents[agent_idx]['_transactions'].append(sided_transaction)
+             
     async def get_agent(self, agent_name)  -> dict:
         return next((d for (index, d) in enumerate(self.agents) if d['name'] == agent_name), {'error': 'agent not found'})
+
+    async def get_agent_index(self,agent_name) -> dict:
+        return next((index for (index, d) in enumerate(self.agents) if d['name'] == agent_name), None)
 
     async def __get_agent_index(self,agent_name) -> dict:
         return next((index for (index, d) in enumerate(self.agents) if d['name'] == agent_name), None)
@@ -459,16 +507,36 @@ class Exchange():
         return info
     
     async def add_cash(self, agent, amount, note='') -> dict:
-        agent_idx = await self.__get_agent_index(agent)
+        """Adds cash to an agent's account
+        
+        Arguments:
+            agent {str | int} -- name of the agent or index of the agent
+            amount {float} -- amount of cash to add
+            """
+        if type(agent) == int:
+            agent_idx = agent
+        else:
+            agent_idx = await self.get_agent_index(agent)
         if agent_idx is not None:
-            self.agents[agent_idx]['positions'][0]['exits'].append(Exit(amount, "CASH", amount, self.datetime, 'sell', amount, None, self.datetime).to_dict())
+            exit = {
+                'id': str(UUID()),
+                'cash_flow': amount,
+                'ticker': "CASH",
+                'qty': amount,
+                'dt': self.datetime,
+                'type': 'sell',
+                'pnl': amount,
+                'enter_id': None,
+                'enter_date': self.datetime
+            }
+            self.agents[agent_idx]['positions'][0]['exits'].append(exit)
             self.agents[agent_idx]['cash'] += amount
-            return {'cash':self.agents[agent_idx]['cash']}
+            return {'cash':self.agents[agent_idx]['cash'], "position": self.agents[agent_idx]['positions'][0]}
         else:
             return {'error': 'agent not found'}
 
     async def remove_cash(self, agent, amount, notes='') -> dict:
-        agent_idx = await self.__get_agent_index(agent)
+        agent_idx = await self.get_agent_index(agent)
         if agent_idx is not None:
             self.agents[agent_idx]['cash'] -= amount
             return {'cash':self.agents[agent_idx]['cash']}
