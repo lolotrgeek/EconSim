@@ -103,11 +103,11 @@ class PublicCompany:
                     shares = 0
                     # bought before exdividend date
                     for enter in position["enters"]:
-                        if enter["dt"] < self.ex_dividend_date:
+                        if string_to_time(enter["dt"]) < self.ex_dividend_date:
                             shares += enter["initial_qty"]
                             # check if we sold any of the entered shares before or on the exdividend date
                             for exits in position['exits']:
-                                if exits["enter_id"] == enter["id"] and exits["dt"] <= self.ex_dividend_date:
+                                if exits["enter_id"] == enter["id"] and string_to_time(exits["dt"]) <= self.ex_dividend_date:
                                     shares -= exits["qty"]
                     
                     eligible_shareholder["shares"] = shares
