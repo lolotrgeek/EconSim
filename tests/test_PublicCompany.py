@@ -1,21 +1,16 @@
-import unittest
-import asyncio
-import sys
-import os
+import unittest,asyncio,sys,os,pprint
 parent_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 sys.path.append(parent_dir)
 from datetime import datetime, timedelta
 from source.exchange.ExchangeRequests import ExchangeRequests
 from source.company.PublicCompany import PublicCompany
-from .MockRequester import MockRequester
+from MockRequester import MockRequester
 
 class TestPublicCompany(unittest.IsolatedAsyncioTestCase):
     async def asyncSetUp(self):
         self.requester= MockRequester()
         self.requests = ExchangeRequests(requester=self.requester)
         self.exchange = self.requester.responder.exchange
-        self.agent = (await self.exchange.register_agent("company_agent", 100000))['registered_agent']
-        self.shareholder = (await self.exchange.register_agent("shareholder", 100000))['registered_agent']
 
     def test_initialization(self):
         startdate = datetime(2023, 1, 1)
@@ -71,7 +66,6 @@ class TestPublicCompany(unittest.IsolatedAsyncioTestCase):
         price = 50
 
         await company.issue_initial_shares(shares, price)
-        print(self.exchange.assets)
         outstanding_shares = await self.exchange.get_outstanding_shares(company.symbol)
         self.assertEqual(outstanding_shares, 0)
         self.assertIsNotNone(self.exchange.assets[company.symbol])
@@ -91,10 +85,6 @@ class TestPublicCompany(unittest.IsolatedAsyncioTestCase):
         self.requests.get_outstanding_shares = mocked_get_outstanding_shares
         self.requests.add_cash = add_cash_mocked
 
-        company.shareholders = [
-            {"agent": "Shareholder1", "positions": [{"dt": datetime(2023, 1, 15), "transactions": [{"dt": datetime(2023, 1, 10), "qty": 100}] }] },
-            {"agent": "Shareholder2", "positions": [{"dt": datetime(2023, 1, 20), "transactions": [{"dt": datetime(2023, 1, 5), "qty": 50}] }] }
-        ]
         eligible_shareholders = [
             {"name": "Shareholder1", "shares": 100},
             {"name": "Shareholder2", "shares": 50}
@@ -108,19 +98,35 @@ class TestPublicCompany(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(cash_distributed["Shareholder2"], 166.66666666666666)
 
     async def test_get_eligible_shareholders(self):
-        company = PublicCompany("TestCompany", datetime(2023, 1, 1), self.requests)
+        company = PublicCompany("EligibleCompany", datetime(2023, 1, 1), self.requests)
+        await company.issue_initial_shares(10, 5)
+        self.sold_before_agent = (await self.exchange.register_agent("soldbefore", 100000))['registered_agent']
+        self.bought_after_agent = (await self.exchange.register_agent("boughtafter", 100000))['registered_agent']
+        self.bought_before_agent = (await self.exchange.register_agent("boughtbefore", 100000))['registered_agent']
+        self.exchange.datetime = datetime(2023, 1, 2)
+        await self.exchange.market_buy(company.symbol,qty=10, buyer=self.sold_before_agent)
+        sells = await self.exchange.limit_sell(ticker=company.symbol, qty=10, price=1, creator=self.sold_before_agent)
+        buys = await self.exchange.limit_buy(company.symbol,qty=10,price=2, creator=self.bought_before_agent)
 
-        company.shareholders = [
-            {"agent": "Shareholder1", "positions": [{"dt": datetime(2023, 1, 10), "transactions": [{"dt": datetime(2023, 1, 11), "qty": 100}] }] },
-            {"agent": "Shareholder2", "positions": [{"dt": datetime(2023, 1, 20), "transactions": [{"dt": datetime(2023, 1, 21), "qty": 50}] }] }
-        ]
+        print(sells.to_dict())
+        # print(buys.to_dict())
+        self.exchange.datetime = datetime(2024, 1, 1) 
+        await self.exchange.market_buy(company.symbol,qty=10, buyer=self.bought_after_agent)
+
+
+        company.shareholders = await self.exchange.get_agents_positions(company.symbol)
+        pp = pprint.PrettyPrinter(indent=1)
+        pp.pprint(company.shareholders)
+
         company.ex_dividend_date = datetime(2023, 1, 12)
-
+        
         eligible_shareholders = await company.get_eligible_shareholders()
 
+
+        print(eligible_shareholders)
         # Assertions
         self.assertEqual(eligible_shareholders, [
-            {"name": "Shareholder1", "shares": 100}
+            {"name": self.bought_before_agent, "shares": 9}
         ])
 
 if __name__ == '__main__':
