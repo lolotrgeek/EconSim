@@ -44,4 +44,5 @@ def format_dataframe_rows_to_dict(df) -> list:
     return result_list
 
 def string_to_time(string) -> datetime:
+    if(type(string) is datetime): return string
     return datetime.strptime(string, '%Y-%m-%d %H:%M:%S')

@@ -1,7 +1,12 @@
+import sys
+import os
+parent_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+sys.path.append(parent_dir)
 from datetime import datetime, timedelta
 from .balance_sheet import generate_fake_balance_sheet
 from .income import generate_fake_income_statement
 from .cash_flow import generate_fake_cash_flow
+from source.utils._utils import string_to_time
 
 class PublicCompany:
     """
@@ -88,15 +93,26 @@ class PublicCompany:
     async def get_eligible_shareholders(self) -> list:
         eligible_shareholders = []
         for shareholder in self.shareholders:
+            if shareholder["agent"] == "init_seed_"+self.symbol:
+                continue
             for position in shareholder["positions"]:
                 # ignore positions bought after exdividend date
-                if position["dt"] <= self.ex_dividend_date:
+                if string_to_time(position["dt"]) < self.ex_dividend_date:
                     # calculate the number of shares eligible for dividends
                     eligible_shareholder = {'name': shareholder['agent'] ,'shares':0}
-                    for transaction in position["transactions"]:
-                        if transaction["dt"] <= self.ex_dividend_date:
-                            eligible_shareholder["shares"] += transaction["qty"]
-                    eligible_shareholders.append(eligible_shareholder)
+                    shares = 0
+                    # bought before exdividend date
+                    for enter in position["enters"]:
+                        if enter["dt"] < self.ex_dividend_date:
+                            shares += enter["initial_qty"]
+                            # check if we sold any of the entered shares before or on the exdividend date
+                            for exits in position['exits']:
+                                if exits["enter_id"] == enter["id"] and exits["dt"] <= self.ex_dividend_date:
+                                    shares -= exits["qty"]
+                    
+                    eligible_shareholder["shares"] = shares
+                    if shares > 0:       
+                        eligible_shareholders.append(eligible_shareholder)
         return eligible_shareholders
     
     async def quarterly_things(self, quarter) -> None:
