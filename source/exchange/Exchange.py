@@ -65,7 +65,6 @@ class Exchange():
         ]
         # self.agents_cash_updates.extend(transaction)
         await self.update_agents(transaction, accounting, position_id=position_id)
-        # print('transaction: ',transaction)
         return transaction
 
     async def get_order_book(self, ticker: str) -> OrderBook:
@@ -388,7 +387,6 @@ class Exchange():
         positions = agent['positions']
         for position in positions:
             if position['id'] == position_id:
-                print('found position', position)
                 start_new_position = False
                 position['qty'] += transaction['qty']
                 position['enters'].append(transaction)
@@ -410,7 +408,6 @@ class Exchange():
     
     async def exit_position(self, side, agent_idx) -> None:
         agent = self.agents[agent_idx]
-        print("exit_agent", agent['name'], "side", side)
         positions = agent['positions']
         viable_positions = [position for position in positions if position['ticker'] == side['ticker'] and position['qty'] > 0]
         if len(viable_positions) == 0: 
@@ -487,7 +484,6 @@ class Exchange():
             elif side['type'] == 'sell':
                 await self.sort_positions(agent_idx, accounting)
                 exited = await self.exit_position(side, agent_idx)
-                print(exited)
             self.agents[agent_idx]['_transactions'].append(sided_transaction)
              
     async def get_agent(self, agent_name)  -> dict:
