@@ -23,6 +23,11 @@ class CreateAssetTestCase(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(book.bids[0].price, 49500)
         self.assertEqual(book.asks[0].price, 50500)
 
+    async def test_create_duplicate_asset(self):
+        await self.exchange.create_asset("BTC", 'stock', seed_price=50000)
+        asset = await self.exchange.create_asset("BTC", 'stock', seed_price=50000)
+        self.assertEqual(asset, {"error": "asset BTC already exists"})        
+
 class GetOrderBookTestCase(unittest.IsolatedAsyncioTestCase):
     async def asyncSetUp(self) -> None:
         self.exchange = Exchange(datetime=datetime(2023, 1, 1))
