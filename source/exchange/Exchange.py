@@ -516,23 +516,19 @@ class Exchange():
         else:
             agent_idx = await self.get_agent_index(agent)
         if agent_idx is not None:
-            if note == 'dividend':
-                self.exit_position({'cash_flow': amount, 'ticker': 'CASH', 'qty': amount, 'dt': self.datetime, 'type': note}, agent_idx, None)
-                self.enter_position({'cash_flow': amount, 'ticker': 'CASH', 'qty': amount, 'dt': self.datetime, 'type': note}, agent_idx, None)
-                exit = {
-                    'id': str(UUID()),
-                    'cash_flow': amount,
-                    'ticker': "CASH",
-                    'qty': amount,
-                    'dt': self.datetime,
-                    'type': note,
-                    'pnl': amount,
-                    'enter_id': None,
-                    'enter_date': self.datetime
-                }
-                self.agents[agent_idx]['assets']['CASH'] += amount
-                self.agents[agent_idx]['positions'][0]['exits'].append(exit)
-                self.agents[agent_idx]['cash'] += amount
+            exit = {
+                'id': str(UUID()),
+                'cash_flow': amount,
+                'ticker': "CASH",
+                'qty': amount,
+                'dt': self.datetime,
+                'type': 'sell',
+                'pnl': amount,
+                'enter_id': None,
+                'enter_date': self.datetime
+            }
+            self.agents[agent_idx]['positions'][0]['exits'].append(exit)
+            self.agents[agent_idx]['cash'] += amount
             return {'cash':self.agents[agent_idx]['cash'], "position": self.agents[agent_idx]['positions'][0]}
         else:
             return {'error': 'agent not found'}
