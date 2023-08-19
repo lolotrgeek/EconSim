@@ -53,8 +53,15 @@ class PublicCompany:
             self.ex_dividend_date = self.currentdate + timedelta(weeks=2)
             self.dividend_payment_date = self.ex_dividend_date + timedelta(weeks=4)        
 
-    async def issue_initial_shares(self, shares, price) -> None:
-        await self.requests.create_asset(self.symbol, qty=shares, seed_price=price, seed_bid=price * 0.99, seed_ask=price * 1.01)
+    async def issue_initial_shares(self, shares, price, ticker='', attempts = 1) -> None:
+        if ticker == '': ticker = self.symbol
+        shares_issued = await self.requests.create_asset(ticker, qty=shares, seed_price=price, seed_bid=price * 0.99, seed_ask=price * 1.01)
+        if shares_issued == {"error" :f'asset {self.symbol} already exists'}:
+            if attempts <= 3:
+                ticker = self.symbol + self.name[:3+attempts]
+                await self.issue_initial_shares(shares, price, ticker, attempts+1)
+            else:
+                raise Exception(f"Failed to issue shares for {self.symbol}")
 
     async def issue_shares(self, shares, price) -> None:
         #TODO: adding shares to an existing asset
