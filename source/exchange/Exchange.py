@@ -23,6 +23,7 @@ class Exchange():
         self.trade_log: List[Trade] = [] #TODO: this is going to get to big to hold in memory, need a DB
         self.datetime = datetime
         self.base_currency = 'USD'
+        self.base_currency_id = str(UUID())
         self.fees = Fees()
 
     async def __str__(self):
@@ -43,7 +44,8 @@ class Exchange():
             return {"error" :f'asset {ticker} already exists'}
         self.assets[ticker] = {'type':asset_type}
         self.books[ticker] = OrderBook(ticker)
-        self.agents.append({'name':'init_seed_'+ticker,'cash':market_qty * seed_price,'_transactions':[], 'positions':[], 'assets': {ticker: market_qty}})
+        cash_position =  {"id":self.base_currency_id,"ticker": "CASH", "price": 1,"qty": market_qty * seed_price, "dt": self.datetime, "enters":[], "exits": []}
+        self.agents.append({'name':'init_seed_'+ticker,'cash':market_qty * seed_price,'_transactions':[], 'positions': [cash_position],  'assets': {ticker: market_qty}})
         await self._process_trade(ticker, market_qty, seed_price, 'init_seed_'+ticker, 'init_seed_'+ticker, position_id='init_seed_'+ticker)
         await self.limit_buy(ticker, seed_price * seed_bid, 1, 'init_seed_'+ticker)
         await self.limit_sell(ticker, seed_price * seed_ask, market_qty, 'init_seed_'+ticker)
@@ -59,9 +61,10 @@ class Exchange():
         self.trade_log.append(trade)
 
         txn_time = self.datetime
+
         transaction = [
-            {'agent':buyer,'cash_flow':-qty*price, 'price': price, 'ticker':ticker,'qty': qty, 'fee':fee, 'dt': txn_time, 'type': 'buy'},
-            {'agent':seller,'cash_flow':qty*price, 'price': price, 'ticker':ticker,'qty': -qty, 'fee':fee, 'dt': txn_time, 'type': 'sell'}
+            {'id': str(UUID()), 'agent':buyer,'cash_flow':-qty*price, 'price': price, 'ticker':ticker, 'qty': qty, 'fee':fee, 'dt': txn_time, 'type': 'buy'},
+            {'id': str(UUID()), 'agent':seller,'cash_flow':qty*price, 'price': price, 'ticker':ticker, 'qty': -qty, 'fee':fee, 'dt': txn_time, 'type': 'sell'}
         ]
         await self.update_agents(transaction, accounting, position_id=position_id)
         return transaction
@@ -360,8 +363,9 @@ class Exchange():
             'name':registered_name,
             'cash':initial_cash,
             '_transactions':[], 
-            'positions': [ Position(UUID(), "CASH", 1, initial_cash, self.datetime).to_dict()], 
-            'assets': {}
+            'positions': [ {"id":self.base_currency_id,"ticker": "CASH", "price": 1,"qty": initial_cash, "dt": self.datetime, "enters":[], "exits": []}], 
+            'assets': {},
+            "taxable_events": []
         })
         return {'registered_agent':registered_name}
     
@@ -376,67 +380,76 @@ class Exchange():
                 return position
         return None
 
-    async def enter_position(self, transaction, agent_idx, position_id) -> dict:
+    async def enter_position(self, side, agent_idx, position_id) -> dict:
+        buy = side.copy()
         start_new_position = True
         agent = self.agents[agent_idx]
         positions = agent['positions']
         for position in positions:
             if position['id'] == position_id:
                 start_new_position = False
-                position['qty'] += transaction['qty']
-                position['enters'].append(transaction)
+                position['qty'] += buy['qty']
+                position['enters'].append(buy)
                 return {'enter_position': 'existing success'}
             
         if start_new_position:
-            # new_position = Position(UUID(), transaction['ticker'], transaction['price'], transaction['qty'], transaction['dt'], enters=[transaction]).to_dict()
+            # new_position = Position(UUID(), buy['ticker'], buy['price'], buy['qty'], buy['dt'], enters=[buy]).to_dict()
+            enter = side.copy()
+            enter['initial_qty'] = side['qty']
+            enter['id'] = str(UUID())
             new_position = {
                 'id': str(UUID()),
-                'ticker': transaction['ticker'],
-                'price': transaction['price'],
-                'qty': transaction['qty'],
-                'dt': transaction['dt'],
-                'enters': [transaction],
+                'ticker': side['ticker'],
+                'price': side['price'],
+                'qty': side['qty'],
+                'dt': side['dt'],
+                'enters': [enter],
                 'exits': []
             }
             positions.append(new_position)        
             return {'enter_position': 'new success'}
     
     async def exit_position(self, side, agent_idx) -> None:
+        sell = side.copy()
         agent = self.agents[agent_idx]
         positions = agent['positions']
-        viable_positions = [position for position in positions if position['ticker'] == side['ticker'] and position['qty'] > 0]
+        viable_positions = [position for position in positions if position['ticker'] == sell['ticker'] and position['qty'] > 0]
         if len(viable_positions) == 0: 
             return {'exit_position': 'no viable positions'}
-        #NOTE: sell side['qty'] comes in negative, so we need to flip the sign and add the quantity flow to the side['qty'] as we pull from enters 
-        while side['qty'] < 0:
+        #NOTE: sell sell['qty'] comes in negative, so we need to flip the sign and add the quantity flow to the sell['qty'] as we pull from enters 
+        while sell['qty'] < 0:
             for position in viable_positions:
                 enters = position['enters']
                 if len(enters) == 0:
                     return {'exit_position': 'no enters'}
                 for enter in enters:
-                    normalised_qty = side['qty'] * -1
+                    normalised_qty = sell['qty'] * -1
                     exit = {
                         'id': UUID(),
                         'agent': agent['name'],
-                        'cash_flow': side['cash_flow'],
-                        'ticker': side['ticker'],
+                        'cash_flow': sell['cash_flow'],
+                        'ticker': sell['ticker'],
                         'qty': normalised_qty,
-                        'dt': side['dt'],
-                        'type': side['type'],
-                        'pnl': (side['price']*normalised_qty)-(enter['price']*normalised_qty), 
+                        'dt': sell['dt'],
+                        'type': sell['type'],
+                        'pnl': (sell['price']*normalised_qty)-(enter['price']*normalised_qty), 
                         'enter_id': enter['id'],
                         'enter_date': enter['dt']
                     }
+                    if exit['pnl'] > 0:
+                        taxable_event = {"type": 'capital_gains', 'exit_id': exit['id'], 'enter_id':enter['id'], 'enter_date': enter['dt'], 'exit_date': exit['dt'], 'pnl': exit['pnl']}
+                        agent['taxable_events'].append(taxable_event)
+                        
                     if enter['qty'] >= normalised_qty:
-                        position['qty'] += side['qty']
-                        enter['qty'] += side['qty']
+                        position['qty'] += sell['qty']
+                        enter['qty'] += sell['qty']
                         position['exits'].append(exit)
-                        side['qty'] = 0
+                        sell['qty'] = 0
                         return {'exit_position': 'success'}
                     else:
                         position['exits'].append(exit)
-                        side['qty'] += position['qty']
-                        enter['qty'] += side['qty']
+                        sell['qty'] += position['qty']
+                        enter['qty'] += sell['qty']
                         position['qty'] = 0
         return {'exit_position': 'no position to exit'}                            
 
@@ -458,26 +471,17 @@ class Exchange():
             agent_idx = await self.get_agent_index(side['agent'])
             if agent_idx is None:
                 return {'update_agents': 'agent not found'}
-            #TODO: refactor to use add_cash here instead of += with a note that the transaction is long or short term, also works to treat cash as a position
-            self.agents[agent_idx]['cash'] += side['cash_flow']
+            self.agents[agent_idx]['_transactions'].append(side)
+             # NOTE: this will "remove" cash on the sell side of the transaction
             await self.update_assets(side, agent_idx)
-            sided_transaction= {
-                'id': str(UUID()),
-                'cash_flow': side['cash_flow'],
-                'ticker': side['ticker'],
-                'price': side['price'],
-                'initial_qty': side['qty'], #NOTE: keep this for historical purposes, because the qty will change as we exit this position
-                'qty': side['qty'],
-                'dt': side['dt'],
-                'type': side['type']
-            }
             if side['type'] == 'buy':
-                await self.enter_position(sided_transaction, agent_idx, position_id)
+                await self.remove_cash(agent_idx, -side['cash_flow'])
+                await self.enter_position(side, agent_idx, position_id)
             elif side['type'] == 'sell':
+                await self.add_cash(agent_idx, side['cash_flow'])
                 await self.sort_positions(agent_idx, accounting)
-                exited = await self.exit_position(side, agent_idx)
-            self.agents[agent_idx]['_transactions'].append(sided_transaction)
-             
+                await self.exit_position(side, agent_idx)
+      
     async def get_agent(self, agent_name)  -> dict:
         return next((d for (index, d) in enumerate(self.agents) if d['name'] == agent_name), {'error': 'agent not found'})
 
@@ -504,7 +508,7 @@ class Exchange():
         agent_info = await self.get_agent(agent_name)
         return {'cash':agent_info['cash']}
 
-    async def add_cash(self, agent, amount, note='') -> dict:
+    async def add_cash(self, agent, amount, note='', taxable=False) -> dict:
         """Adds cash to an agent's account
         
         Arguments:
@@ -516,26 +520,24 @@ class Exchange():
         else:
             agent_idx = await self.get_agent_index(agent)
         if agent_idx is not None:
-            exit = {
-                'id': str(UUID()),
-                'cash_flow': amount,
-                'ticker': "CASH",
-                'qty': amount,
-                'dt': self.datetime,
-                'type': 'sell',
-                'pnl': amount,
-                'enter_id': None,
-                'enter_date': self.datetime
-            }
-            self.agents[agent_idx]['positions'][0]['exits'].append(exit)
+            side = {'id': str(UUID()), 'agent':agent,'cash_flow':amount, 'price': 1, 'ticker':'CASH', 'qty': amount, 'fee':0, 'dt': self.datetime, 'type': 'buy'}
+            await self.enter_position(side, agent_idx, self.base_currency_id)
             self.agents[agent_idx]['cash'] += amount
-            return {'cash':self.agents[agent_idx]['cash'], "position": self.agents[agent_idx]['positions'][0]}
+            if taxable == True:
+                taxable_event = {"type": note, 'exit_id': side['id'], 'enter_id':side['id'], 'enter_date': self.datetime, 'exit_date': self.datetime, 'pnl': amount}
+                self.agents[agent_idx]['taxable_events'].append(taxable_event)
+            return {'cash':self.agents[agent_idx]['cash']}
         else:
             return {'error': 'agent not found'}
 
-    async def remove_cash(self, agent, amount, notes='') -> dict:
-        agent_idx = await self.get_agent_index(agent)
+    async def remove_cash(self, agent, amount, note='') -> dict:
+        if type(agent) == int:
+            agent_idx = agent
+        else:
+            agent_idx = await self.get_agent_index(agent)
         if agent_idx is not None:
+            side = {'id': str(UUID()), 'agent':agent,'cash_flow':-amount, 'price': 1, 'ticker':'CASH', 'qty': -amount, 'fee':0, 'dt': self.datetime, 'type': 'sell'}
+            await self.exit_position(side, agent_idx)
             self.agents[agent_idx]['cash'] -= amount
             return {'cash':self.agents[agent_idx]['cash']}
         else:

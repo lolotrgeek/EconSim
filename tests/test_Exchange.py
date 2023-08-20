@@ -421,31 +421,47 @@ class EnterPositionTestCase(unittest.IsolatedAsyncioTestCase):
         self.agent = agent['registered_agent']
 
     async def test_enter_position_new(self):
-        transaction = Transaction(300, "AAPL", 150, 2, self.exchange.datetime, "buy").to_dict()
+        transaction = {'agent': self.agent, 'cash_flow': -300, 'price': 150, 'ticker': 'AAPL', 'initial_qty': 2, 'qty': 2, 'dt': self.exchange.datetime, 'type': 'buy'}
         agent_idx = await self.exchange.get_agent_index(self.agent)
         result = await self.exchange.enter_position(transaction, agent_idx, None)
         self.assertEqual(result, {"enter_position": "new success"})
         self.assertEqual(len(self.exchange.agents[agent_idx]['positions']), 2)
         self.assertEqual(self.exchange.agents[agent_idx]['positions'][1]['ticker'], "AAPL")
         self.assertEqual(self.exchange.agents[agent_idx]['positions'][1]['qty'], 2)
-        self.assertEqual(self.exchange.agents[agent_idx]['positions'][1]['enters'], [transaction])
+        self.assertEqual(self.exchange.agents[agent_idx]['positions'][1]['enters'][0]['agent'], self.agent )
+        self.assertEqual(self.exchange.agents[agent_idx]['positions'][1]['enters'][0]['cash_flow'], -300)
+        self.assertEqual(self.exchange.agents[agent_idx]['positions'][1]['enters'][0]['price'], 150)
+        self.assertEqual(self.exchange.agents[agent_idx]['positions'][1]['enters'][0]['ticker'], "AAPL")
+        self.assertEqual(self.exchange.agents[agent_idx]['positions'][1]['enters'][0]['initial_qty'], 2)
+        self.assertEqual(self.exchange.agents[agent_idx]['positions'][1]['enters'][0]['qty'], 2)
+        self.assertEqual(self.exchange.agents[agent_idx]['positions'][1]['enters'][0]['dt'], datetime(2023, 1, 1))
         self.assertEqual(self.exchange.agents[agent_idx]['positions'][1]['exits'], [])
         self.assertEqual(self.exchange.agents[agent_idx]['positions'][1]['dt'], datetime(2023, 1, 1))
 
     async def test_enter_position_existing(self):
-        transaction1 = Transaction(300, "AAPL",150, 2, self.exchange.datetime, "buy").to_dict()
+        # transaction1 = Transaction(300, "AAPL",150, 2, self.exchange.datetime, "buy").to_dict()
+        transaction1 = {'agent': self.agent, 'cash_flow': -300, 'price': 150, 'ticker': 'AAPL', 'initial_qty': 2, 'qty': 2, 'dt': self.exchange.datetime, 'type': 'buy'}
         agent_idx = await self.exchange.get_agent_index(self.agent)
         await self.exchange.enter_position(transaction1, agent_idx, None)
         existing_id = self.exchange.agents[agent_idx]['positions'][1]['id']
-        transaction2 = Transaction(300, "AAPL",150, 2, self.exchange.datetime, "buy").to_dict()
+        transaction2 = {'agent': self.agent, 'cash_flow': -300, 'price': 150, 'ticker': 'AAPL', 'initial_qty': 2, 'qty': 2, 'dt': self.exchange.datetime, 'type': 'buy'}
         result = await self.exchange.enter_position(transaction2, agent_idx, existing_id)
-        print(result)
-        print(self.exchange.agents[agent_idx]['positions'])
         self.assertEqual(result, {"enter_position": "existing success"})
         self.assertEqual(len(self.exchange.agents[agent_idx]['positions']), 2)
         self.assertEqual(self.exchange.agents[agent_idx]['positions'][1]['ticker'], "AAPL")
         self.assertEqual(self.exchange.agents[agent_idx]['positions'][1]['qty'], 4)
-        self.assertEqual(self.exchange.agents[agent_idx]['positions'][1]['enters'], [transaction1, transaction2])
+        self.assertEqual(self.exchange.agents[agent_idx]['positions'][1]['enters'][0]['cash_flow'], -300)
+        self.assertEqual(self.exchange.agents[agent_idx]['positions'][1]['enters'][0]['price'], 150)
+        self.assertEqual(self.exchange.agents[agent_idx]['positions'][1]['enters'][0]['ticker'], "AAPL")
+        self.assertEqual(self.exchange.agents[agent_idx]['positions'][1]['enters'][0]['initial_qty'], 2)
+        self.assertEqual(self.exchange.agents[agent_idx]['positions'][1]['enters'][0]['qty'], 2)
+        self.assertEqual(self.exchange.agents[agent_idx]['positions'][1]['enters'][0]['dt'], datetime(2023, 1, 1))
+        self.assertEqual(self.exchange.agents[agent_idx]['positions'][1]['enters'][1]['cash_flow'], -300 )
+        self.assertEqual(self.exchange.agents[agent_idx]['positions'][1]['enters'][1]['price'], 150)
+        self.assertEqual(self.exchange.agents[agent_idx]['positions'][1]['enters'][1]['ticker'], "AAPL")
+        self.assertEqual(self.exchange.agents[agent_idx]['positions'][1]['enters'][1]['initial_qty'], 2)
+        self.assertEqual(self.exchange.agents[agent_idx]['positions'][1]['enters'][1]['qty'], 2)
+        self.assertEqual(self.exchange.agents[agent_idx]['positions'][1]['enters'][1]['dt'], datetime(2023, 1, 1))
         self.assertEqual(self.exchange.agents[agent_idx]['positions'][1]['exits'], [])
         self.assertEqual(self.exchange.agents[agent_idx]['positions'][1]['dt'], datetime(2023, 1, 1)) 
 
@@ -457,26 +473,32 @@ class ExitPositionTestCase(unittest.IsolatedAsyncioTestCase):
         self.agent = agent['registered_agent']
   
     async def test_exit_position(self):
-        enter = Transaction(-300, 'AAPL', 150, 2, self.exchange.datetime, "buy").to_dict()
+        # enter = Transaction(-300, 'AAPL', 150, 2, self.exchange.datetime, "buy").to_dict()
+        enter = {'agent': self.agent, 'cash_flow': -300, 'price': 150, 'ticker': 'AAPL', 'qty': 2, 'dt': self.exchange.datetime, 'type': 'buy'}
         agent_idx = await self.exchange.get_agent_index(self.agent)
         await self.exchange.enter_position(enter, agent_idx, None)
         self.position_id = self.exchange.agents[agent_idx]['positions'][1]['id']
         side = {'agent': self.agent, 'cash_flow': 50, 'price': 50, 'ticker': 'AAPL', 'qty': -1, 'dt': self.exchange.datetime, 'type': 'sell'}
         result = await self.exchange.exit_position(side, agent_idx)
-        # print(result)
         self.assertEqual(result, {"exit_position": "success"})
         self.assertEqual(len(self.exchange.agents[agent_idx]['positions']), 2)
         self.assertEqual(self.exchange.agents[agent_idx]['positions'][0]['exits'], [])
         self.assertEqual(self.exchange.agents[agent_idx]['positions'][1]['ticker'], "AAPL")
         self.assertEqual(self.exchange.agents[agent_idx]['positions'][1]['qty'], 1)
-        self.assertEqual(self.exchange.agents[agent_idx]['positions'][1]['enters'], [enter])
+        self.assertEqual(self.exchange.agents[agent_idx]['positions'][1]['enters'][0]['agent'], self.agent )
+        self.assertEqual(self.exchange.agents[agent_idx]['positions'][1]['enters'][0]['cash_flow'], -300)
+        self.assertEqual(self.exchange.agents[agent_idx]['positions'][1]['enters'][0]['price'], 150)
+        self.assertEqual(self.exchange.agents[agent_idx]['positions'][1]['enters'][0]['ticker'], "AAPL")
+        self.assertEqual(self.exchange.agents[agent_idx]['positions'][1]['enters'][0]['qty'], 1)
+        self.assertEqual(self.exchange.agents[agent_idx]['positions'][1]['enters'][0]['dt'], datetime(2023, 1, 1))
+        self.assertEqual(self.exchange.agents[agent_idx]['positions'][1]['exits'][0]['agent'], self.agent)
         self.assertEqual(self.exchange.agents[agent_idx]['positions'][1]['exits'][0]['cash_flow'], 50)
         self.assertEqual(self.exchange.agents[agent_idx]['positions'][1]['exits'][0]['ticker'], "AAPL")
         self.assertEqual(self.exchange.agents[agent_idx]['positions'][1]['exits'][0]['qty'], 1)
         self.assertEqual(self.exchange.agents[agent_idx]['positions'][1]['exits'][0]['dt'], datetime(2023, 1, 1))
         self.assertEqual(self.exchange.agents[agent_idx]['positions'][1]['exits'][0]['pnl'], -100)
         self.assertEqual(self.exchange.agents[agent_idx]['positions'][1]['exits'][0]['type'], "sell")
-        self.assertEqual(self.exchange.agents[agent_idx]['positions'][1]['exits'][0]['enter_id'], enter['id'])
+        self.assertEqual(self.exchange.agents[agent_idx]['positions'][1]['exits'][0]['enter_id'], self.exchange.agents[agent_idx]['positions'][1]['enters'][0]['id'])
         self.assertEqual(self.exchange.agents[agent_idx]['positions'][1]['dt'], datetime(2023, 1, 1))
 
 class GetAgentsTest(unittest.IsolatedAsyncioTestCase):
@@ -487,7 +509,6 @@ class GetAgentsTest(unittest.IsolatedAsyncioTestCase):
 
     async def test_get_agents(self):
         result = await self.exchange.get_agents()
-        print(result)
         self.assertEqual(len(self.exchange.agents), 1)
         self.assertEqual(result[0]['name'], self.agent)
         self.assertEqual(result[0]['cash'], 10000)
@@ -624,9 +645,7 @@ class getAgentsPositionsTest(unittest.IsolatedAsyncioTestCase):
         await self.exchange.market_buy("AAPL", qty=1000, buyer=self.agent, fee=0)
         await self.exchange.limit_buy("AAPL", price=100, qty=1000, creator=self.buy_exit_agent, fee=0)
         sell_result = await self.exchange.market_sell("AAPL", qty=1000, seller=self.agent, fee=0)
-        print(sell_result)
         agent_idx = await self.exchange.get_agent_index(self.agent)
-        print(self.exchange.agents[agent_idx]['positions'])
         result = await self.exchange.get_agents_positions("AAPL")
         self.assertEqual(len(result), 3)
         self.assertEqual(result[1]['agent'], self.agent)
@@ -700,9 +719,19 @@ class addCashTest(unittest.IsolatedAsyncioTestCase):
     async def test_add_cash(self):
         # self.exchange.agents[0]['positions'][0]['exits'].clear()
         result = await self.exchange.add_cash(self.agent, 5000)
-        print(result)
         self.assertEqual(result['cash'], 5000)
-        self.assertEqual(self.exchange.agents[0]['positions'][0]['exits'][0]["cash_flow"], 5000)
+        self.assertEqual(self.exchange.agents[0]['positions'][0]['enters'][0]["cash_flow"], 5000)
+
+    async def test_add_cash_taxable(self):
+        result = await self.exchange.add_cash(self.agent, 5000, note='test', taxable=True)
+        self.assertEqual(result['cash'], 5000)
+        self.assertEqual(self.exchange.agents[0]['positions'][0]['enters'][0]["cash_flow"], 5000)
+        self.assertEqual(self.exchange.agents[0]['taxable_events'][0]['type'], 'test')
+        self.assertEqual(self.exchange.agents[0]['taxable_events'][0]['exit_id'], self.exchange.agents[0]['positions'][0]['enters'][0]['id'])
+        self.assertEqual(self.exchange.agents[0]['taxable_events'][0]['enter_id'], self.exchange.agents[0]['positions'][0]['enters'][0]['id'])
+        self.assertEqual(self.exchange.agents[0]['taxable_events'][0]['enter_date'], self.exchange.agents[0]['positions'][0]['enters'][0]['dt'])
+        self.assertEqual(self.exchange.agents[0]['taxable_events'][0]['exit_date'], self.exchange.agents[0]['positions'][0]['enters'][0]['dt'])
+        self.assertEqual(self.exchange.agents[0]['taxable_events'][0]['pnl'], 5000)
 
 class UpdateAgentsTestCase(unittest.IsolatedAsyncioTestCase):
     #NOTE: This Test has to be run last! It is Leaky! update_agents method is stateful and will insert positions into other tests run after it...
@@ -729,8 +758,8 @@ class UpdateAgentsTestCase(unittest.IsolatedAsyncioTestCase):
         }
         self.exchange.agents[1]['positions'].append(fake_position)
         transaction = [
-            {'agent': self.agent1, 'cash_flow': -50, 'price': 50, 'ticker': 'AAPL', 'qty': 1, 'dt': self.exchange.datetime, 'type': 'buy'},
-            {'agent': self.agent2, 'cash_flow': 50,  'price': 50,'ticker': 'AAPL', 'qty': -1, 'dt': self.exchange.datetime, 'type': 'sell'}
+            {'id': "testbuy",'agent': self.agent1, 'cash_flow': -50, 'price': 50, 'ticker': 'AAPL', 'initial_qty': 1, 'qty': 1, 'dt': self.exchange.datetime, 'type': 'buy'},
+            {'id': "testsell",'agent': self.agent2, 'cash_flow': 50,  'price': 50,'ticker': 'AAPL', 'qty': -1, 'dt': self.exchange.datetime, 'type': 'sell'}
         ]
         await self.exchange.update_agents(transaction, "FIFO", "")
 
@@ -748,7 +777,14 @@ class UpdateAgentsTestCase(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(self.exchange.agents[1]['_transactions'][1]['type'], 'sell')
         self.assertEqual(self.exchange.agents[0]['_transactions'][0]['dt'], self.exchange.datetime)
         self.assertEqual(self.exchange.agents[1]['_transactions'][1]['dt'], self.exchange.datetime)
-        self.assertDictEqual(self.exchange.agents[0]['positions'][1]['enters'][0], self.exchange.agents[0]['_transactions'][0])
+        self.assertEqual(self.exchange.agents[0]['positions'][1]['enters'][0]['cash_flow'], self.exchange.agents[0]['_transactions'][0]['cash_flow'])
+        self.assertEqual(self.exchange.agents[0]['positions'][1]['enters'][0]['dt'], self.exchange.agents[0]['_transactions'][0]['dt'])
+        self.assertEqual(self.exchange.agents[0]['positions'][1]['enters'][0]['price'], self.exchange.agents[0]['_transactions'][0]['price'])
+        self.assertEqual(self.exchange.agents[0]['positions'][1]['enters'][0]['qty'], self.exchange.agents[0]['_transactions'][0]['qty'])
+        self.assertEqual(self.exchange.agents[0]['positions'][1]['enters'][0]['ticker'], self.exchange.agents[0]['_transactions'][0]['ticker'])
+        self.assertEqual(self.exchange.agents[0]['positions'][1]['enters'][0]['type'], self.exchange.agents[0]['_transactions'][0]['type'])
+
+
         self.assertDictEqual(self.exchange.agents[1]['positions'][1]['enters'][0], self.exchange.agents[1]['_transactions'][0])
         self.assertEqual(self.exchange.agents[1]['positions'][1]['exits'][0]['cash_flow'], 50)
         self.assertEqual(self.exchange.agents[1]['positions'][1]['exits'][0]['pnl'], 0)
