@@ -41,6 +41,7 @@ class LimitOrderTests(unittest.TestCase):
             'ticker': 'AAPL',
             'price': Decimal('150.0'),
             'fee': 0,
+            'fills': [ ],
             'qty': 100,
             'creator': 'Creator',
             'type': 'limit_buy',
