@@ -21,14 +21,10 @@ class TestCollectTaxes(unittest.TestCase):
         agents = [
             {
                 'name': 'Agent1',
-                'positions': [
-                    {
-                        'exits': [
-                            {'dt': '2022-06-01 00:00:00', 'enter_date': '2022-01-01 00:00:00', 'pnl': 500},  # Short-term gain
-                            {'dt': '2023-06-01 00:00:00', 'enter_date': '2021-01-01 00:00:00', 'pnl': 1000},  # Long-term gain
-                            {'dt': '2023-06-02 00:00:00', 'enter_date': '2021-01-02 00:00:00', 'pnl': -200}   # Loss (ignored)
-                        ]
-                    }
+                'taxable_events':  [
+                    {'exit_date': '2022-06-01 00:00:00', 'enter_date': '2022-01-01 00:00:00', 'pnl': 500},  # Short-term gain
+                    {'exit_date': '2023-06-01 00:00:00', 'enter_date': '2021-01-01 00:00:00', 'pnl': 1000},  # Long-term gain
+                    {'exit_date': '2023-06-02 00:00:00', 'enter_date': '2021-01-02 00:00:00', 'pnl': -200}   # Loss (ignored)
                 ]
             }
         ]
@@ -47,14 +43,10 @@ class TestCollectTaxes(unittest.TestCase):
         agents = [
             {
                 'name': 'Agent2',
-                'positions': [
-                    {
-                        'exits': [
-                            {'dt': '2022-06-01 00:00:00', 'enter_date': '2022-01-01 00:00:00', 'pnl': 500},  # Short-term gain
-                            {'dt': '2023-06-01 00:00:00', 'enter_date': '2023-01-01 00:00:00', 'pnl': 1000},  # Long-term gain (ignored)
-                            {'dt': '2023-06-02 00:00:00', 'enter_date': '2023-01-02 00:00:00', 'pnl': -200}   # Loss (ignored)
-                        ]
-                    }
+                'taxable_events': [
+                    {'exit_date': '2022-06-01 00:00:00', 'enter_date': '2022-01-01 00:00:00', 'pnl': 500},  # Short-term gain
+                    {'exit_date': '2023-06-01 00:00:00', 'enter_date': '2023-01-01 00:00:00', 'pnl': 1000},  # Long-term gain (ignored)
+                    {'exit_date': '2023-06-02 00:00:00', 'enter_date': '2023-01-02 00:00:00', 'pnl': -200}   # Loss (ignored)
                 ]
             }
         ]

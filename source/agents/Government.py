@@ -19,16 +19,12 @@ class Government(Agent):
         for agent in agents:
             long_term_capital_gains = 0
             short_term_capital_gains = 0
-            for position in agent['positions']:
-                position['exits'].sort(key=lambda x: x['dt'])
-
-                for exit in position['exits']:
-                    if exit['pnl'] > 0:
-                        if string_to_time(exit['dt']) - string_to_time(exit['enter_date']) >= timedelta(days=365):
-                            long_term_capital_gains += exit['pnl']
-                        else:
-                            short_term_capital_gains += exit['pnl']
-
+            for taxable_event in agent['taxable_events']:
+                if taxable_event['pnl'] > 0:
+                    if string_to_time(taxable_event['exit_date']) - string_to_time(taxable_event['enter_date']) >= timedelta(days=365):
+                        long_term_capital_gains += taxable_event['pnl']
+                    else:
+                        short_term_capital_gains += taxable_event['pnl']
             long_term_tax = await self.taxes.calculate_tax(long_term_capital_gains, 'long_term', debug=False)
             short_term_tax = await self.taxes.calculate_tax(short_term_capital_gains, 'ordinary', debug=False)
             self.taxes_last_collected['amount'] += long_term_tax['amount'] + short_term_tax['amount']
