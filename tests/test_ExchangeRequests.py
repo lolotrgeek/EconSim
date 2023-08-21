@@ -16,20 +16,20 @@ class CreateAssetTest(unittest.IsolatedAsyncioTestCase):
         self.requests = Requests(self.mock_requester)
 
     async def test_create_asset(self):
-        response = await self.requests.make_request('create_asset', {'ticker': "AAPL", "asset_type":'stock', 'qty': 1000, 'seed_price': 50000, 'seed_bid': 0.99, 'seed_ask': 1.01}, self.mock_requester)
-        book = self.mock_requester.responder.exchange.books['AAPL'].to_dict()
+        response = await self.requests.make_request('create_asset', {'ticker': "TSLA", "asset_type":'stock', 'qty': 1000, 'seed_price': 50000, 'seed_bid': 0.99, 'seed_ask': 1.01}, self.mock_requester)
+        book = self.mock_requester.responder.exchange.books['TSLA'].to_dict()
         self.assertEqual(type(response), dict)
         self.assertEqual(response['type'], "stock")
-        self.assertEqual(book['bids'][0]['creator'], 'init_seed_AAPL')
+        self.assertEqual(book['bids'][0]['creator'], 'init_seed_TSLA')
         self.assertEqual(type(book['bids'][0]['id']), str)
         self.assertEqual(book['bids'][0]['price'], 49500)
         self.assertEqual(book['bids'][0]['qty'], 1)
-        self.assertEqual(book['bids'][0]['ticker'], 'AAPL')
-        self.assertEqual(book['asks'][0]['creator'], 'init_seed_AAPL')
+        self.assertEqual(book['bids'][0]['ticker'], 'TSLA')
+        self.assertEqual(book['asks'][0]['creator'], 'init_seed_TSLA')
         self.assertEqual(type(book['asks'][0]['id']), str)
         self.assertEqual(book['asks'][0]['price'], 50500)
         self.assertEqual(book['asks'][0]['qty'], 1000)
-        self.assertEqual(book['asks'][0]['ticker'], 'AAPL')
+        self.assertEqual(book['asks'][0]['ticker'], 'TSLA')
 
 class GetOrderBookTest(unittest.IsolatedAsyncioTestCase):
     async def asyncSetUp(self):
@@ -272,7 +272,17 @@ class GetAgentTest(unittest.IsolatedAsyncioTestCase):
 
     async def test_get_agent(self):
         response = await self.requests.make_request('get_agent', {'name': self.mock_requester.responder.agent}, self.mock_requester)
-        self.assertDictEqual(response, {'name': self.mock_requester.responder.agent, 'cash': 100000,'_transactions': [], 'positions':[], 'assets': {}})
+        self.assertEqual(response['name'], self.mock_requester.responder.agent)
+        self.assertEqual(response['cash'], 100000)
+        self.assertEqual(response['_transactions'], [])
+        self.assertEqual(len(response['positions']), 1)
+        self.assertEqual(response['positions'][0]['ticker'], "CASH")
+        self.assertEqual(response['positions'][0]['qty'], 100000)
+        self.assertEqual(response['positions'][0]['enters'], [])
+        self.assertEqual(response['positions'][0]['exits'], [])
+        self.assertEqual(response['positions'][0]['dt'], '2023-01-01 00:00:00')
+        self.assertEqual(response['assets'], {})
+        self.assertEqual(response['_transactions'], [])
 
 class GetAgentsTest(unittest.IsolatedAsyncioTestCase):
     async def asyncSetUp(self):
@@ -336,20 +346,20 @@ class GetAgentsPositionsTest(unittest.IsolatedAsyncioTestCase):
 
     async def test_get_agents_positions(self):
         result = await self.requests.make_request('get_agents_positions', {'ticker': None}, self.mock_requester)
-        self.assertEqual(len(result[0]['positions']), 1)
+        print(result)
+        self.assertEqual(len(result[0]['positions']), 2)
         self.assertEqual(result[0]['agent'], 'init_seed_AAPL')
-        self.assertEqual(result[0]['positions'][0]['ticker'], 'AAPL')
-        self.assertEqual(result[0]['positions'][0]['qty'], 1000)
-        self.assertEqual(result[0]['positions'][0]['dt'], '2023-01-01 00:00:00')
-        self.assertEqual(result[0]['positions'][0]['enters'][0]['cash_flow'], -150000)
-        self.assertEqual(result[0]['positions'][0]['enters'][0]['ticker'], 'AAPL')
-        self.assertEqual(result[0]['positions'][0]['enters'][0]['qty'], 1000)
-        self.assertEqual(result[0]['positions'][0]['enters'][0]['dt'], '2023-01-01 00:00:00')
-        self.assertEqual(result[0]['positions'][0]['enters'][0]['type'], 'buy')
-        self.assertEqual(result[0]['agent'], 'init_seed_AAPL')
-        self.assertEqual(result[0]['positions'][0]['ticker'], 'AAPL')
-        self.assertEqual(result[0]['positions'][0]['qty'], 1000)
-        self.assertEqual(result[0]['positions'][0]['dt'], '2023-01-01 00:00:00')
+        self.assertEqual(result[0]['positions'][1]['ticker'], 'AAPL')
+        self.assertEqual(result[0]['positions'][1]['qty'], 0)
+        self.assertEqual(result[0]['positions'][1]['dt'], '2023-01-01 00:00:00')
+        self.assertEqual(result[0]['positions'][1]['enters'][0]['cash_flow'], -150000)
+        self.assertEqual(result[0]['positions'][1]['enters'][0]['ticker'], 'AAPL')
+        self.assertEqual(result[0]['positions'][1]['enters'][0]['initial_qty'], 1000)
+        self.assertEqual(result[0]['positions'][1]['enters'][0]['qty'], 0)
+        self.assertEqual(result[0]['positions'][1]['enters'][0]['dt'], '2023-01-01 00:00:00')
+        self.assertEqual(result[0]['positions'][1]['enters'][0]['type'], 'buy')
+        self.assertEqual(result[0]['positions'][1]['exits'][0]['qty'], 1000)
+        self.assertEqual(result[0]['positions'][1]['dt'], '2023-01-01 00:00:00')
 
 class GetAgentSimpleTest(unittest.IsolatedAsyncioTestCase):
     async def asyncSetUp(self) -> None:
@@ -371,10 +381,14 @@ class GetPositionsTest(unittest.IsolatedAsyncioTestCase):
     async def test_get_positions(self):
         result = await self.requests.make_request('get_positions', {'agent': self.mock_requester.responder.agent, 'page_size': 10, 'page': 1}, self.mock_requester)
         self.assertEqual(result['agent'], self.mock_requester.responder.agent)
-        self.assertEqual(result['positions'] , [])
-        self.assertEqual(result['total_positions'] , 0)
+        self.assertEqual(result['positions'][0]['dt'], '2023-01-01 00:00:00')
+        self.assertEqual(result['positions'][0]['ticker'], 'CASH')
+        self.assertEqual(result['positions'][0]['qty'], 100000)
+        self.assertEqual(result['positions'][0]['enters'], [])
+        self.assertEqual(result['positions'][0]['exits'], [])
+        self.assertEqual(result['total_positions'] , 1)
         self.assertEqual(result['page'], 1)
-        self.assertEqual(result['total_pages'], 0)
+        self.assertEqual(result['total_pages'], 1)
         self.assertEqual(result['next_page'], None)
         self.assertEqual(result['page_size'], 10)
 
