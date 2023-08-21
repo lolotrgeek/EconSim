@@ -24,6 +24,12 @@ app.get('/api/v1/get_last_collected_taxes', async (req, res) => {
     res.json(get_last_collected_taxes_pulls.latest_result)
 })
 
+const get_taxes_collected_pulls = new Puller('5580')
+app.get('/api/v1/get_taxes_collected', async (req, res) => {
+    await get_taxes_collected_pulls.pull('get_taxes_collected')
+    res.json(get_taxes_collected_pulls.latest_result)
+})
+
 app.listen(5001, () => {
     console.log('Server started on http://localhost:5001')
 })

@@ -36,6 +36,7 @@ async def run_government(government_channel=5580, exchange_channel = 5570, time_
                 "get_cash": dumps(government.cash),
                 "get_date": dumps(government.current_date),
                 "get_last_collected_taxes": dumps(government.taxes_last_collected),
+                "get_taxes_collected": dumps(government.taxes_collected),
             }
             await pusher.push(msg)
 
