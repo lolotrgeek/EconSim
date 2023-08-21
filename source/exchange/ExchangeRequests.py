@@ -95,5 +95,8 @@ class ExchangeRequests(Requests):
     async def get_positions(self, agent, page_size=10, page=1):
         return await self.make_request('get_positions', {'agent': agent, 'page_size': page_size, "page": page}, self.requester)
     
+    async def get_taxable_events(self):
+        return await self.make_request('get_taxable_events',{}, self.requester)
+    
     async def get_outstanding_shares(self, ticker):
         return await self.make_request('get_outstanding_shares', {'ticker': ticker}, self.requester)

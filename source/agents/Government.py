@@ -10,25 +10,32 @@ class Government(Agent):
     def __init__(self, initial_balance=10000000, requester=None):
         super().__init__("Government", initial_balance, requester=requester)
         self.current_date = datetime(1700,1,1)
-        self.taxes_last_collected = {"date": datetime(1700,1,1), "amount": 0}
+        self.taxes_last_collected = {"date": self.current_date, "amount": 0}
+        self.taxes_collected = []
         self.taxes = Tax()
 
     async def collect_taxes(self) -> None:
         self.taxes_last_collected['amount'] = 0
-        agents = await self.requests.get_agents()
-        for agent in agents:
+        taxable_events = await self.requests.get_taxable_events()
+        for event in taxable_events:
             long_term_capital_gains = 0
             short_term_capital_gains = 0
-            for taxable_event in agent['taxable_events']:
+            for taxable_event in event['taxable_events']:
+                if string_to_time(taxable_event['exit_date']).year != self.current_date.year:
+                    continue
                 if taxable_event['pnl'] > 0:
                     if string_to_time(taxable_event['exit_date']) - string_to_time(taxable_event['enter_date']) >= timedelta(days=365):
                         long_term_capital_gains += taxable_event['pnl']
                     else:
                         short_term_capital_gains += taxable_event['pnl']
-            long_term_tax = await self.taxes.calculate_tax(long_term_capital_gains, 'long_term', debug=False)
             short_term_tax = await self.taxes.calculate_tax(short_term_capital_gains, 'ordinary', debug=False)
-            self.taxes_last_collected['amount'] += long_term_tax['amount'] + short_term_tax['amount']
-            await self.requests.remove_cash(agent['name'], long_term_tax['amount'] + short_term_tax['amount'], 'taxes')
+            long_term_tax = await self.taxes.calculate_tax(long_term_capital_gains, 'long_term', debug=False)
+            local_tax = await self.taxes.calculate_tax(long_term_capital_gains + short_term_capital_gains, 'state', debug=False)
+            self.taxes_last_collected['amount'] += long_term_tax['amount'] + short_term_tax['amount'] + local_tax['amount']
+            tax_record = {"date": self.current_date, "agent": event['agent'], "long_term": long_term_tax['amount'], "short_term": short_term_tax['amount'], "local": local_tax['amount']}
+            self.taxes_collected.append(tax_record)
+            await self.requests.remove_cash(event['agent'], long_term_tax['amount'] + short_term_tax['amount'], 'taxes')
+            
 
     async def set_reserve_requirement(self, reserve_requirement) -> None:
         """Sets requirement for how much money the banks must keep in reserve.

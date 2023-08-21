@@ -44,8 +44,8 @@ class Exchange():
             return {"error" :f'asset {ticker} already exists'}
         self.assets[ticker] = {'type':asset_type}
         self.books[ticker] = OrderBook(ticker)
-        cash_position =  {"id":self.base_currency_id,"ticker": "CASH", "price": 1,"qty": market_qty * seed_price, "dt": self.datetime, "enters":[], "exits": []}
-        self.agents.append({'name':'init_seed_'+ticker,'cash':market_qty * seed_price,'_transactions':[], 'positions': [cash_position],  'assets': {ticker: market_qty}})
+        cash_position =  {"id":self.base_currency_id,"ticker": "CASH", "price": 1,"qty": market_qty * seed_price, "dt": self.datetime, "enters":[], "exits": [], }
+        self.agents.append({'name':'init_seed_'+ticker,'cash':market_qty * seed_price,'_transactions':[], "taxable_events": [], 'positions': [cash_position],  'assets': {ticker: market_qty}})
         await self._process_trade(ticker, market_qty, seed_price, 'init_seed_'+ticker, 'init_seed_'+ticker, position_id='init_seed_'+ticker)
         await self.limit_buy(ticker, seed_price * seed_bid, 1, 'init_seed_'+ticker)
         await self.limit_sell(ticker, seed_price * seed_ask, market_qty, 'init_seed_'+ticker)
@@ -138,6 +138,13 @@ class Exchange():
         return format_dataframe_rows_to_dict(trades)
     
     async def get_price_bars(self, ticker, limit=20, bar_size='1D') -> list:
+        ''' returns a list of price bars for a given asset
+        Args:
+            ticker (str): the ticker of the asset
+            limit (int): the number of bars to return
+            bar_size (str): the size of the bars to return. default is 1 day. `Year = Y`, `Week = W`, `Day = D`, `Hour = H`, `Minute = Min`, `Second = S`
+        
+        '''
         #TODO: not resampling correctly
         trades = await self.trades
         trades = trades[trades['ticker']== ticker]
@@ -425,7 +432,7 @@ class Exchange():
                 for enter in enters:
                     normalised_qty = sell['qty'] * -1
                     exit = {
-                        'id': UUID(),
+                        'id': str(UUID()),
                         'agent': agent['name'],
                         'cash_flow': sell['cash_flow'],
                         'ticker': sell['ticker'],
@@ -633,7 +640,24 @@ class Exchange():
             'positions': paginated_positions,
             'next_page': next_page
         }
-    
+
+    async def get_taxable_events(self, agent=None) -> list:
+        if agent is None:
+            taxable_events = []
+            for agent in self.agents:
+                if "init_seed" in agent['name']:
+                    continue
+                if len(agent['taxable_events']) > 0:
+                    taxable_events.append( {"agent": agent['name'], "taxable_events": agent['taxable_events']})
+            return taxable_events
+        elif type(agent) == str:
+            agent_info = await self.get_agent(agent)
+            if "error" in agent_info:
+                return agent_info
+            return [{"agent": agent, "taxable_events": agent_info['taxable_events']}]
+        else:
+            return {'error': 'agent(s) or taxable events not found'}
+
     async def get_tickers(self) -> list:
         """
         Returns a list of tickers

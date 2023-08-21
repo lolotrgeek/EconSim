@@ -110,6 +110,31 @@ class GetPriceBarsTestCase(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(len(price_bars), 1)
         self.assertEqual(price_bars[0], {'open': 150, 'high': 150, 'low': 150, 'close': 150, 'volume': 1000, 'dt': '01/01/2023, 00:00:00'})
 
+    async def test_get_minute_price_bars(self):
+        price_bars = await self.exchange.get_price_bars("AAPL", limit=10, bar_size="1Min")
+        self.assertEqual(len(price_bars), 1)
+        self.assertEqual(price_bars[0], {'open': 150, 'high': 150, 'low': 150, 'close': 150, 'volume': 1000, 'dt': '01/01/2023, 00:00:00'})     
+
+    async def test_get_5minute_price_bars(self):
+        price_bars = await self.exchange.get_price_bars("AAPL", limit=10, bar_size="5Min")
+        self.assertEqual(len(price_bars), 1)
+        self.assertEqual(price_bars[0], {'open': 150, 'high': 150, 'low': 150, 'close': 150, 'volume': 1000, 'dt': '01/01/2023, 00:00:00'})
+
+    async def test_get_week_price_bars(self):
+        price_bars = await self.exchange.get_price_bars("AAPL", limit=10, bar_size="1W")
+        self.assertEqual(len(price_bars), 1)
+        self.assertEqual(price_bars[0], {'open': 150, 'high': 150, 'low': 150, 'close': 150, 'volume': 1000, 'dt': '01/01/2023, 00:00:00'}) 
+
+    async def test_get_month_price_bars(self):
+        price_bars = await self.exchange.get_price_bars("AAPL", limit=10, bar_size="1M")
+        self.assertEqual(len(price_bars), 1)
+        self.assertEqual(price_bars[0], {'open': 150, 'high': 150, 'low': 150, 'close': 150, 'volume': 1000, 'dt': '01/31/2023, 00:00:00'})
+
+    async def test_get_year_price_bars(self):
+        price_bars = await self.exchange.get_price_bars("AAPL", limit=10, bar_size="1Y")
+        self.assertEqual(len(price_bars), 1)
+        self.assertEqual(price_bars[0], {'open': 150, 'high': 150, 'low': 150, 'close': 150, 'volume': 1000, 'dt': '12/31/2023, 00:00:00'})                                               
+
 class GetBestAskTestCase(unittest.IsolatedAsyncioTestCase):
     async def asyncSetUp(self) -> None:
         self.exchange = Exchange(datetime=datetime(2023, 1, 1))
@@ -519,6 +544,7 @@ class GetAgentsTest(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(result[0]['positions'][0]['qty'], 10000)
         self.assertEqual(result[0]['positions'][0]['ticker'], 'CASH')
         self.assertEqual(result[0]['assets'], {})
+        self.assertEqual(result[0]['taxable_events'], [])
 
 class HasAssetTest(unittest.IsolatedAsyncioTestCase):
     async def asyncSetUp(self) -> None:
@@ -710,6 +736,38 @@ class getPositionsTest(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(result['positions'][1]['ticker'], 'AAPL')
         self.assertEqual(result['positions'][1]['qty'], 2)
         self.assertEqual(result['positions'][1]['dt'], datetime(2023, 1, 1, 0, 0))
+
+class getTaxableEventsTest(unittest.IsolatedAsyncioTestCase):
+    async def asyncSetUp(self) -> None:
+        self.exchange = Exchange(datetime=datetime(2023, 1, 1))
+        self.agent = (await self.exchange.register_agent("agent23", initial_cash=10000))['registered_agent']
+        self.agent_high_buyer = (await self.exchange.register_agent("agent_high_buyer", initial_cash=10000))['registered_agent']
+        await self.exchange.create_asset("AAPL", market_qty=2, seed_price=150, seed_bid=0.99, seed_ask=1.01)
+
+    async def test_get_taxable_events(self):
+        await self.exchange.market_buy("AAPL", qty=2, buyer=self.agent, fee=0)
+        await self.exchange.limit_buy("AAPL", price=300, qty=2, creator=self.agent_high_buyer, fee=0)
+        await self.exchange.market_sell("AAPL", qty=2, seller=self.agent, fee=0)
+        result = await self.exchange.get_taxable_events(self.agent)
+        self.assertEqual(result[0]['agent'], self.agent)
+        self.assertEqual(len(result[0]['taxable_events']), 1)
+        self.assertEqual(result[0]['taxable_events'][0]['enter_date'], datetime(2023, 1, 1, 0, 0))
+        self.assertEqual(result[0]['taxable_events'][0]['exit_date'], datetime(2023, 1, 1, 0, 0))
+        self.assertEqual(result[0]['taxable_events'][0]['pnl'], 297.0)
+        self.assertEqual(result[0]['taxable_events'][0]['type'], 'capital_gains')
+
+    async def test_get_taxable_events_all(self):
+        await self.exchange.market_buy("AAPL", qty=2, buyer=self.agent, fee=0)
+        await self.exchange.limit_buy("AAPL", price=300, qty=2, creator=self.agent_high_buyer, fee=0)
+        await self.exchange.market_sell("AAPL", qty=2, seller=self.agent, fee=0)
+        result = await self.exchange.get_taxable_events()
+        self.assertIsInstance(result, list)
+        self.assertEqual(result[0]['agent'], self.agent)
+        self.assertEqual(len(result), 1)
+        self.assertEqual(result[0]['taxable_events'][0]['enter_date'], datetime(2023, 1, 1, 0, 0))
+        self.assertEqual(result[0]['taxable_events'][0]['exit_date'], datetime(2023, 1, 1, 0, 0))
+        self.assertEqual(result[0]['taxable_events'][0]['pnl'], 297.0)
+        self.assertEqual(result[0]['taxable_events'][0]['type'], 'capital_gains')        
 
 class addCashTest(unittest.IsolatedAsyncioTestCase):
     async def asyncSetUp(self) -> None:

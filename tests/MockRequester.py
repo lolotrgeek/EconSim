@@ -33,7 +33,6 @@ class MockResponder():
 
 
     async def init(self):
-        
         await self.exchange.create_asset("AAPL", seed_price=150, seed_bid=0.99, seed_ask=1.01)
         self.agent = (await self.exchange.register_agent("buyer1", 100000))['registered_agent']
         self.mock_order = await self.exchange.limit_buy("AAPL", price=149, qty=1, creator=self.agent)
@@ -84,6 +83,6 @@ class MockResponder():
         elif msg['topic'] == 'get_agents_simple': return dumps(await self.exchange.get_agents_simple())
         elif msg['topic'] == 'get_positions': return dumps(await self.exchange.get_positions(msg['agent'], msg['page_size'], msg['page']))
         elif msg['topic'] == 'get_outstanding_shares': return dumps(await self.exchange.get_outstanding_shares(msg['ticker']))
-
+        elif msg['topic'] == 'get_taxable_events': return dumps(await self.exchange.get_taxable_events())
         #TODO: exchange topic to get general exchange data
         else: return f'unknown topic {msg["topic"]}'

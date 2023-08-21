@@ -6,60 +6,38 @@ parent_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 sys.path.append(parent_dir)
 from unittest.mock import MagicMock
 from source.agents.Government import Government
+from source.exchange.ExchangeRequests import ExchangeRequests
+from source.company.PublicCompanyRequests import PublicCompanyRequests
+from .MockRequester import MockRequester
 
 class AsyncMock(MagicMock):
     async def __call__(self, *args, **kwargs):
         return super(AsyncMock, self).__call__(*args, **kwargs)
 
-class TestCollectTaxes(unittest.TestCase):
-    def setUp(self):
-        self.requests = AsyncMock()
+class TestCollectTaxes(unittest.IsolatedAsyncioTestCase):
+    async def asyncSetUp(self):
+        self.mock_requester = MockRequester()
+        self.requests = (ExchangeRequests(self.mock_requester))
         self.govnerment = Government(requester = self.requests)
+        self.govnerment.current_date = self.mock_requester.responder.time
+        await self.mock_requester.responder.init()
+        self.mock_requester.responder.exchange.agents[1]['taxable_events'] = [
+            {'exit_date': '2023-01-01 00:00:00', 'enter_date': '2023-01-01 00:00:00', 'pnl': 500},  # Short-term gain
+            {'exit_date': '2023-01-01 00:00:00', 'enter_date': '2021-01-01 00:00:00', 'pnl': 85000},  # Long-term gain
+            {'exit_date': '2023-01-01 00:00:00', 'enter_date': '2023-01-01 00:00:00', 'pnl': -200},   # Loss (ignored)
+            {'exit_date': '2022-01-01 00:00:00', 'enter_date': '2022-01-01 00:00:00', 'pnl': 300} #  wrong year (ignored)
+        ] 
 
-    def test_collect_taxes_long_term(self):
-        # Prepare test data
-        agents = [
-            {
-                'name': 'Agent1',
-                'taxable_events':  [
-                    {'exit_date': '2022-06-01 00:00:00', 'enter_date': '2022-01-01 00:00:00', 'pnl': 500},  # Short-term gain
-                    {'exit_date': '2023-06-01 00:00:00', 'enter_date': '2021-01-01 00:00:00', 'pnl': 1000},  # Long-term gain
-                    {'exit_date': '2023-06-02 00:00:00', 'enter_date': '2021-01-02 00:00:00', 'pnl': -200}   # Loss (ignored)
-                ]
-            }
-        ]
+    async def test_collect_taxes(self):
+        taxable_events = await self.mock_requester.responder.exchange.get_taxable_events()
+        await self.govnerment.collect_taxes()
+        print(self.govnerment.taxes_collected[0])
 
-        # Mock the requests.get_agents() method to return the test data
-        self.requests.get_agents.return_value = agents
+        self.assertEqual(self.govnerment.taxes_collected[0]['long_term'], 247.5)
+        self.assertEqual(self.govnerment.taxes_collected[0]['short_term'], 50)
+        self.assertEqual(self.govnerment.taxes_collected[0]['local'], 4346.155)        
+        self.assertEqual(self.govnerment.taxes_last_collected['amount'], 4643.655)
 
-        asyncio.run(self.govnerment.collect_taxes())
-
-        # Assertions
-        self.requests.get_agents.assert_called_once()
-        self.requests.remove_cash.assert_called_once_with('Agent1', 50, 'taxes')
-
-    def test_collect_taxes_short_term(self):
-        # Prepare test data
-        agents = [
-            {
-                'name': 'Agent2',
-                'taxable_events': [
-                    {'exit_date': '2022-06-01 00:00:00', 'enter_date': '2022-01-01 00:00:00', 'pnl': 500},  # Short-term gain
-                    {'exit_date': '2023-06-01 00:00:00', 'enter_date': '2023-01-01 00:00:00', 'pnl': 1000},  # Long-term gain (ignored)
-                    {'exit_date': '2023-06-02 00:00:00', 'enter_date': '2023-01-02 00:00:00', 'pnl': -200}   # Loss (ignored)
-                ]
-            }
-        ]
-
-        # Mock the requests.get_agents() method to return the test data
-        self.requests.get_agents.return_value = agents
-
-        # Run the method
-        asyncio.run(self.govnerment.collect_taxes())
-
-        # Assertions
-        self.requests.get_agents.assert_called_once()
-        self.requests.remove_cash.assert_called_once_with('Agent2', 150, 'taxes')
 
 if __name__ == '__main__':
-    unittest.main()
+    asyncio.run(unittest.main())
