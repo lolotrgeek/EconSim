@@ -8,8 +8,8 @@ files = [
     parent_dir+'\\EconSim\\run_exchange.py',
     parent_dir+'\\EconSim\\run_companies.py',
     parent_dir+'\\EconSim\\run_government.py',
-    parent_dir+'\\EconSim\\run_traders.py',
     parent_dir+'\\EconSim\\run_clock.py',
+    parent_dir+'\\EconSim\\run_traders.py',
 ]
 api = [
     parent_dir+'\\EconSim\\source\\api\exchange_api.js',

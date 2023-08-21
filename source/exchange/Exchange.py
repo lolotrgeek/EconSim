@@ -18,7 +18,7 @@ from uuid import uuid4 as UUID
 class Exchange():
     def __init__(self, datetime= None):
         self.agents = []
-        self.assets = {'CASH': {'type': 'fiat'}}
+        self.assets = {}
         self.books = {}
         self.trade_log: List[Trade] = [] #TODO: this is going to get to big to hold in memory, need a DB
         self.datetime = datetime
