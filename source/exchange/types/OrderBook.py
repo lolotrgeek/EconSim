@@ -21,20 +21,6 @@ class OrderBook():
     def __str__(self) -> str:
         return f'<OrderBook: {self.ticker}>'
     
-
-
-    @property
-    def df(self) -> dict:
-        """_summary_
-
-        Returns:
-            dict: dictionary with two dataframes corresponding to the bids and asks of the OrderBook
-        """
-        return {
-            'bids': pd.DataFrame.from_records([b.to_dict() for b in self.bids]),
-            'asks': pd.DataFrame.from_records([a.to_dict() for a in self.asks])
-        }
-    
     def to_dict(self, limit=20) -> dict:
         return {
             "bids": [b.to_dict() for b in self.bids][:limit], 

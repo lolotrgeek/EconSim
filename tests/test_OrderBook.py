@@ -28,56 +28,6 @@ class OrderBookTests(unittest.TestCase):
         expected_str = "<OrderBook: AAPL>"
         self.assertEqual(str(self.order_book), expected_str)
 
-    def test_order_book_df(self):
-        test_order1 = LimitOrder("AAPL", 150.0, 100, "Creator1", OrderSide.BUY)
-        test_order1.id = "id1"
-        test_order1.dt = "dt1"
-        test_order2 = LimitOrder("AAPL", 140.0, 200, "Creator2", OrderSide.BUY)
-        test_order2.id = "id2"
-        test_order2.dt = "dt2"
-        test_order3 = LimitOrder("AAPL", 160.0, 50, "Creator3", OrderSide.SELL)
-        test_order3.id = "id3"
-        test_order3.dt = "dt3"
-        test_order4 = LimitOrder("AAPL", 170.0, 75, "Creator4", OrderSide.SELL)
-        test_order4.id = "id4"
-        test_order4.dt = "dt4"
-        self.order_book.bids = [
-            test_order1,
-            test_order2
-        ]
-        self.order_book.asks = [
-            test_order3,
-            test_order4
-        ]
-        expected_df = {
-            'bids': pd.DataFrame({
-                'id': ['id1', 'id2'],
-                'ticker': ['AAPL', 'AAPL'],
-                'price': [150.0, 140.0],
-                'fee' : [0, 0],
-                'qty': [100, 200],
-                'creator': ['Creator1', 'Creator2'],
-                'dt': ['dt1', 'dt2'],
-                'type': ['limit_buy', 'limit_buy'],
-                'accounting': ['FIFO', 'FIFO'],
-                'position_id': [None, None]
-            }),
-            'asks': pd.DataFrame({
-                'id': ['id3', 'id4'],
-                'ticker': ['AAPL', 'AAPL'],
-                'price': [160.0, 170.0],
-                'fee' : [0, 0],
-                'qty': [50, 75],
-                'creator': ['Creator3', 'Creator4'],
-                'dt': ['dt3', 'dt4'],
-                'type': ['limit_sell', 'limit_sell'],
-                'accounting': ['FIFO', 'FIFO'],
-                'position_id': [None, None]
-            })
-        }
-        self.assertDictEqual(self.order_book.df['bids'].to_dict(), expected_df['bids'].to_dict())
-        self.assertDictEqual(self.order_book.df['asks'].to_dict(), expected_df['asks'].to_dict())
-
     def test_order_book_to_dict(self):
         self.order_book.bids = [
             LimitOrder("AAPL",  150.0, 100, "Creator1", OrderSide.BUY),
