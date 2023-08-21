@@ -4,7 +4,7 @@ sys.path.append(parent_dir)
 from datetime import datetime, timedelta
 from source.exchange.ExchangeRequests import ExchangeRequests
 from source.company.PublicCompany import PublicCompany
-from MockRequester import MockRequester
+from .MockRequester import MockRequester
 
 class TestPublicCompany(unittest.IsolatedAsyncioTestCase):
     async def asyncSetUp(self):
