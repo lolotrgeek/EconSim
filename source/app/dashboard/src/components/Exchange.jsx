@@ -17,16 +17,21 @@ const Exchange = () => {
     const [tickers, setTickers] = useState([])
     const [ticker, setTicker] = useState('')
     const [orderBook, setOrderBook] = useState({ bids: [], asks: [] })
+    const [candles, setCandles] = useState([{open: 0, high: 0, low: 0, close: 0, dt: 0}])
 
     useEffect(() => {
-        const fetchOrderBook = async () => {
+        const fetchTickerData = async () => {
             if (!ticker || ticker == '') return
             const orderBookResponse = await fetch(`${base_url}/api/v1/get_order_book?ticker=${ticker == '' ? tickers[0] : ticker}`)
             const orderBookData = await orderBookResponse.json()
             setOrderBook(JSON.parse(orderBookData))
 
+            const candlesResponse = await fetch(`${base_url}/api/v1/candles?ticker=${ticker == '' ? tickers[0] : ticker}`)
+            const candlesData = await candlesResponse.json()
+            setCandles(JSON.parse(candlesData))
+
         }
-        const interval = setInterval(fetchOrderBook, 500)
+        const interval = setInterval(fetchTickerData, 500)
 
         return () => {
             clearInterval(interval)
@@ -47,6 +52,7 @@ const Exchange = () => {
             const tickersData = await tickersResponse.json()
             const new_tickers = JSON.parse(tickersData)
             setTickers( new_tickers)
+
         }
         const interval = setInterval(fetchData, 500)
 
@@ -72,14 +78,18 @@ const Exchange = () => {
                         }
                     </div>
                 </div>
-                <div className="exchange-content">
-                    {useLocation().pathname === '/' ?
-                    <div>Press an agent to view Positions here.</div> : 
-                    <AgentPositions />
-                    }
-                    
-                    
+                <div className='exchange-content'> 
+                    <div className='exchange-chart'>
+                        <Chart candles={candles} />
+                    </div>
+                    <div className="exchange-positions">
+                        {useLocation().pathname === '/' ?
+                        <div>Press an agent to view Positions here.</div> : 
+                        <AgentPositions />
+                        }
+                    </div>
                 </div>
+
                 <Tickers tickers={tickers} selectedTicker={ticker} onTickerSelect={setTicker} />
                 
                 {orderBook.bids !== undefined && orderBook.asks !== undefined ?

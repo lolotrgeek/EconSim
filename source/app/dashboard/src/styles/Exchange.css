@@ -1,12 +1,30 @@
 .exchange-content {
-  padding: 0 20px;
   width: 80%;
+  display: flex;
+  flex-direction: column;
+  align-items: left;
+  justify-content: left;
+}
+
+.exchange-chart {
+  padding: 0 20px;
+  width: 100%;
   height: 600px;
   display: flex;
-  align-items: left;
-  flex-direction: column;
+  align-items: center;
+  justify-content: center;
 }
+
+.exchange-positions {
+  padding: 0 20px;
+  width: 100%;
+  height: 400px;
+  display: flex;
+  align-items: left;
+  flex-direction: row;
+}
+
 .exchange-container {
-    width:100%;
-    display: flex;
+  width: 100%;
+  display: flex;
 }

@@ -1,20 +1,39 @@
 import React, { useState, useEffect } from 'react';
 import ApexCharts from 'react-apexcharts';
 
-const CandlestickChart = () => {
+const theme =  {
+  mode: 'dark'
+}
+
+const CandlestickChart = ({candles}) => {
   const [chartData, setChartData] = useState({
     options: {
       chart: {
         type: 'candlestick',
-        height: 400,
+        height: 600,
+        id: 'candles',
+        toolbar: {
+          autoSelected: 'pan',
+          show: false
+        },
+        zoom: {
+          enabled: false
+        },
+      },
+      plotOptions: {
+        candlestick: {
+          colors: {
+            upward: '#3C90EB',
+            downward: '#DF7D46'
+          }
+        }
       },
       xaxis: {
-        type: 'category',
+        type: 'datetime'
       },
-      yaxis: {
-        tooltip: {
-          enabled: true,
-        },
+      tooltip: {
+        enabled: true,
+        theme: 'dark',
       },
     },
     series: [
@@ -23,44 +42,27 @@ const CandlestickChart = () => {
         data: [],
       },
     ],
+
   });
 
   useEffect(() => {
-    const fetchData = () => {
-      fetch('http://127.0.0.1:5000/api/v1/candles?ticker=XYZ')
-        .then((response) => response.json())
-        .then(data => {
-          // Assuming the API response contains OHLCV data in the format mentioned earlier
-          const ohlcvData = JSON.parse(data)
-          console.log(typeof ohlcvData)
-          setChartData((prevChartData) => ({
-            ...prevChartData,
-            series: [
-              {
-                ...prevChartData.series[0],
-                data: ohlcvData.map((dataPoint) => ({
-                  x: new Date(dataPoint.dt).getTime(),
-                  y: [dataPoint.open, dataPoint.high, dataPoint.low, dataPoint.close],
-                })),
-              },
-            ],
-          }));
-        })
-        .catch((error) => {
-          console.error('Error fetching data:', error);
-        });
-    };
 
-    const fetchDataInterval = setInterval(fetchData, 1000);
-
-    return () => {
-      // Clear the interval when the component is unmounted to prevent memory leaks
-      clearInterval(fetchDataInterval);
-    };
-  }, []);
+        setChartData((prevChartData) => ({
+          ...prevChartData,
+          series: [
+            {
+              ...prevChartData.series[0],
+              data: candles.map((dataPoint) => ({
+                x: new Date(dataPoint.dt).getTime(),
+                y: [dataPoint.open, dataPoint.high, dataPoint.low, dataPoint.close],
+              })),
+            },
+          ],
+        }))
+  }, [candles])
 
   return (
-    <ApexCharts options={chartData.options} series={chartData.series} type="candlestick" height={400} />
+    <ApexCharts options={chartData.options} series={chartData.series} type="candlestick" height={600} width={1000} />
   );
 };
 
