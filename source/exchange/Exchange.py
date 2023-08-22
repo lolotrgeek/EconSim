@@ -163,7 +163,14 @@ class Exchange():
             }
             return key[period]
 
-        interval = interval_key(int(bar_size[0]),bar_size[1])
+        bar_length = int(bar_size[:-1])
+
+        if type(bar_length) is not int:
+            raise ValueError(f'bar_length {bar_length} must be an integer')
+        if bar_length <= 0:
+            raise ValueError('bar_size must be greater than 0')
+
+        interval = interval_key(bar_length, bar_size[-1])
 
         ohlcv_data = []
 
