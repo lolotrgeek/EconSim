@@ -53,7 +53,7 @@ app.get('/api/v1/get_positions', async (req, res) => {
 const get_candles_requests = new Requester('5570')
 app.get('/api/v1/candles', async (req, res) => {
     const ticker = req.query.ticker
-    const interval = req.query.interval || '15Min'
+    const interval = req.query.interval || '15T'
     const limit = parseInt(req.query.limit) || 20
     if (!ticker) {
         res.status(400).json({ message: 'Ticker not found.' })

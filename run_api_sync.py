@@ -63,7 +63,7 @@ def candles(requests = Requester()) -> str:
     limit = request.args.get('limit', type=int)
     ticker = request.args.get('ticker')
     if (interval is None):
-        interval = '15Min'
+        interval = '15T'
     if (limit is None):
         limit = 20
     if (ticker is None or ticker == ""):

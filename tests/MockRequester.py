@@ -60,7 +60,7 @@ class MockResponder():
         elif msg['topic'] == 'market_sell': return await self.exchange.market_sell(msg['ticker'], msg['qty'], msg['seller'], msg['fee'])
         elif msg['topic'] == 'cancel_order': return await self.exchange.cancel_order(msg['order_id'])
         elif msg['topic'] == 'cancel_all_orders': return await self.exchange.cancel_all_orders(msg['agent'], msg['ticker'])
-        elif msg['topic'] == 'candles': return await self.exchange.get_price_bars(ticker=msg['ticker'], bar_size=msg['interval'], limit=msg['limit'])
+        elif msg['topic'] == 'candles': return dumps(await self.exchange.get_price_bars(ticker=msg['ticker'], bar_size=msg['interval'], limit=msg['limit']))
         # elif msg['topic'] == 'mempool': return await self.exchange.mempool(msg['limit'])
         elif msg['topic'] == 'order_book': return dumps( (await self.exchange.get_order_book(msg['ticker'])).to_dict(msg['limit']))
         elif msg['topic'] == 'latest_trade': return dumps(await self.exchange.get_latest_trade(msg['ticker']))

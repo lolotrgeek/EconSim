@@ -14,6 +14,7 @@ from .types.Transaction import Transaction, Exit
 from .types.Position import Position
 from source.utils._utils import format_dataframe_rows_to_dict
 from uuid import uuid4 as UUID
+from datetime import timedelta
 
 class Exchange():
     def __init__(self, datetime= None):
@@ -142,17 +143,67 @@ class Exchange():
         Args:
             ticker (str): the ticker of the asset
             limit (int): the number of bars to return
-            bar_size (str): the size of the bars to return. default is 1 day. `Year = Y`, `Week = W`, `Day = D`, `Hour = H`, `Minute = Min`, `Second = S`
+            bar_size (str): the size of the bars to return. default is 1 day. `Year = Y`, `Month = M`, `Week = W`, `Day = D`, `Hour = H`, `Minute = T`, `Second = S`
         
         '''
-        #TODO: not resampling correctly
-        trades = await self.trades
-        trades = trades[trades['ticker']== ticker]
-        trades.index = pd.to_datetime(trades.index)
-        df = trades.resample(bar_size).agg({'price': 'ohlc', 'qty': 'sum'})
-        df.columns = df.columns.droplevel()
-        df.rename(columns={'qty':'volume'},inplace=True)
-        return format_dataframe_rows_to_dict(df.tail(limit))
+        trades = self.trade_log
+        trades = sorted(trades, key=lambda x: x.dt)
+        start_time = trades[0].dt
+        end_time = trades[-1].dt
+
+        def interval_key (length, period): 
+            key = {
+                'Y': timedelta(days=365 * length),
+                'M': timedelta(days=30 * length),
+                'W': timedelta(days=7 * length),
+                'D': timedelta(days=length),
+                'H': timedelta(hours=length),
+                'T': timedelta(minutes=length),
+                'S': timedelta(seconds=length),
+            }
+            return key[period]
+
+        interval = interval_key(int(bar_size[0]),bar_size[1])
+
+        ohlcv_data = []
+
+        prev_candle = None
+
+        while start_time <= end_time:
+            interval_trades = [trade for trade in trades if start_time <= trade.dt < start_time + interval]
+            
+            if ticker is not None:
+                interval_trades = [trade for trade in interval_trades if trade.ticker == ticker]
+            
+            if interval_trades:
+                open_price = interval_trades[0].price
+                high_price = max(trade.price for trade in interval_trades)
+                low_price = min(trade.price for trade in interval_trades)
+                close_price = interval_trades[-1].price
+                volume = sum(trade.qty for trade in interval_trades)
+
+                ohlcv_entry = {
+                    'dt': start_time,
+                    'open': open_price,
+                    'high': high_price,
+                    'low': low_price,
+                    'close': close_price,
+                    'volume': volume
+                }
+                ohlcv_data.append(ohlcv_entry)
+                prev_candle = ohlcv_entry
+            else:
+                if prev_candle:
+                    prev_candle_copy = prev_candle.copy()
+                    prev_candle_copy['dt'] = start_time
+                    ohlcv_data.append(prev_candle_copy)
+
+            start_time += interval
+            
+            if limit is not None and len(ohlcv_data) >= limit:
+                break
+
+        return ohlcv_data
     
     async def get_best_ask(self, ticker:str) -> LimitOrder:
         """retrieves the current best ask in the orderbook of an asset

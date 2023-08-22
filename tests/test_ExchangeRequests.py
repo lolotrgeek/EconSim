@@ -1,7 +1,6 @@
 import asyncio
 import sys
 import os
-import json
 parent_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 sys.path.append(parent_dir)
 
@@ -192,7 +191,7 @@ class GetPriceBarsTest(unittest.IsolatedAsyncioTestCase):
         self.requests = Requests(self.mock_requester)
 
     async def test_get_price_bars(self):
-        response = await self.requests.make_request('candles', {'ticker': 'AAPL', 'interval': '1h', 'limit': 10}, self.mock_requester)
+        response = await self.requests.make_request('candles', {'ticker': 'AAPL', 'interval': '1H', 'limit': 10}, self.mock_requester)
         candles = response
         self.assertEqual(type(candles), list)
         self.assertEqual(len(candles), 1)
@@ -201,7 +200,7 @@ class GetPriceBarsTest(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(candles[0]['low'], 150)
         self.assertEqual(candles[0]['close'], 150)
         self.assertEqual(candles[0]['volume'], 1000)
-        self.assertEqual(candles[0]['dt'], '01/01/2023, 00:00:00')
+        self.assertEqual(candles[0]['dt'], '2023-01-01 00:00:00')
 
 class GetCashTest(unittest.IsolatedAsyncioTestCase):
     async def asyncSetUp(self):
