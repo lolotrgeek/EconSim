@@ -59,12 +59,12 @@ class Requester:
         except zmq.ZMQError as e:
             print("[ZMQ Requester Error]", e, "Request:", msg)
             print(traceback.format_exc())
-            return {'error': e}
+            return {'error': repr(e)}
 
         except Exception as e:
             print("[Requester Error]", e, "Request:", msg)
             print(traceback.format_exc())
-            return {'error': e}
+            return {'error': repr(e)}
 
     async def close(self):
         await self.socket.close()
@@ -91,12 +91,12 @@ class Responder:
         except zmq.ZMQError as e:
             print("[ZMQ Response Error]", e, "Request:", msg)
             print(traceback.format_exc())
-            return json.dumps({'error': e})
+            return json.dumps({'error': repr(e)})
         except Exception as e:
             print("[Response Error]", e, "Request:", msg)
             print(traceback.format_exc())
-            await self.socket.send_json({'error': e})
-            return json.dumps({'error': e})
+            await self.socket.send_json({'error': repr(e)})
+            return json.dumps({'error': repr(e)})
         
     async def lazy_respond(self, callback=lambda msg: msg) -> str:
         try:
@@ -109,12 +109,12 @@ class Responder:
         except zmq.ZMQError as e:
             print("[ZMQ Response Error]", e)
             print(traceback.format_exc())
-            return json.dumps({'error': e})
+            return json.dumps({'error': repr(e)})
         except Exception as e:
             print("[Response Error]", e)
             print(traceback.format_exc())
-            await self.socket.send_json({'error': e})
-            return json.dumps({'error': e})
+            await self.socket.send_json({'error': repr(e)})
+            return json.dumps({'error': repr(e)})
 
 class Broker:
     def __init__(self, request_side='5556', response_side='5557'):
@@ -153,7 +153,7 @@ class Pusher():
         try:
             await self.zmq_socket.send_json(message, zmq.NOBLOCK)
         except Exception as e:
-            return {'error': e}
+            return {'error': repr(e)}
 
 class Puller():
     def __init__(self, channel='5556', latest_only=True):
