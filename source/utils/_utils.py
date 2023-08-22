@@ -46,3 +46,18 @@ def format_dataframe_rows_to_dict(df) -> list:
 def string_to_time(string) -> datetime:
     if(type(string) is datetime): return string
     return datetime.strptime(string, '%Y-%m-%d %H:%M:%S')
+
+def generate_names(num_to_gen=20) -> list:
+    """
+    A function that randomly generates one to five letter names
+    """
+    names = []
+    for i in range(num_to_gen):
+        name = ''
+        for j in range(random.randint(1,5)):
+            name += random.choice(string.ascii_letters)
+        if name not in names:    
+            names.append(name)
+        else:
+            i -= 1
+    return names
