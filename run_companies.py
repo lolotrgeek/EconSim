@@ -7,21 +7,7 @@ import random
 import string
 import traceback
 
-
-def generate_names(num_companies=20) -> list:
-    """
-    A function that randomly generates one to five letter company names
-    """
-    names = []
-    for i in range(num_companies):
-        name = ''
-        for j in range(random.randint(1,5)):
-            name += random.choice(string.ascii_letters)
-        if name not in names:    
-            names.append(name)
-        else:
-            i -= 1
-    return names
+names= ['A', 'frXoX', 'wAt', 'Ayc', 'EXCAb', 'Qw', 'vbcY', 'ZM', 'j', 'nNLga', 'Ln', 'ao', 'k', 'icyJ', 'r', 'qk', 'BeHN', 'if', 'yAnL', 'sw']
 
 def generate_companies(names, requester, time) -> list:
     companies = []
@@ -49,7 +35,7 @@ async def run_companies(time_channel=5114, exchange_channel=5570, company_channe
                 return string_to_time(clock) 
 
         time = get_time()
-        companies = generate_companies(generate_names(num_companies), Requests(requester), time)
+        companies = generate_companies(names, Requests(requester), time)
 
         async def callback(msg):
             if msg['topic'] == 'get_date': return dumps(time)
