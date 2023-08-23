@@ -3,9 +3,9 @@ import os
 parent_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 sys.path.append(parent_dir)
 from datetime import datetime, timedelta
-from .balance_sheet import generate_fake_balance_sheet
-from .income import generate_fake_income_statement
-from .cash_flow import generate_fake_cash_flow
+from .balance_sheet import generate_balance_sheet
+from .income import generate_income_statement
+from .cash_flow import generate_cash_flow
 from source.utils._utils import string_to_time
 
 class PublicCompany:
@@ -51,7 +51,7 @@ class PublicCompany:
         await self.generate_financial_report(self.currentdate, "annual")
         if self.dividends_to_distribute > 0:
             self.ex_dividend_date = self.currentdate + timedelta(weeks=2)
-            self.dividend_payment_date = self.ex_dividend_date + timedelta(weeks=4)        
+            self.dividend_payment_date = self.ex_dividend_date + timedelta(weeks=4)  
 
     async def issue_initial_shares(self, shares, price, ticker='', attempts = 1) -> None:
         if ticker == '': ticker = self.symbol
@@ -85,9 +85,9 @@ class PublicCompany:
 
     async def generate_financial_report(self, date, period) -> None:
         #TODO: use the prior period's financials to generate the current period's financials, integrate lower probabilities for large changes
-        self.balance_sheet = generate_fake_balance_sheet(date, self.symbol, period)
-        self.income_statement = generate_fake_income_statement(date, self.symbol, period)
-        self.cash_flow = generate_fake_cash_flow(self.balance_sheet['retainedEarnings'], date, self.symbol, period)
+        self.balance_sheet = generate_balance_sheet(date, self.symbol, period)
+        self.income_statement = generate_income_statement(date, self.symbol, period)
+        self.cash_flow = generate_cash_flow(self.balance_sheet['retainedEarnings'], date, self.symbol, period)
         self.dividends_to_distribute = self.cash_flow["dividendsPaid"] * -1
     
     async def distribute_dividends(self, eligible_shareholders, dividends_paid) -> None:

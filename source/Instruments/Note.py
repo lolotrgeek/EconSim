@@ -56,7 +56,7 @@ class TreasuryNote(Note):
         """
         self.yield_to_maturity = random.uniform(0.0, 0.05)
 
-    def generate_fake_note_info(self):
+    def generate_note_info(self):
         """Generates a random coupon rate and yield to maturity for the note.
         """
         self.generate_coupon_rate()
@@ -87,7 +87,7 @@ class Bond(Note):
         """
         self.yield_to_maturity = random.uniform(0.0, 0.05)
 
-    def generate_fake_bond_info(self):
+    def generate_bond_info(self):
         """Generates a random coupon rate and yield to maturity for the bond.
         """
         self.generate_coupon_rate()
@@ -112,7 +112,7 @@ class Loan(Note):
         """
         self.interest_rate = random.uniform(0.0, 0.05)
 
-    def generate_fake_loan_info(self):
+    def generate_loan_info(self):
         """Generates a random interest rate for the loan.
         """
         self.generate_interest_rate()

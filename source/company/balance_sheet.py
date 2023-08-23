@@ -1,7 +1,7 @@
 import random
 import json
 
-def generate_fake_balance_sheet(date, symbol, period) -> dict:
+def generate_balance_sheet(date, symbol, period) -> dict:
     balance_sheet = {
         "date": date,
         "symbol": symbol,

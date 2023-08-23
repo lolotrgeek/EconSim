@@ -1,7 +1,7 @@
 import json
 import random
 
-def generate_fake_cash_flow(retained_earnings, date, symbol, period) -> dict:
+def generate_cash_flow(retained_earnings, date, symbol, period) -> dict:
     cash_flow = {
         "date": date,
         "symbol": symbol,

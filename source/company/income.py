@@ -1,7 +1,7 @@
 import random
 import json
 
-def generate_fake_income_statement(date, symbol, period) -> dict:
+def generate_income_statement(date, symbol, period) -> dict:
     income_statement = {
         "date": date,
         "symbol": symbol,
@@ -74,7 +74,5 @@ def generate_fake_income_statement(date, symbol, period) -> dict:
     income_statement["epsdiluted"] = eps_diluted
     income_statement["weightedAverageShsOut"] = weighted_average_shs_out
     income_statement["weightedAverageShsOutDil"] = weighted_average_shs_out_dil
-    income_statement["link"] = "https://www.sec.gov/Archives/edgar/data/320193/000032019323000064/0000320193-23-000064-index.htm"
-    income_statement["finalLink"] = "https://www.sec.gov/Archives/edgar/data/320193/000032019323000064/aapl-20230401.htm"
 
     return income_statement
