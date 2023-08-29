@@ -59,9 +59,12 @@ class PublicCompany:
         if shares_issued == {"error" :f'asset {self.symbol} already exists'}:
             if attempts <= 3:
                 ticker = self.symbol + self.name[:3+attempts]
-                await self.issue_initial_shares(shares, price, ticker, attempts+1)
+                self.symbol = ticker
+                return await self.issue_initial_shares(shares, price, ticker, attempts+1)
             else:
                 raise Exception(f"Failed to issue shares for {self.symbol}")
+        else:
+            self.shares_issued += shares
 
     async def issue_shares(self, shares, price) -> None:
         #TODO: adding shares to an existing asset
