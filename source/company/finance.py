@@ -13,7 +13,7 @@ class Revenue():
         self.deferred_revenue_non_current = self.revenue * random.uniform(0.1, 0.2)
         self.net_receivable = self.revenue * random.uniform(0.1, 0.2)
 
-    def nextRevenue(self, period):
+    def nextRevenue(self):
         payments_received = self.net_receivable * random.uniform(0.01, 0.2)
         self.net_receivable -= payments_received
         next_revenue = self.revenue * random.uniform(0.9, 1.1) 
@@ -41,11 +41,11 @@ class Expenses():
         self.selling_and_marketing_expenses = 0
         self.selling_general_and_administrative_expenses = 0
         self.other_expenses = 0
-        self.totalOtherIncomeExpensesNet = 0
+        self.total_other_income_expenses_net = 0
         self.accounts_payable = 0
         self.accounts_payable_balance = 0
 
-    def nextExpenses(self, capital):
+    def nextExpenses(self):
         next_expenses = self.expenses * random.uniform(0.9, 1.1)
 
         # pay down old payables
@@ -60,7 +60,7 @@ class Expenses():
         self.selling_and_marketing_expenses = next_expenses * random.uniform(0.01, 0.1)
         self.selling_general_and_administrative_expenses = next_expenses * random.uniform(0.01, 0.1)
         self.other_expenses = next_expenses * random.uniform(0.01, 0.1)
-        self.totalOtherIncomeExpensesNet = self.cost_of_revenue - (self.research_and_development_expenses + self.general_and_administrative_expenses + self.selling_and_marketing_expenses + self.selling_general_and_administrative_expenses + self.other_expenses)        
+        self.total_other_income_expenses_net = self.cost_of_revenue - (self.research_and_development_expenses + self.general_and_administrative_expenses + self.selling_and_marketing_expenses + self.selling_general_and_administrative_expenses + self.other_expenses)        
         
         # generate the payables for this period
         self.accounts_payable = self.cost_of_revenue * random.uniform(0.1, 0.2)
@@ -81,7 +81,7 @@ class Debt():
         self.debtRepayment = 0
         self.interestExpense = 0
 
-    def nextDebt(self, revenue, expenses):
+    def nextDebt(self):
         short_term_debt_interest = self.interest_rate * self.short_term_debt
         long_term_debt_interest = self.interest_rate * self.long_term_debt
         self.interestExpense = short_term_debt_interest + long_term_debt_interest
@@ -112,7 +112,7 @@ class Tax():
         self.taxPayables = 0
 
 
-    def nextTax(self, period, income_before_tax):
+    def nextTax(self,income_before_tax):
         # calculate taxes
         self.taxPayables = income_before_tax * self.tax_rate
 
@@ -260,8 +260,9 @@ class Cash():
         self.net_income = revenue - expenses + investments - debt - tax - capital - equity
         self.retained_earnings += self.net_income
         self.dividends_paid = self.retained_earnings * random.uniform(0.01, 0.8)
-        self.cash_and_cash_equivalents = self.net_income - self.dividends_paid
-        self.interestIncome = capital * random.uniform(0.01, 0.1)
+        self.retained_earnings -= self.dividends_paid
+        self.cash_and_cash_equivalents += self.net_income - self.dividends_paid
+        self.interestIncome = self.cash_and_cash_equivalents * random.uniform(0.01, 0.1)
 
 class Financing():
     def __init__(self):
