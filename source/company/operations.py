@@ -170,9 +170,12 @@ class Operations():
 
         self.debt = self.short_term_debt + self.long_term_debt
 
-    def nextTax(self,income_before_tax):
+    def nextTax(self):
+        """
+        depends on income_before_tax
+        """
         # calculate taxes
-        self.taxPayables = income_before_tax * self.tax_rate
+        self.taxPayables = self.income_before_tax * self.tax_rate
 
         # use any pre-paid taxes
         if self.taxAssets > 0:
@@ -188,7 +191,10 @@ class Operations():
         # prepay taxes
         self.taxAssets = self.income_tax_expense * random.uniform(0.0, 0.1)
 
-    def nextCapital(self, cost_of_revenue):
+    def nextCapital(self):
+        """
+        depends on cost of_revenue
+        """
         self.inventory = self.capital * random.uniform(0.1, 0.2)
         self.inventory_balance += self.inventory
 
@@ -201,14 +207,20 @@ class Operations():
         self.depreciation_and_amortization = self.ppe_net * random.uniform(0.01, 0.1)
 
         self.otherWorkingCapital = self.capital * random.uniform(0.1, 0.2)
-        self.capitalLeaseObligations = cost_of_revenue * random.uniform(0.3, 0.5)
+        self.capitalLeaseObligations = self.cost_of_revenue * random.uniform(0.3, 0.5)
 
-    def nextInvestment(self, cash_to_invest):
+    def nextInvestment(self):
+        """
+        depends on cash_and_cash_equivalents
+        """
         # sell off some investments
         if self.investments > 0:
             self.sales_maturities_of_investments = self.investments * random.uniform(0.01, 0.2)
             self.investments -= self.sales_maturities_of_investments
         
+        # use cash to buy more investments
+        cash_to_invest = self.cash_and_cash_equivalents * random.uniform(0.01, 0.2)
+        self.cash_and_cash_equivalents -= cash_to_invest
         next_investments = cash_to_invest
         
         # buy more investments
@@ -240,7 +252,8 @@ class Operations():
 
         self.common_stock_issued = shares_issued 
         self.common_stock_repurchased = shares_repurchased
-        self.common_stock += shares_issued  - shares_repurchased
+        self.common_stock += shares_issued
+        self.common_stock -= shares_repurchased
 
         if self.common_stock < 0:
             self.accumulated_other_comprehensive_income_loss += self.common_stock_issued - self.common_stock_repurchased
@@ -249,10 +262,14 @@ class Operations():
 
         self.other_stockholder_equity = next_equity * random.uniform(0.01, 0.1)
 
-    def nextNonCash(self, revenue, expenses, investments):
-        self.other_current_assets = revenue * random.uniform(0.01, 0.1)
-        self.intangible_assets = expenses * random.uniform(0.01, 0.1)
-        self.other_assets = investments * random.uniform(0.01, 0.1)
+    def nextNonCash(self):
+        """
+        depends on revenue, expenses, investments
+        """
+        #TODO: these need to balance...
+        self.other_current_assets = self.revenue * random.uniform(0.01, 0.1)
+        self.intangible_assets = self.expenses * random.uniform(0.01, 0.1)
+        self.other_assets = self.investments * random.uniform(0.01, 0.1)
 
         self.other_non_cash_items = self.other_current_assets + self.intangible_assets + self.other_assets
 
@@ -266,10 +283,14 @@ class Operations():
         self.interest_income = self.cash_and_cash_equivalents * random.uniform(0.01, 0.1)
         self.cash_at_end_of_period = self.cash_and_cash_equivalents
 
-    def nextFinancing(self, investments, equity):
-        self.other_liabilities = investments * random.uniform(0.01, 0.1)
-        self.other_current_liabilities = equity * random.uniform(0.01, 0.1)
-        self.other_non_current_liabilities = equity * random.uniform(0.01, 0.1)
+    def nextFinancing(self):
+        """
+        depends on investments, equity
+        """
+        #TODO: these need to balance...
+        self.other_liabilities = self.investments * random.uniform(0.01, 0.1)
+        self.other_current_liabilities = self.equity * random.uniform(0.01, 0.1)
+        self.other_non_current_liabilities = self.equity * random.uniform(0.01, 0.1)
         self.other_financing_activites = self.other_liabilities + self.other_current_liabilities + self.other_non_current_liabilities
 
     def nextIncome(self, outstanding_shares, shares_issued):
@@ -289,6 +310,19 @@ class Operations():
         self.weighted_average_shs_out_dil = shares_issued / 1
         self.eps = round(self.net_income / self.weighted_average_shs_out, 2)
         self.eps_diluted = round(self.net_income / self.weighted_average_shs_out_dil, 2)             
+
+    def next(self, outstanding_shares, shares_issued, shares_repurchased):
+        self.nextRevenue()
+        self.nextExpenses()
+        self.nextDebt()
+        self.nextCapital()
+        self.nextEquity(shares_issued, shares_repurchased)
+        self.nextCash()
+        self.nextInvestment()
+        self.nextFinancing()
+        self.nextNonCash()
+        self.nextIncome(outstanding_shares, shares_issued)
+        self.nextTax()
 
     def generate_income_statement(self, date, symbol, period) -> dict:
         income_statement = {
@@ -420,4 +454,3 @@ class Operations():
         balance_sheet["totalInvestments"] = self.total_investments
         balance_sheet["totalDebt"] = self.total_debt
         balance_sheet["netDebt"] = self.total_debt - self.cash_and_cash_equivalents        
-
