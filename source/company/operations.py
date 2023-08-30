@@ -308,8 +308,9 @@ class Operations():
         self.income_before_tax_ratio = round(self.income_before_tax / self.revenue, 10)
         self.net_income = self.income_before_tax - self.income_tax_expense
         self.net_income_ratio = round(self.net_income / self.revenue, 10)
-        self.weighted_average_shs_out = outstanding_shares / 1 #TODO: will need to update these when we implement share issuance and buybacks
+        self.weighted_average_shs_out = outstanding_shares / 1
         self.weighted_average_shs_out_dil = shares_issued / 1
+        if weighted_average_shs_out_dil == 0: weighted_average_shs_out_dil = 1 # NOTE: outstanding shares cannot be 0
         self.eps = round(self.net_income / self.weighted_average_shs_out, 2)
         self.eps_diluted = round(self.net_income / self.weighted_average_shs_out_dil, 2)             
 

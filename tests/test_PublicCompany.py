@@ -24,7 +24,6 @@ class TestPublicCompany(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(company.quarter_length, 13)
         self.assertEqual(company.next_quarter, {"period": "Q1", "date": startdate + timedelta(weeks=13)})
         self.assertEqual(len(company.shares_issued), 0)
-        self.assertEqual(company.outstanding_shares, 0)
         self.assertEqual(len(company.shareholders), 0)
         self.assertEqual(type(company.market_cap), str)
         self.assertIsInstance(company.operations, Operations)
@@ -49,12 +48,33 @@ class TestPublicCompany(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(type(company.income_statement), dict )
         self.assertEqual(type(company.cash_flow), dict )
 
+    async def test_value_shares(self):
+        company = PublicCompany("TestCompany", datetime(2023, 1, 1), self.requests)
+        
+        company.shares_issued = [{"shares": 1000, "price": 100, "value": 100000, "date": datetime(2023, 1, 1)}]
+
+        async def mock_midprice(ticker): return 50
+        self.exchange.get_midprice = mock_midprice
+        async def mock_outstanding_shares(ticker): return 1000
+        self.exchange.get_outstanding_shares = mock_outstanding_shares
+
+        outstanding_shares_value, shares_issued_value = await company.value_of_shares("Q1")
+        self.assertEqual(outstanding_shares_value, 50000)
+        self.assertEqual(shares_issued_value, 100000)
+        
+        #test annual value
+        company.shares_issued.append({"shares": 1000, "price": 100, "value": 100000, "date": datetime(2024, 1, 1)})
+        company.currentdate = datetime(2024, 12, 31)
+        outstanding_shares_value_annual, shares_issued_value_annual = await company.value_of_shares("annual")
+        self.assertEqual(outstanding_shares_value_annual, 50000)
+        self.assertEqual(shares_issued_value_annual, 100000)        
+
     async def test_operate_and_report(self):
         company = PublicCompany("TestCompany", datetime(2023, 1, 1), self.requests)
         date = datetime(2023, 4, 1)
         
         
-        company.shares_issued = [{"shares": 1000, "price": 100, "date": datetime(2023, 1, 1)}]
+        company.shares_issued = [{"shares": 1000, "price": 100,"value": 100000, "date": datetime(2023, 1, 1)}]
 
         async def mock_midprice(ticker): return 50
         self.exchange.get_midprice = mock_midprice

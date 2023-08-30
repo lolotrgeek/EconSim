@@ -19,7 +19,6 @@ class PublicCompany:
         self.quarter_length = 13
         self.next_quarter = {"period": "Q1", "date": self.currentdate + timedelta(weeks=self.quarter_length)}
         self.shares_issued = []
-        self.outstanding_shares = 0
         self.shares_repurchased = 0
         self.shareholders = []
         self.market_cap = random.choice(['large', 'medium', 'small', 'micro'])
@@ -33,10 +32,10 @@ class PublicCompany:
         self.requests = requester
 
     def __str__(self):
-        return f"PublicCompany({self.name}, {self.symbol}, {self.startdate}, {self.currentdate}, {self.outstanding_shares}, {self.shareholders}, {self.balance_sheet}, {self.income_statement}, {self.cash_flow}, {self.ex_dividend_date}, {self.dividend_payment_date}, {self.dividends_to_distribute})"
+        return f"PublicCompany({self.name}, {self.symbol}, {self.startdate}, {self.currentdate}, {self.shareholders}, {self.balance_sheet}, {self.income_statement}, {self.cash_flow}, {self.ex_dividend_date}, {self.dividend_payment_date}, {self.dividends_to_distribute})"
     
     def __repr__(self):
-        return f"PublicCompany({self.name}, {self.symbol}, {self.startdate}, {self.currentdate}, {self.outstanding_shares}, {self.shareholders}, {self.balance_sheet}, {self.income_statement}, {self.cash_flow}, {self.ex_dividend_date}, {self.dividend_payment_date}, {self.dividends_to_distribute})"
+        return f"PublicCompany({self.name}, {self.symbol}, {self.startdate}, {self.currentdate}, {self.shareholders}, {self.balance_sheet}, {self.income_statement}, {self.cash_flow}, {self.ex_dividend_date}, {self.dividend_payment_date}, {self.dividends_to_distribute})"
     
     def to_dict(self):
         return {
@@ -63,7 +62,7 @@ class PublicCompany:
             else:
                 raise Exception(f"Failed to issue shares for {self.symbol}")
         else:
-            self.shares_issued.append({"shares": shares, "price": price, "date": self.currentdate})
+            self.shares_issued.append({"shares": shares, "price": price, "value": shares*price, "date": self.currentdate})
 
     async def issue_shares(self, shares, price) -> None:
         #TODO: adding shares to an existing asset
@@ -72,6 +71,7 @@ class PublicCompany:
     async def buyback_shares(self, shares, price) -> None:
         await self.requests.add_cash("init_seed_"+self.symbol, shares * price, "buyback")
         await self.requests.limit_buy(self.symbol, price, shares, "init_seed_"+self.symbol)
+        #TODO: implement as a list like shares_issued
         self.shares_repurchased += shares        
 
     async def split_shares(self, ratio) -> None:
@@ -124,21 +124,28 @@ class PublicCompany:
                         eligible_shareholders.append(eligible_shareholder)
         return eligible_shareholders
 
-    async def operate_and_report(self, period) -> None:
+    async def value_of_shares(self, period) -> float:
         outstanding_shares = await self.requests.get_outstanding_shares(self.symbol)
         mid_price = await self.requests.get_midprice(self.symbol)
-        outstanding_shares_price = int(mid_price) * int(outstanding_shares)
+        if outstanding_shares == 0: outstanding_shares = 1 # NOTE: outstanding shares cannot be 0
+        if mid_price == 0: mid_price = 0.01 # NOTE: fair value cannot be 0
+        outstanding_shares_value = mid_price * outstanding_shares
         
-        shares_issued_price = 0
+        shares_issued_value = 0
         for shares_issued in self.shares_issued:
-            if period == 'annual' and shares_issued["date"].year == self.currentdate.year:
-                shares_issued_price += shares_issued["shares"] * shares_issued["price"]
+            if period == 'annual' and shares_issued["date"].year == self.currentdate.year: 
+                shares_issued_value += shares_issued["value"]
             else:
-                date_of_last_quarter = self.currentdate - timedelta(weeks=self.quarter_length)
-                if shares_issued["date"] > date_of_last_quarter:
-                    shares_issued_price += shares_issued["shares"] * shares_issued["price"]
+                beginning_of_quarter_date = self.currentdate - timedelta(weeks=self.quarter_length)
+                if shares_issued["date"] >= beginning_of_quarter_date: 
+                    shares_issued_value += shares_issued["value"]
+        
+        # print(f"midprice: {mid_price} outstanding_shares: {outstanding_shares}, shares_issued_value: {shares_issued_value}, outstanding_shares_value: {outstanding_shares_value}, period {period}")
+        return outstanding_shares_value, shares_issued_value
 
-        self.operations.next(outstanding_shares_price, shares_issued_price, self.shares_repurchased)
+    async def operate_and_report(self, period) -> None:
+        outstanding_shares_value, shares_issued_value = await self.value_of_shares(period)
+        self.operations.next(outstanding_shares_value, shares_issued_value, self.shares_repurchased)
         
         await self.generate_financial_report(self.currentdate, period)
 
