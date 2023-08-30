@@ -87,10 +87,9 @@ class PublicCompany:
         pass
 
     async def generate_financial_report(self, date, period) -> None:
-        #TODO: use the prior period's financials to generate the current period's financials, integrate lower probabilities for large changes
         self.balance_sheet = self.operations.generate_balance_sheet(date, self.symbol, period)
         self.income_statement = self.operations.generate_income_statement(date, self.symbol, period)
-        self.cash_flow = self.operations.generate_cash_flow(self.balance_sheet['retainedEarnings'], date, self.symbol, period)
+        self.cash_flow = self.operations.generate_cash_flow(date, self.symbol, period)
         self.dividends_to_distribute = self.cash_flow["dividendsPaid"] * -1
     
     async def distribute_dividends(self, eligible_shareholders, dividends_paid) -> None:
@@ -125,10 +124,10 @@ class PublicCompany:
                         eligible_shareholders.append(eligible_shareholder)
         return eligible_shareholders
 
-    async def report(self, period) -> None:
+    async def operate_and_report(self, period) -> None:
         outstanding_shares = await self.requests.get_outstanding_shares(self.symbol)
         mid_price = await self.requests.get_midprice(self.symbol)
-        outstanding_shares_price = mid_price * outstanding_shares
+        outstanding_shares_price = int(mid_price) * int(outstanding_shares)
         
         shares_issued_price = 0
         for shares_issued in self.shares_issued:
@@ -142,7 +141,7 @@ class PublicCompany:
         self.operations.next(outstanding_shares_price, shares_issued_price, self.shares_repurchased)
         
         await self.generate_financial_report(self.currentdate, period)
-        
+
         if self.dividends_to_distribute > 0:
             self.ex_dividend_date = self.ex_dividend_date = self.currentdate + timedelta(weeks=2)
             self.dividend_payment_date = self.ex_dividend_date + timedelta(weeks=4)
@@ -151,7 +150,7 @@ class PublicCompany:
         self.currentdate = current_date
 
         if self.currentdate == self.next_quarter["date"]:
-            await self.report(self.next_quarter["period"])
+            await self.operate_and_report(self.next_quarter["period"])
             if self.next_quarter["period"] == "Q1": period = "Q2"
             elif self.next_quarter["period"] == "Q2": period = "Q3"
             elif self.next_quarter["period"] == "Q3": period = "Q4"
@@ -159,7 +158,7 @@ class PublicCompany:
             self.next_quarter = {"period": period, "date": self.currentdate + timedelta(weeks=self.quarter_length)}
 
         elif self.currentdate.month == 12 and self.currentdate.day == 31:
-            await self.report("annual")
+            await self.operate_and_report("annual")
 
         if self.currentdate == self.dividend_payment_date:
             self.shareholders = await self.requests.get_agents_positions(self.symbol)
