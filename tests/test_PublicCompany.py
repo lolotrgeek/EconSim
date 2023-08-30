@@ -4,6 +4,7 @@ sys.path.append(parent_dir)
 from datetime import datetime, timedelta
 from source.exchange.ExchangeRequests import ExchangeRequests
 from source.company.PublicCompany import PublicCompany
+from source.company.operations import Operations
 from .MockRequester import MockRequester
 
 class TestPublicCompany(unittest.IsolatedAsyncioTestCase):
@@ -20,9 +21,13 @@ class TestPublicCompany(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(company.symbol, "TES")
         self.assertEqual(company.startdate, startdate)
         self.assertEqual(company.currentdate, startdate)
-        self.assertEqual(len(company.quarters), 4)
+        self.assertEqual(company.quarter_length, 13)
+        self.assertEqual(company.next_quarter, {"period": "Q1", "date": startdate + timedelta(weeks=13)})
+        self.assertEqual(len(company.shares_issued), 0)
         self.assertEqual(company.outstanding_shares, 0)
         self.assertEqual(len(company.shareholders), 0)
+        self.assertEqual(type(company.market_cap), str)
+        self.assertIsInstance(company.operations, Operations)
         self.assertIsNone(company.balance_sheet)
         self.assertIsNone(company.income_statement)
         self.assertIsNone(company.cash_flow)
@@ -44,17 +49,25 @@ class TestPublicCompany(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(type(company.income_statement), dict )
         self.assertEqual(type(company.cash_flow), dict )
 
-    async def test_quarterly_things(self):
+    async def test_operate_and_report(self):
         company = PublicCompany("TestCompany", datetime(2023, 1, 1), self.requests)
         date = datetime(2023, 4, 1)
         
+        
+        company.shares_issued = [{"shares": 1000, "price": 100, "date": datetime(2023, 1, 1)}]
+
+        async def mock_midprice(ticker): return 50
+        self.exchange.get_midprice = mock_midprice
+        async def mock_outstanding_shares(ticker): return 1000
+        self.exchange.get_outstanding_shares = mock_outstanding_shares
+
         async def mocked(date, period): return None
         company.generate_financial_report = mocked
 
         company.dividends_to_distribute = 1000
 
         # Call the method being tested
-        await company.quarterly_things("Q1")
+        await company.operate_and_report("Q1")
 
         # Assertions
         self.assertEqual(company.ex_dividend_date, company.currentdate + timedelta(weeks=2))
