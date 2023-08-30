@@ -336,5 +336,5 @@ app.post('/api/v1/market_sell', async (req, res) => {
 })
 
 app.listen(5000, () => {
-    console.log('Server started on http://localhost:5000')
+    console.log('Exchange API started on http://localhost:5000')
 })

@@ -31,5 +31,5 @@ app.get('/api/v1/get_taxes_collected', async (req, res) => {
 })
 
 app.listen(5001, () => {
-    console.log('Server started on http://localhost:5001')
+    console.log('Government API started on http://localhost:5001')
 })
