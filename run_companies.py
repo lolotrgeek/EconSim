@@ -56,8 +56,8 @@ async def run_companies(time_channel=5114, exchange_channel=5570, company_channe
             else: return dumps({"warning":  f'unknown topic {msg["topic"]}'})
 
         for company in companies:
-            await company.issue_initial_shares(random.randint(500,10000), random.randint(0,500))
-            await company.initial_financials()
+            await company.issue_initial_shares(random.randint(500,10000), random.randint(1,150))
+            # await company.initial_financials()
 
         while True:
             time = get_time()
