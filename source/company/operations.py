@@ -10,6 +10,7 @@ class Operations():
         self.deferred_revenue = self.revenue * random.uniform(0.1, 0.2)
         self.deferred_revenue_non_current = self.revenue * random.uniform(0.1, 0.2)
         self.net_receivables = self.revenue * random.uniform(0.1, 0.2)
+        self.account_receivable = 0
         #Expenses
         self.expenses = self.generate_by_market_cap()
         self.cost_of_revenue = 0
@@ -58,6 +59,7 @@ class Operations():
         self.otherNonCurrentAssets = 0
         self.sales_maturities_of_investments = 0
         self.total_investments = 0
+        self.minority_interest = 0
         # Equity
         self.equity = self.generate_by_market_cap()
         self.stock_based_compensation = 0
@@ -360,9 +362,12 @@ class Operations():
         income_statement["eps"] = self.eps
         income_statement["epsdiluted"] = self.eps_diluted
         income_statement["weightedAverageShsOut"] = self.weighted_average_shs_out
-        income_statement["weightedAverageShsOutDil"] = self.weighted_average_shs_out_dil    
+        income_statement["weightedAverageShsOutDil"] = self.weighted_average_shs_out_dil
+        return income_statement    
 
     def generate_cash_flow(self, date, symbol, period) -> dict:
+        changeInWorkingCapital = self.account_receivable + self.accounts_payable + self.inventory + self.otherWorkingCapital
+        netCashProvidedByOperatingActivities = self.net_income + self.depreciation_and_amortization + self.deferred_income_tax + self.stock_based_compensation + changeInWorkingCapital + self.other_non_cash_items
         cash_flow = {
             "date": date,
             "symbol": symbol,
@@ -373,13 +378,13 @@ class Operations():
             "depreciationAndAmortization": self.depreciation_and_amortization,
             "deferredIncomeTax": self.deferred_income_tax,
             "stockBasedCompensation": self.stock_based_compensation,
-            "changeInWorkingCapital": self.account_receivable + self.accounts_payable + self.inventory + self.otherWorkingCapital,
+            "changeInWorkingCapital": changeInWorkingCapital,
             "accountsReceivables": self.account_receivable,
             "inventory": self.inventory,
             "accountsPayables": self.accounts_payable,
             "otherWorkingCapital": self.otherWorkingCapital,
             "otherNonCashItems": self.other_non_cash_items,
-            "netCashProvidedByOperatingActivities": self.net_income + self.depreciation_and_amortization + self.deferred_income_tax + self.stock_based_compensation + cash_flow['changeInWorkingCapital'] + self.other_non_cash_items,
+            "netCashProvidedByOperatingActivities": netCashProvidedByOperatingActivities,
             "investmentsInPropertyPlantAndEquipment": self.investments_in_ppe,
             "acquisitionsNet": self.acquisitions_net,
             "purchasesOfInvestments": self.purchases_of_investments,
@@ -396,13 +401,19 @@ class Operations():
             "netChangeInCash": self.cash_at_beginning_of_period - self.cash_at_end_of_period,
             "cashAtEndOfPeriod": self.cash_at_end_of_period,
             "cashAtBeginningOfPeriod": self.cash_at_beginning_of_period,
-            "operatingCashFlow": cash_flow['netCashProvidedByOperatingActivities'],
+            "operatingCashFlow": netCashProvidedByOperatingActivities,
             "capitalExpenditure": self.capital_expenditures,
-            "freeCashFlow": cash_flow['netCashProvidedByOperatingActivities'] - self.capital_expenditures,
+            "freeCashFlow": netCashProvidedByOperatingActivities - self.capital_expenditures,
         }
         return cash_flow
 
     def generate_balance_sheet(self, date, symbol, period) -> dict:
+        totalCurrentAssets= self.cash_and_cash_equivalents + self.short_term_investments + self.net_receivables + self.inventory_balance + self.other_current_assets
+        totalNonCurrentAssets = self.ppe_net + self.goodwill + self.intangible_assets + self.long_term_investments + self.taxAssets + self.otherNonCurrentAssets
+        totalCurrentLiabilities = self.accounts_payable_balance + self.short_term_debt + self.taxPayables + self.deferred_revenue + self.other_current_liabilities
+        totalNonCurrentLiabilities = self.long_term_debt + self.deferred_revenue_non_current + self.deferredTaxLiabilitiesNonCurrent + self.other_non_current_liabilities
+        totalStockHolderEquity = self.preferred_stock + self.common_stock + self.retained_earnings + self.accumulated_other_comprehensive_income_loss + self.other_stockholder_equity
+        totalLiabilitiesAndStockholdersEquity = totalCurrentLiabilities + totalNonCurrentLiabilities + totalStockHolderEquity
         balance_sheet = {
             "date": date,
             "symbol": symbol,
@@ -416,7 +427,7 @@ class Operations():
         balance_sheet["netReceivables"] = self.net_receivables 
         balance_sheet["inventory"] = self.inventory_balance
         balance_sheet["otherCurrentAssets"] = self.other_current_assets
-        balance_sheet["totalCurrentAssets"] = self.cash_and_cash_equivalents + self.short_term_investments + self.net_receivables + self.inventory_balance + self.other_current_assets
+        balance_sheet["totalCurrentAssets"] = totalCurrentAssets
         balance_sheet["propertyPlantEquipmentNet"] = self.ppe_net
         balance_sheet["goodwill"] = self.goodwill
         balance_sheet["intangibleAssets"] = self.intangible_assets
@@ -424,33 +435,34 @@ class Operations():
         balance_sheet["longTermInvestments"] = self.long_term_investments
         balance_sheet["taxAssets"] = self.taxAssets
         balance_sheet["otherNonCurrentAssets"] = self.otherNonCurrentAssets
-        balance_sheet["totalNonCurrentAssets"] = self.ppe_net + self.goodwill + self.intangible_assets + self.long_term_investments + self.taxAssets + self.otherNonCurrentAssets
+        balance_sheet["totalNonCurrentAssets"] = totalCurrentAssets
         balance_sheet["otherAssets"] = self.other_assets
-        balance_sheet["totalAssets"] = balance_sheet["totalCurrentAssets"] + balance_sheet["totalNonCurrentAssets"] + self.other_assets
+        balance_sheet["totalAssets"] = totalCurrentAssets + totalNonCurrentAssets + self.other_assets
         balance_sheet["accountPayables"] = self.accounts_payable_balance
         balance_sheet["shortTermDebt"] = self.short_term_debt
         balance_sheet["taxPayables"] = self.taxPayables
         balance_sheet["deferredRevenue"] = self.deferred_revenue
         balance_sheet["otherCurrentLiabilities"] = self.other_current_liabilities
-        balance_sheet["totalCurrentLiabilities"] = balance_sheet["accountPayables"] + balance_sheet["shortTermDebt"] + balance_sheet["taxPayables"] + balance_sheet["deferredRevenue"] + balance_sheet["otherCurrentLiabilities"]
+        balance_sheet["totalCurrentLiabilities"] = totalCurrentLiabilities
         balance_sheet["longTermDebt"] = self.long_term_debt
         balance_sheet["deferredRevenueNonCurrent"] = self.deferred_revenue_non_current
         balance_sheet["deferredTaxLiabilitiesNonCurrent"] = self.deferredTaxLiabilitiesNonCurrent
         balance_sheet["otherNonCurrentLiabilities"] = self.other_non_current_liabilities
-        balance_sheet["totalNonCurrentLiabilities"] = self.long_term_debt + self.deferred_revenue_non_current + self.deferredTaxLiabilitiesNonCurrent + self.other_non_current_liabilities
+        balance_sheet["totalNonCurrentLiabilities"] = totalNonCurrentLiabilities
         balance_sheet["otherLiabilities"] = self.other_liabilities
         balance_sheet["capitalLeaseObligations"] = self.capitalLeaseObligations
-        balance_sheet["totalLiabilities"] = balance_sheet["totalCurrentLiabilities"] + balance_sheet["totalNonCurrentLiabilities"] + self.other_liabilities + self.capitalLeaseObligations
+        balance_sheet["totalLiabilities"] = totalCurrentLiabilities + totalNonCurrentLiabilities + self.other_liabilities + self.capitalLeaseObligations
         balance_sheet["preferredStock"] = self.preferred_stock
         balance_sheet["commonStock"] = self.common_stock
-        balance_sheet["retainedEarnings"] = self.retained_earnings()
+        balance_sheet["retainedEarnings"] = self.retained_earnings
         balance_sheet["accumulatedOtherComprehensiveIncomeLoss"] = self.accumulated_other_comprehensive_income_loss
         balance_sheet["othertotalStockholdersEquity"] = self.other_stockholder_equity
-        balance_sheet["totalStockholdersEquity"] = self.preferred_stock + self.common_stock + self.retained_earnings + self.accumulated_other_comprehensive_income_loss + self.other_stockholder_equity
-        balance_sheet["totalEquity"] = balance_sheet["totalStockholdersEquity"]
-        balance_sheet["totalLiabilitiesAndStockholdersEquity"] = balance_sheet["totalLiabilities"] + balance_sheet["totalEquity"]
-        balance_sheet["minorityInterest"] = 0
-        balance_sheet["totalLiabilitiesAndTotalEquity"] = balance_sheet["totalLiabilitiesAndStockholdersEquity"] + balance_sheet["minorityInterest"]
+        balance_sheet["totalStockholdersEquity"] = totalStockHolderEquity
+        balance_sheet["totalEquity"] = totalStockHolderEquity
+        balance_sheet["totalLiabilitiesAndStockholdersEquity"] = totalLiabilitiesAndStockholdersEquity
+        balance_sheet["minorityInterest"] = self.minority_interest
+        balance_sheet["totalLiabilitiesAndTotalEquity"] = totalLiabilitiesAndStockholdersEquity+ self.minority_interest
         balance_sheet["totalInvestments"] = self.total_investments
         balance_sheet["totalDebt"] = self.total_debt
         balance_sheet["netDebt"] = self.total_debt - self.cash_and_cash_equivalents        
+        return balance_sheet
