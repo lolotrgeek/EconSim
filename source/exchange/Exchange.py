@@ -585,7 +585,7 @@ class Exchange():
         else:
             agent_idx = await self.get_agent_index(agent)
         if agent_idx is not None:
-            side = {'id': str(UUID()), 'agent':agent,'cash_flow':amount, 'price': 1, 'ticker':'CASH', 'qty': amount, 'fee':0, 'dt': self.datetime, 'type': 'buy'}
+            side = {'id': str(UUID()), 'agent':agent,'cash_flow':amount, 'price': 1, 'ticker':'CASH', 'qty': amount, 'fee':0, 'dt': self.datetime, 'type': note}
             await self.enter_position(side, agent_idx, self.base_currency_id)
             self.agents[agent_idx]['cash'] += amount
             if taxable == True:
