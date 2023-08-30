@@ -68,7 +68,7 @@ class MockResponder():
         elif msg['topic'] == 'quotes': return await self.exchange.get_quotes(msg['ticker'])
         elif msg['topic'] == 'best_bid': return dumps((await self.exchange.get_best_bid(msg['ticker'])).to_dict())
         elif msg['topic'] == 'best_ask': return dumps((await self.exchange.get_best_ask(msg['ticker'])).to_dict())
-        elif msg['topic'] == 'midprice': return await self.exchange.get_midprice(msg['ticker'])
+        elif msg['topic'] == 'midprice': return dumps(await self.exchange.get_midprice(msg['ticker']))
         elif msg['topic'] == 'cash': return await self.exchange.get_cash(msg['agent'])
         elif msg['topic'] == 'assets': return await self.exchange.get_assets(msg['agent'])
         elif msg['topic'] == 'register_agent': return await self.exchange.register_agent(msg['name'], msg['initial_cash'])

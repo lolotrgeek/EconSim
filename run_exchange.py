@@ -50,7 +50,7 @@ async def run_exchange(exchange_channel = 5570, time_channel = 5114) -> None:
             elif msg['topic'] == 'quotes': result = await exchange.get_quotes(msg['ticker'])
             elif msg['topic'] == 'best_bid': result = dumps((await exchange.get_best_bid(msg['ticker'])).to_dict())
             elif msg['topic'] == 'best_ask': result = dumps((await exchange.get_best_ask(msg['ticker'])).to_dict())
-            elif msg['topic'] == 'midprice': result = await exchange.get_midprice(msg['ticker'])
+            elif msg['topic'] == 'midprice': result = dumps(await exchange.get_midprice(msg['ticker']))
             elif msg['topic'] == 'cash': result = await exchange.get_cash(msg['agent'])
             elif msg['topic'] == 'assets': result = await exchange.get_assets(msg['agent'])
             elif msg['topic'] == 'register_agent': result = await exchange.register_agent(msg['name'], msg['initial_cash'])

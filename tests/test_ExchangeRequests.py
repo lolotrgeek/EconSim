@@ -131,7 +131,7 @@ class GetMidPriceTest(unittest.IsolatedAsyncioTestCase):
     async def test_get_midprice(self):
         response = await self.requests.make_request('midprice', {'ticker': 'AAPL'}, self.mock_requester)
         midprice = response
-        self.assertEqual(midprice["midprice"], 150.25)
+        self.assertEqual(midprice, 150.25)
 
 class LimitBuyTest(unittest.IsolatedAsyncioTestCase):
     async def asyncSetUp(self):

@@ -124,7 +124,7 @@ class Exchange():
             float: the current midprice
         """
         quotes = await self.get_quotes(ticker)
-        return {"midprice" :(quotes['bid_p'] + quotes['ask_p']) / 2}
+        return (quotes['bid_p'] + quotes['ask_p']) / 2
 
     async def get_trades(self, ticker:str, limit=20) -> list:
         """Retrieves all past trades of a given asset

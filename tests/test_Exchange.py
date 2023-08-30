@@ -77,7 +77,7 @@ class GetMidpriceTestCase(unittest.IsolatedAsyncioTestCase):
 
     async def test_get_midprice(self):
         midprice = await self.exchange.get_midprice("AAPL")
-        self.assertEqual(midprice["midprice"], 150)
+        self.assertEqual(midprice, 150)
 
 class GetTradesTestCase(unittest.IsolatedAsyncioTestCase):
     async def asyncSetUp(self) -> None:
