@@ -45,8 +45,8 @@ class PublicCompany:
             "currentdate": self.currentdate,
         }        
 
-    async def initial_financials(self) -> None:
-        await self.generate_financial_report(self.currentdate, "annual")
+    async def initial_operate_and_report(self) -> None:
+        await self.operate_and_report("annual")
         if self.dividends_to_distribute > 0:
             self.ex_dividend_date = self.currentdate + timedelta(weeks=2)
             self.dividend_payment_date = self.ex_dividend_date + timedelta(weeks=4)  

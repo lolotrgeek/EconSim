@@ -57,7 +57,7 @@ async def run_companies(time_channel=5114, exchange_channel=5570, company_channe
 
         for company in companies:
             await company.issue_initial_shares(random.randint(500,10000), random.randint(1,150))
-            # await company.initial_financials()
+            await company.initial_operate_and_report()
 
         while True:
             time = get_time()
