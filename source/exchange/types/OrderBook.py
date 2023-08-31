@@ -23,6 +23,7 @@ class OrderBook():
     
     def to_dict(self, limit=20) -> dict:
         return {
+            "ticker": self.ticker,
             "bids": [b.to_dict() for b in self.bids][:limit], 
             "asks": [a.to_dict() for a in self.asks][:limit]
         }
