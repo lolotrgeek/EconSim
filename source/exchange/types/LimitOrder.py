@@ -31,6 +31,20 @@ class LimitOrder():
             'ticker': self.ticker,
             'price': self.price,
             'qty': self.qty,
+            'type': 'limit_buy' if self.type == OrderSide.BUY else 'limit_sell',
+            'dt': self.dt,
+        }
+    
+    def to_dict_full(self) -> dict:
+        if self.ticker == 'error' and self.type == OrderSide.BUY: 
+            return {'limit_buy': "insufficient funds", 'id': self.id}
+        elif self.ticker == 'error' and self.type == OrderSide.SELL:
+            return {'limit_sell': "insufficient assets", 'id': self.id}
+        return {
+            'id': self.id,
+            'ticker': self.ticker,
+            'price': self.price,
+            'qty': self.qty,
             'creator': self.creator,
             'type': 'limit_buy' if self.type == OrderSide.BUY else 'limit_sell',
             'dt': self.dt,
@@ -38,7 +52,7 @@ class LimitOrder():
             'accounting': self.accounting,
             'position_id': self.position_id,
             'fills': self.fills
-        }
+        }    
 
     def __repr__(self) -> str:
         return f'<LimitOrder: {self.ticker} {self.qty}@{self.price}>'
