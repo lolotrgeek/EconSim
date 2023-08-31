@@ -79,7 +79,10 @@ class Exchange():
         returns:
             OrderBook: the orderbook of the asset.
         """
-        return self.books[ticker]
+        if ticker in self.books:
+            return self.books[ticker]
+        else:
+            return OrderBook("error")
      
     async def get_latest_trade(self, ticker:str) -> Trade:
         """Retrieves the most recent trade of a given asset
