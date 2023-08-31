@@ -19,7 +19,6 @@ app.get('/api/v1/get_tickers', async (req, res) => {
     res.json(get_tickers_requests.latest_result)
 })
 
-
 const get_agents_requests = new Requester('5570')
 app.get('/api/v1/get_agents', async (req, res) => {
     await get_agents_requests.request('get_agents_simple', {})
@@ -31,26 +30,24 @@ app.get('/api/v1/get_agents', async (req, res) => {
     }
 })
 
-const get_positions_requests = new Requester('5570')
+const get_positions_requests = {}
 app.get('/api/v1/get_positions', async (req, res) => {
     const agent = req.query.agent
     const page_size = parseInt(req.query.page_size) || 10
     const page = parseInt(req.query.page) || 1
 
-    if (!agent) {
-        res.status(400).json({ message: 'Agent not found.' })
-        return
-    }
+    if (!get_positions_requests[agent]) get_positions_requests[agent] = new Requester('5570')
+    if (!agent) { res.status(400).json({ message: 'Agent not found.' }); return }
 
-    await get_positions_requests.request('get_positions', {
+    await get_positions_requests[agent].request('get_positions', {
         agent: agent,
         page_size: page_size,
         page: page,
     })
-    res.json(get_positions_requests.latest_result)
+    res.json(get_positions_requests[agent].latest_result)
 })
 
-const get_candles_requests = new Requester('5570')
+const get_candles_requests = {}
 app.get('/api/v1/candles', async (req, res) => {
     const ticker = req.query.ticker
     const interval = req.query.interval || '15T'
@@ -59,69 +56,71 @@ app.get('/api/v1/candles', async (req, res) => {
         res.status(400).json({ message: 'Ticker not found.' })
         return
     }
-    await get_candles_requests.request('candles', {
+
+    if (!get_candles_requests[ticker]) get_candles_requests[ticker] = new Requester('5570')
+
+    await get_candles_requests[ticker].request('candles', {
         ticker: ticker,
         interval: interval,
         limit: limit,
     })
 
-    res.json(get_candles_requests.latest_result)
+    res.json(get_candles_requests[ticker].latest_result)
 })
 
-const create_assets_requests = new Requester('5570')
-app.post('/api/v1/create_asset', async (req, res) => {
-    const data = req.body
-    const ticker = data.ticker
-    const seed_price = data.seed_price || 100
-    const seed_qty = data.seed_qty || 1000
-    const seed_bid = data.seed_bid || 0.99
-    const seed_ask = data.seed_ask || 1.01
+// const create_assets_requests = new Requester('5570')
+// app.post('/api/v1/create_asset', async (req, res) => {
+//     const data = req.body
+//     const ticker = data.ticker
+//     const seed_price = data.seed_price || 100
+//     const seed_qty = data.seed_qty || 1000
+//     const seed_bid = data.seed_bid || 0.99
+//     const seed_ask = data.seed_ask || 1.01
 
-    if (!ticker) {
-        res.status(400).json({ message: 'Ticker not found.' })
-        return
-    }
+//     if (!ticker) {
+//         res.status(400).json({ message: 'Ticker not found.' })
+//         return
+//     }
 
-    await create_assets_requests.request('create_asset', {
-        ticker: ticker,
-        qty: seed_qty,
-        seed_price: seed_price,
-        seed_bid: seed_bid,
-        seed_ask: seed_ask,
-    })
+//     await create_assets_requests.request('create_asset', {
+//         ticker: ticker,
+//         qty: seed_qty,
+//         seed_price: seed_price,
+//         seed_bid: seed_bid,
+//         seed_ask: seed_ask,
+//     })
 
-    res.json(create_assets_requests.latest_result)
-})
+//     res.json(create_assets_requests.latest_result)
+// })
 
-const get_orderbook_requests = new Requester('5570')
+const order_book_requesters = {}
 app.get('/api/v1/get_order_book', async (req, res) => {
     const ticker = req.query.ticker
     const limit = parseInt(req.query.limit) || 20
 
+    if (!order_book_requesters[ticker]) order_book_requesters[ticker] = new Requester('5570')
+
     if (!ticker) { res.status(400).json({ message: 'Ticker not found.' }); return }
 
-    await get_orderbook_requests.request('order_book', { ticker: ticker, limit: limit, })
-
-    res.json(get_orderbook_requests.latest_result)
+    await order_book_requesters[ticker].request('order_book', { ticker: ticker, limit: limit, })
+    res.json(order_book_requesters[ticker].latest_result)
 })
 
-const get_latest_trade_requests = new Requester('5570')
+const get_latest_trade_requesters = {}
 app.get('/api/v1/get_latest_trade', async (req, res) => {
     const ticker = req.query.ticker
 
-    if (!ticker) {
-        res.status(400).json({ message: 'Ticker not found.' })
-        return
-    }
+    if (!ticker) { res.status(400).json({ message: 'Ticker not found.' }); return}
+    if (!get_latest_trade_requesters[ticker]) get_latest_trade_requesters[ticker] = new Requester('5570')
 
-    await get_latest_trade_requests.request('latest_trade', {
+    await get_latest_trade_requests[ticker].request('latest_trade', {
         ticker: ticker,
     })
 
-    res.json(get_latest_trade_requests.latest_result)
+    res.json(get_latest_trade_requests[ticker].latest_result)
 })
 
-const get_trades_requests = new Requester('5570')
+const get_trades_requests = {}
 app.get('/api/v1/get_trades', async (req, res) => {
     const ticker = req.query.ticker
     const limit = parseInt(req.query.limit) || 20
@@ -130,16 +129,18 @@ app.get('/api/v1/get_trades', async (req, res) => {
         res.status(400).json({ message: 'Ticker not found.' })
         return
     }
+    
+    if (!get_trades_requests[ticker]) get_trades_requests[ticker] = new Requester('5570')
 
-    await get_trades_requests.request('trades', {
+    await get_trades_requests[ticker].request('trades', {
         ticker: ticker,
         limit: limit,
     })
 
-    res.json(get_trades_requests.latest_result)
+    res.json(get_trades_requests[ticker].latest_result)
 })
 
-const get_quotes_requests = new Requester('5570')
+const get_quotes_requests = {}
 app.get('/api/v1/get_quotes', async (req, res) => {
     const ticker = req.query.ticker
 
@@ -148,14 +149,16 @@ app.get('/api/v1/get_quotes', async (req, res) => {
         return
     }
 
-    await get_quotes_requests.request('quotes', {
+    if (!get_quotes_requests[ticker]) get_quotes_requests[ticker] = new Requester('5570')
+
+    await get_quotes_requests[ticker].request('quotes', {
         ticker: ticker,
     })
 
-    res.json(get_quotes_requests.latest_result)
+    res.json(get_quotes_requests[ticker].latest_result)
 })
 
-const get_best_bid_requests = new Requester('5570')
+const get_best_bid_requests = {}
 app.get('/api/v1/get_best_bid', async (req, res) => {
     const ticker = req.query.ticker
 
@@ -164,14 +167,16 @@ app.get('/api/v1/get_best_bid', async (req, res) => {
         return
     }
 
-    await get_best_bid_requests.request('best_bid', {
+    if (!get_best_bid_requests[ticker]) get_best_bid_requests[ticker] = new Requester('5570')
+
+    await get_best_bid_requests[ticker].request('best_bid', {
         ticker: ticker,
     })
 
-    res.json(get_best_bid_requests.latest_result)
+    res.json(get_best_bid_requests[ticker].latest_result)
 })
 
-const get_best_ask_requests = new Requester('5570')
+const get_best_ask_requests = {}
 app.get('/api/v1/get_best_ask', async (req, res) => {
     const ticker = req.query.ticker
 
@@ -180,14 +185,16 @@ app.get('/api/v1/get_best_ask', async (req, res) => {
         return
     }
 
-    await get_best_ask_requests.request('best_ask', {
+    if (!get_best_ask_requests[ticker]) get_best_ask_requests[ticker] = new Requester('5570')
+
+    await get_best_ask_requests[ticker].request('best_ask', {
         ticker: ticker,
     })
 
-    res.json(get_best_ask_requests.latest_result)
+    res.json(get_best_ask_requests[ticker].latest_result)
 })
 
-const get_midprice_requests = new Requester('5570')
+const get_midprice_requests = {}
 app.get('/api/v1/get_midprice', async (req, res) => {
     const ticker = req.query.ticker
 
@@ -196,14 +203,16 @@ app.get('/api/v1/get_midprice', async (req, res) => {
         return
     }
 
-    await get_midprice_requests.request('midprice', {
+    if (!get_midprice_requests[ticker]) get_midprice_requests[ticker] = new Requester('5570')
+
+    await get_midprice_requests[ticker].request('midprice', {
         ticker: ticker,
     })
 
-    res.json({ midprice: get_midprice_requests.latest_result })
+    res.json({ midprice: get_midprice_requests[ticker].latest_result })
 })
 
-const limit_buy_requests = new Requester('5570')
+const limit_buy_requests = {}
 app.post('/api/v1/limit_buy', async (req, res) => {
     const data = req.body
     const ticker = data.ticker
@@ -217,7 +226,9 @@ app.post('/api/v1/limit_buy', async (req, res) => {
         return
     }
 
-    await limit_buy_requests.request('limit_buy', {
+    if (!limit_buy_requests[creator]) limit_buy_requests[creator] = new Requester('5570')
+
+    await limit_buy_requests[creator].request('limit_buy', {
         ticker: ticker,
         price: price,
         qty: qty,
@@ -225,10 +236,10 @@ app.post('/api/v1/limit_buy', async (req, res) => {
         fee: fee,
     })
 
-    res.json(limit_buy_requests.latest_result)
+    res.json(limit_buy_requests[creator].latest_result)
 })
 
-const limit_sell_requests = new Requester('5570')
+const limit_sell_requests = {}
 app.post('/api/v1/limit_sell', async (req, res) => {
     const data = req.body
     const ticker = data.ticker
@@ -242,7 +253,9 @@ app.post('/api/v1/limit_sell', async (req, res) => {
         return
     }
 
-    await limit_sell_requests.request('limit_sell', {
+    if (!limit_sell_requests[creator]) limit_sell_requests[creator] = new Requester('5570')
+
+    await limit_sell_requests[creator].request('limit_sell', {
         ticker: ticker,
         price: price,
         qty: qty,
@@ -250,27 +263,30 @@ app.post('/api/v1/limit_sell', async (req, res) => {
         fee: fee,
     })
 
-    res.json(limit_sell_requests.latest_result)
+    res.json(limit_sell_requests[creator].latest_result)
 })
 
-const cancel_order_requests = new Requester('5570')
+const cancel_order_requests = {}
 app.post('/api/v1/cancel_order', async (req, res) => {
     const data = req.body
     const order_id = data.id
+    const creator = data.creator
 
-    if (!order_id) {
-        res.status(400).json({ message: 'Order ID not found.' })
+    if (!order_id || !creator) {
+        res.status(400).json({ message: 'Invalid data. Check required fields.' })
         return
     }
 
-    await cancel_order_requests.request('cancel_order', {
+    if(!cancel_order_requests[creator]) cancel_order_requests[creator] = new Requester('5570')
+
+    await cancel_order_requests[creator].request('cancel_order', {
         order_id: order_id,
     })
 
-    res.json(cancel_order_requests.latest_result)
+    res.json(cancel_order_requests[creator].latest_result)
 })
 
-const cancel_all_orders_requests = new Requester('5570')
+const cancel_all_orders_requests = {}
 app.post('/api/v1/cancel_all_orders', async (req, res) => {
     const data = req.body
     const agent = data.agent
@@ -281,15 +297,18 @@ app.post('/api/v1/cancel_all_orders', async (req, res) => {
         return
     }
 
-    await cancel_all_orders_requests.request('cancel_all_orders', {
+    if(!cancel_order_requests[agent]) cancel_order_requests[agent] = new Requester('5570')
+
+
+    await cancel_all_orders_requests[agent].request('cancel_all_orders', {
         ticker: ticker,
         agent: agent,
     })
 
-    res.json(cancel_all_orders_requests.latest_result)
+    res.json(cancel_all_orders_requests[agent].latest_result)
 })
 
-const market_buy_requests = new Requester('5570')
+const market_buy_requests = {}
 app.post('/api/v1/market_buy', async (req, res) => {
     const data = req.body
     const ticker = data.ticker
@@ -302,17 +321,19 @@ app.post('/api/v1/market_buy', async (req, res) => {
         return
     }
 
-    await market_buy_requests.request('market_buy', {
+    if (!market_buy_requests[creator]) market_buy_requests[creator] = new Requester('5570')
+
+    await market_buy_requests[creator].request('market_buy', {
         ticker: ticker,
         qty: qty,
         buyer: buyer,
         fee: fee,
     })
 
-    res.json(market_buy_requests.latest_result)
+    res.json(market_buy_requests[creator].latest_result)
 })
 
-const market_sell_requests = new Requester('5570')
+const market_sell_requests = {}
 app.post('/api/v1/market_sell', async (req, res) => {
     const data = req.body
     const ticker = data.ticker
@@ -325,14 +346,16 @@ app.post('/api/v1/market_sell', async (req, res) => {
         return
     }
 
-    await market_sell_requests.request('market_sell', {
+    if (!market_sell_requests[creator]) market_sell_requests[creator] = new Requester('5570')
+
+    await market_sell_requests[creator].request('market_sell', {
         ticker: ticker,
         qty: qty,
         seller: seller,
         fee: fee,
     })
 
-    res.json(market_sell_requests.latest_result)
+    res.json(market_sell_requests[creator].latest_result)
 })
 
 app.listen(5000, () => {

@@ -11,12 +11,27 @@ export default class Requester {
         this.debug = false
     }
 
+    parser(reply) {
+        try {
+            return JSON.parse(reply)
+        } catch (Parse_error) {
+            try {
+                return reply.toString()
+            } catch (error) {
+                return { error: "cannot parse reply" }
+
+            }
+
+        }
+
+    }
+
     async request_direct(topic, msg) {
         try {
             msg.topic = topic
             this.socket.send(JSON.stringify(msg))
             const reply = await this.socket.receive()
-            return JSON.parse(reply)
+            return this.parser(reply)
         } catch (e) {
             console.log("[Requester Error]", e, "Request:", msg)
             return { topic, error: e.message }
@@ -28,19 +43,6 @@ export default class Requester {
         this.processQueue()
     }
 
-    parser(reply) {
-        try {
-            return JSON.parse(reply)
-        } catch (Parse_error) {
-            try {
-                return reply.toString()
-            } catch (error) {
-                return { error: "cannot parse reply"}
-            }
-        }
-        
-    }
-
     async processQueue() {
         if (this.processing) return
         this.processing = true
@@ -50,11 +52,12 @@ export default class Requester {
             try {
                 msg.topic = topic
                 this.socket.send(JSON.stringify(msg))
-                if (this.debug) {console.log("Received response for topic:", topic)}
+                if (this.debug) { console.log("Received response for topic:", topic) }
                 const reply = await this.socket.receive()
                 this.latest_result = this.parser(reply)
             } catch (e) {
                 console.log("[Requester Error]", e, "Request:", msg)
+                this.latest_result = { error: e.message }
             }
         }
 
