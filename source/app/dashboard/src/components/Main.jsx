@@ -14,7 +14,7 @@ const Main = () => {
     return (
         <Router>
             <div className='nav-container'>
-                <Link to={"/"} onClick={() => setPage("Exchange")} className={`nav-item ${page ? 'selected' : ''}`}><h2>Exchange</h2></Link>
+                <Link to={"/exchange/"} onClick={() => setPage("Exchange")} className={`nav-item ${page ? 'selected' : ''}`}><h2>Exchange</h2></Link>
                 <Link to={"/government"} onClick={() => setPage("Government")} className={`nav-item ${page ? 'selected' : ''}`}><h2>Govnerment</h2></Link>
                 <Link to={"/agents"} onClick={() => setPage("Agents")} className={`nav-item ${page ? 'selected' : ''}`}><h2>Agents</h2></Link>
             </div>
@@ -22,8 +22,9 @@ const Main = () => {
 
             <div className="app-container">
                 <Routes>
-                    <Route path="/" element={<Exchange />}></Route>
-                    <Route path="/Exchange/*" element={<Exchange />}></Route>
+                    <Route path="/" element={<div>Welcome!</div>}></Route>
+                    <Route path="/exchange" element={<Exchange />}></Route>
+                    <Route path="/exchange/*" element={<Exchange />}></Route>
                     <Route path="/government" element={<Government />}></Route>
                     <Route path="/agents" element={<Agents />}></Route>
                     <Route path="/agents/*" element={<Agents />}></Route>
