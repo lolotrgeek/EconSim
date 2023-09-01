@@ -23,7 +23,6 @@ const Exchange = () => {
     useEffect(() => {
         const fetchTickerData = async () => {
             try {
-                if (!ticker || ticker === '' || ticker === '/' || ticker === 'undefined') ticker = tickers[0]
                 const orderbookUrl = `${base_url}/api/v1/get_order_book?ticker=${ticker}`
                 const orderBookResponse = await fetch(orderbookUrl)
                 const orderBookData = await orderBookResponse.json()
@@ -45,22 +44,26 @@ const Exchange = () => {
     }, [ticker])
 
     useEffect(() => {
-        const fetchData = async () => {
 
+        const fetchTime = async () => {
             const timeResponse = await fetch(`${base_url}/api/v1/sim_time`)
             const timeData = await timeResponse.json()
             setTime(JSON.parse(timeData))
 
+        }
+        
+        const fetchTickers = async () => {
             const tickersResponse = await fetch(`${base_url}/api/v1/get_tickers`)
             const tickersData = await tickersResponse.json()
             const new_tickers = JSON.parse(tickersData)
-            if (ticker === '' || ticker === '/') {
+            setTickers(new_tickers)
+            if (!ticker || ticker === '' || ticker === '/' || ticker === 'undefined') {
                 navigate(`/exchange/${encodeURIComponent(new_tickers[0])}`)
             }
-            setTickers(new_tickers)
 
         }
-        const interval = setInterval(fetchData, 500)
+        fetchTickers()
+        const interval = setInterval(fetchTime, 500)
 
         return () => {
             clearInterval(interval)
