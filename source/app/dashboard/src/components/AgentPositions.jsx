@@ -4,7 +4,7 @@ import '../styles/AgentPositions.css'
 
 const AgentPositions = () => {
     const location = useLocation()
-    const agent = location.pathname.replace('/exchange/agent/', '')
+    const agent = location.pathname.replace('/agents/', '')
     const [agentPositions, setAgentPositions] = useState([])
 
     useEffect(() => {
@@ -21,7 +21,7 @@ const AgentPositions = () => {
                 console.error(error)
             }
         }
-
+        fetchAgentPositions()
         const interval = setInterval(fetchAgentPositions, 1000)
 
         return () => {
@@ -31,7 +31,7 @@ const AgentPositions = () => {
 
     return (
         <div>
-            <h2>{location.pathname.replace('/exchange/agent/', '')} Positions</h2>
+            <h2>{location.pathname.replace('/agents/', '')} Positions</h2>
             { agentPositions !== undefined && agentPositions.length > 0 ? (
                 <ul className='agent-positions'>
                     {agentPositions.map((position, index) => (
