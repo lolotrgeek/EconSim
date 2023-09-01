@@ -14,7 +14,6 @@ const Exchange = () => {
     const location = useLocation()
     const navigate = useNavigate()
     let ticker = location.pathname.replace('/exchange/', '')
-    const [page, setPage] = useState('Exchange')
     const [time, setTime] = useState('0')
     const [tickers, setTickers] = useState([])
     const [orderBook, setOrderBook] = useState({ bids: [], asks: [] })

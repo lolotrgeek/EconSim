@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react'
 import { useLocation } from 'react-router-dom'
 
-const fetcher = async (query, tries = 0, maxTries = 3) => {
+const fetcher = async (query, tries = 0, maxTries = 5) => {
   try {
     return await query()
   } catch (error) {
@@ -12,6 +12,13 @@ const fetcher = async (query, tries = 0, maxTries = 3) => {
   }
 }
 
+const parser = data => {
+  try {
+    return JSON.parse(data)
+  } catch (error) {
+    return { "error": "Could not parse data" }
+  }
+}
 function Financials() {
   const location = useLocation()
   let company = location.pathname.replace('/exchange/', '')
@@ -27,26 +34,31 @@ function Financials() {
       if (!company || company === '' || company === 'undefined') return
       try {
         if (activeTab === 'income') {
+          setIncomeStatement({})
           fetcher(async () => {
             const response = await fetch(url + 'get_income_statement?company=' + company)
             const data = await response.json()
-            const parsedData = JSON.parse(data)
+            const parsedData = parser(data)
             setIncomeStatement(parsedData)
           })
         }
         if (activeTab === 'balance') {
+          setBalanceSheet({})
           fetcher(async () => {
             const response = await fetch(url + 'get_balance_sheet?company=' + company)
             const data = await response.json()
-            const parsedData = JSON.parse(data)
+
+            const parsedData = parser(data)
             setBalanceSheet(parsedData)
           })
         }
         if (activeTab === 'cash') {
+          setCashFlow({})
           fetcher(async () => {
             const response = await fetch(url + 'get_cash_flow?company=' + company)
             const data = await response.json()
-            const parsedData = JSON.parse(data)
+
+            const parsedData = parser(data)
             setCashFlow(parsedData)
           })
         }
@@ -103,7 +115,8 @@ function Financials() {
   }
 
   return (
-    <div>
+    <div> 
+      {company}
       <div className="tab-container">
         <button
           className={activeTab === 'income' ? 'active-tab' : 'tab'}
