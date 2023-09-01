@@ -9,10 +9,11 @@ import traceback
 
 names= ['A', 'frXoX', 'wAt', 'Ayc', 'EXCAb', 'Qw', 'vbcY', 'ZM', 'j', 'nNLga', 'Ln', 'ao', 'k', 'icyJ', 'r', 'qk', 'BeHN', 'if', 'yAnL', 'sw']
 
-def generate_companies(names, requester, time) -> list:
-    companies = []
+def generate_companies(names, requester, time) -> dict:
+    companies = {}
     for name in names:
-        companies.append(PublicCompany(name, time, requester))
+        company = PublicCompany(name, time, requester)
+        companies[company.symbol] = company
     return companies
 
 async def run_companies(time_channel=5114, exchange_channel=5570, company_channel=5572) -> None:
@@ -39,31 +40,29 @@ async def run_companies(time_channel=5114, exchange_channel=5570, company_channe
 
         async def callback(msg):
             if msg['topic'] == 'get_date': return dumps(time)
-            elif msg['topic'] == 'get_companies': return dumps([company.name for company in companies])
+            elif msg['topic'] == 'get_companies': return dumps([company.symbol for company in companies])
             elif "company" in msg:
-                for company in companies:
-                    if company.name == msg['company']:
-                        if msg['topic'] == 'get_company': return dumps(company.to_dict())
-                        elif msg['topic'] == 'get_income_statement': return dumps(company.income_statement)
-                        elif msg['topic'] == 'get_balance_sheet': return dumps(company.balance_sheet)
-                        elif msg['topic'] == 'get_cash_flow': return dumps(company.cash_flow)
-                        elif msg['topic'] == 'get_dividend_payment_date': return dumps(company.dividend_payment_date)
-                        elif msg['topic'] == 'get_ex_dividend_date': return dumps(company.ex_dividend_date)
-                        elif msg['topic'] == 'get_dividends_to_distribute': return dumps(company.dividends_to_distribute)
-                        break
-                    else: return dumps({"warning": f'unknown company {msg["company"]}'})
+                if msg['company'] in companies:
+                    if msg['topic'] == 'get_company': return dumps(companies[msg['company']].to_dict())
+                    elif msg['topic'] == 'get_income_statement': return dumps(companies[msg['company']].income_statement)
+                    elif msg['topic'] == 'get_balance_sheet': return dumps(companies[msg['company']].balance_sheet)
+                    elif msg['topic'] == 'get_cash_flow': return dumps(companies[msg['company']].cash_flow)
+                    elif msg['topic'] == 'get_dividend_payment_date': return dumps(companies[msg['company']].dividend_payment_date)
+                    elif msg['topic'] == 'get_ex_dividend_date': return dumps(companies[msg['company']].ex_dividend_date)
+                    elif msg['topic'] == 'get_dividends_to_distribute': return dumps(companies[msg['company']].dividends_to_distribute)
+                else: return dumps({"warning": f'unknown company {msg["company"]}'})
 
             else: return dumps({"warning":  f'unknown topic {msg["topic"]}'})
 
         for company in companies:
-            await company.issue_initial_shares(random.randint(500,10000), random.randint(1,150))
-            await company.initial_operate_and_report()
+            await companies[company].issue_initial_shares(random.randint(500,10000), random.randint(1,150))
+            await companies[company].initial_operate_and_report()
 
         while True:
             time = get_time()
             for company in companies:
-                company.current_date = time
-                await company.next(time)
+                companies[company].current_date = time
+                await companies[company].next(time)
             msg = await responder.lazy_respond(callback)
             if msg == None:
                 continue
