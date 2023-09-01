@@ -43,6 +43,10 @@ class PublicCompany:
             "symbol": self.symbol,
             "startdate": self.startdate,
             "currentdate": self.currentdate,
+            "next_quarter": self.next_quarter,
+            "dividends_to_distribute": self.dividends_to_distribute,
+            "dividend_payment_date": self.dividend_payment_date,
+            "ex_dividend_date": self.ex_dividend_date,
         }        
 
     async def initial_operate_and_report(self) -> None:
@@ -156,7 +160,7 @@ class PublicCompany:
     async def next(self, current_date) -> None:
         self.currentdate = current_date
 
-        if self.currentdate == self.next_quarter["date"]:
+        if self.currentdate >= self.next_quarter["date"]:
             await self.operate_and_report(self.next_quarter["period"])
             if self.next_quarter["period"] == "Q1": period = "Q2"
             elif self.next_quarter["period"] == "Q2": period = "Q3"
