@@ -156,7 +156,7 @@ class Trader(Agent):
         _transactions = agent['_transactions']
         return sum(t['qty'] for t in _transactions if t['ticker'] == ticker)
 
-    async def cancel_order(self, id:str) -> Union[dict,None]:
+    async def cancel_order(self, ticker:str, id:str) -> Union[dict,None]:
         """Cancels the order with a given id (if it exists)
 
         Args:
@@ -165,7 +165,7 @@ class Trader(Agent):
         returns:
             Union[LimitOrder,None]: the cancelled order if it is still pending. None if it does not exists or has already been filled/cancelled
         """
-        return await self.exchange_requests.cancel_order(id=id)
+        return await self.exchange_requests.cancel_order(ticker, id)
 
     async def cancel_all_orders(self, ticker:str) -> dict:
         """Cancels all remaining orders that the agent has on an asset.

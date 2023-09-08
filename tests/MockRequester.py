@@ -58,7 +58,7 @@ class MockResponder():
         elif msg['topic'] == 'limit_sell': return dumps((await self.exchange.limit_sell(msg['ticker'], msg['price'], msg['qty'], msg['creator'], msg['fee'])).to_dict_full())
         elif msg['topic'] == 'market_buy': return await self.exchange.market_buy(msg['ticker'], msg['qty'], msg['buyer'], msg['fee'])
         elif msg['topic'] == 'market_sell': return await self.exchange.market_sell(msg['ticker'], msg['qty'], msg['seller'], msg['fee'])
-        elif msg['topic'] == 'cancel_order': return await self.exchange.cancel_order(msg['order_id'])
+        elif msg['topic'] == 'cancel_order': return await self.exchange.cancel_order(msg['ticker'], msg['order_id'])
         elif msg['topic'] == 'cancel_all_orders': return await self.exchange.cancel_all_orders(msg['agent'], msg['ticker'])
         elif msg['topic'] == 'candles': return dumps(await self.exchange.get_price_bars(ticker=msg['ticker'], bar_size=msg['interval'], limit=msg['limit']))
         # elif msg['topic'] == 'mempool': return await self.exchange.mempool(msg['limit'])

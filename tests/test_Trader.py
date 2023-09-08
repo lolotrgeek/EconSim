@@ -173,7 +173,7 @@ class CancelOrderTest(unittest.IsolatedAsyncioTestCase):
 
     async def test_cancel_order(self):
         order = await self.trader.limit_buy("AAPL", 100, 1)
-        cancelled = await self.trader.cancel_order(order['id'])
+        cancelled = await self.trader.cancel_order('AAPL', order['id'])
         self.assertEqual(cancelled, {'cancelled_order': order['id']})
 
 class CancelAllOrdersTest(unittest.IsolatedAsyncioTestCase):

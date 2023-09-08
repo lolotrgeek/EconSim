@@ -50,8 +50,8 @@ class ExchangeRequests(Requests):
     async def limit_sell(self, ticker, price, quantity, creator, fee=0.0):
         return await self.make_request('limit_sell', {'ticker': ticker, 'price': price, 'qty': quantity, 'creator': creator, 'fee': fee}, self.requester)
     
-    async def cancel_order(self, id):
-        return await self.make_request('cancel_order', {'order_id': id}, self.requester)
+    async def cancel_order(self, ticker, id):
+        return await self.make_request('cancel_order', {'ticker':ticker, 'order_id': id}, self.requester)
 
     async def cancel_all_orders(self, ticker, agent):
         return await self.make_request('cancel_all_orders', {'ticker': ticker, 'agent': agent}, self.requester)

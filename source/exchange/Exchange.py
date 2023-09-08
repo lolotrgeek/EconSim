@@ -337,16 +337,16 @@ class Exchange():
                 return ask[1]
         return {'error': 'order not found'}
 
-    async def cancel_order(self, id) -> dict:
-        for book in self.books:
-            bid = next(([idx,o] for idx, o in enumerate(self.books[book].bids) if o.id == id),None)
+    async def cancel_order(self, ticker, id) -> dict:
+        if ticker in self.books:
+            bid = next(([idx,o] for idx, o in enumerate(self.books[ticker].bids) if o.id == id),None)
             if bid:
-                self.books[book].bids[bid[0]]
-                self.books[book].bids.pop(bid[0])
+                self.books[ticker].bids[bid[0]]
+                self.books[ticker].bids.pop(bid[0])
                 return {"cancelled_order": id}
-            ask = next(([idx,o] for idx, o in enumerate(self.books[book].asks) if o.id == id),None)
+            ask = next(([idx,o] for idx, o in enumerate(self.books[ticker].asks) if o.id == id),None)
             if ask:
-                self.books[book].asks.pop(ask[0])
+                self.books[ticker].asks.pop(ask[0])
                 return {"cancelled_order": id}
         return {"cancelled_order": "order not found"}
 
