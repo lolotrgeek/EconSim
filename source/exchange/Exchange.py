@@ -23,8 +23,7 @@ class Exchange():
         self.books = {}
         self.trade_log: List[Trade] = [] #TODO: this is going to get to big to hold in memory, need a DB
         self.datetime = datetime
-        self.base_currency = 'USD'
-        self.base_currency_id = str(UUID())
+        self.default_quote_currency = {'name': 'US Dollar', 'symbol': 'USD', 'id': str(UUID())}
         self.fees = Fees()
 
     async def __str__(self):
@@ -45,7 +44,7 @@ class Exchange():
             return {"error" :f'asset {ticker} already exists'}
         self.assets[ticker] = {'type':asset_type}
         self.books[ticker] = OrderBook(ticker)
-        cash_position =  {"id":self.base_currency_id,"ticker": "CASH", "price": 1,"qty": market_qty * seed_price, "dt": self.datetime, "enters":[], "exits": [], }
+        cash_position =  {"id":self.default_quote_currency['id'],"ticker": "CASH", "price": 1,"qty": market_qty * seed_price, "dt": self.datetime, "enters":[], "exits": [], }
         self.agents.append({'name':'init_seed_'+ticker,'cash':market_qty * seed_price,'_transactions':[], "taxable_events": [], 'positions': [cash_position],  'assets': {ticker: market_qty}})
         await self._process_trade(ticker, market_qty, seed_price, 'init_seed_'+ticker, 'init_seed_'+ticker, position_id='init_seed_'+ticker)
         await self.limit_buy(ticker, seed_price * seed_bid, 1, 'init_seed_'+ticker)
@@ -100,6 +99,7 @@ class Exchange():
             return {'error': 'no trades found'}
 
     async def get_quotes(self, ticker) -> dict:
+        if ticker not in self.books: return {"error" : "ticker not found"}
         try:
             # TODO: if more than one order has the best price, add the quantities.
             best_bid = self.books[ticker].bids[0]
@@ -138,6 +138,7 @@ class Exchange():
         returns:
             pd.DataFrame: a dataframe containing all trades
         """
+        if ticker not in self.books: return ["error ticker not found"]
         trades = pd.DataFrame.from_records([t.to_dict() for t in self.trade_log if t.ticker == ticker]).tail(limit)
         return format_dataframe_rows_to_dict(trades)
     
@@ -431,7 +432,7 @@ class Exchange():
             'name':registered_name,
             'cash':initial_cash,
             '_transactions':[], 
-            'positions': [ {"id":self.base_currency_id,"ticker": "CASH", "price": 1,"qty": initial_cash, "dt": self.datetime, "enters":[], "exits": []}], 
+            'positions': [ {"id":self.default_quote_currency['id'],"ticker": "CASH", "price": 1,"qty": initial_cash, "dt": self.datetime, "enters":[], "exits": []}], 
             'assets': {},
             "taxable_events": []
         })
@@ -589,7 +590,7 @@ class Exchange():
             agent_idx = await self.get_agent_index(agent)
         if agent_idx is not None:
             side = {'id': str(UUID()), 'agent':agent,'cash_flow':amount, 'price': 1, 'ticker':'CASH', 'qty': amount, 'fee':0, 'dt': self.datetime, 'type': note}
-            await self.enter_position(side, agent_idx, self.base_currency_id)
+            await self.enter_position(side, agent_idx, self.default_quote_currency['id'])
             self.agents[agent_idx]['cash'] += amount
             if taxable == True:
                 taxable_event = {"type": note, 'exit_id': side['id'], 'enter_id':side['id'], 'enter_date': self.datetime, 'exit_date': self.datetime, 'pnl': amount}
