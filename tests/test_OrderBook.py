@@ -57,18 +57,12 @@ class OrderBookTests(unittest.TestCase):
             self.assertEqual(bid['qty'], orderbook_dict['bids'][index]['qty'])
             self.assertEqual(
                 bid['price'], orderbook_dict['bids'][index]['price'])
-            self.assertEqual(
-                bid['creator'], orderbook_dict['bids'][index]['creator'])
             self.assertIn('id', orderbook_dict['bids'][index].keys())
             self.assertIn('dt', orderbook_dict['bids'][index].keys())
         for index, ask in enumerate(expected_dict['asks']):
-            self.assertEqual(
-                ask['ticker'], orderbook_dict['asks'][index]['ticker'])
+            self.assertEqual(ask['ticker'], orderbook_dict['asks'][index]['ticker'])
             self.assertEqual(ask['qty'], orderbook_dict['asks'][index]['qty'])
-            self.assertEqual(
-                ask['price'], orderbook_dict['asks'][index]['price'])
-            self.assertEqual(
-                ask['creator'], orderbook_dict['asks'][index]['creator'])
+            self.assertEqual(ask['price'], orderbook_dict['asks'][index]['price'])
             self.assertIn('id', orderbook_dict['asks'][index].keys())
             self.assertIn('dt', orderbook_dict['asks'][index].keys())
 

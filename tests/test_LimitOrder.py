@@ -40,6 +40,17 @@ class LimitOrderTests(unittest.TestCase):
             'id': self.limit_order.id,
             'ticker': 'AAPL',
             'price': Decimal('150.0'),
+            'qty': 100,
+            'type': 'limit_buy',
+            'dt': self.limit_order.dt,
+        }
+        self.assertDictEqual(self.limit_order.to_dict(), expected_dict)
+
+    def test_limit_order_to_dict_full(self):
+        expected_dict = {
+            'id': self.limit_order.id,
+            'ticker': 'AAPL',
+            'price': Decimal('150.0'),
             'fee': 0,
             'fills': [ ],
             'qty': 100,
@@ -49,7 +60,7 @@ class LimitOrderTests(unittest.TestCase):
             'accounting': 'FIFO',
             'position_id': None
         }
-        self.assertDictEqual(self.limit_order.to_dict(), expected_dict)
+        self.assertDictEqual(self.limit_order.to_dict_full(), expected_dict)
 
     def test_limit_order_repr(self):
         expected_repr = "<LimitOrder: AAPL 100@150.0>"

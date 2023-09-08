@@ -19,12 +19,10 @@ class CreateAssetTest(unittest.IsolatedAsyncioTestCase):
         book = self.mock_requester.responder.exchange.books['TSLA'].to_dict()
         self.assertEqual(type(response), dict)
         self.assertEqual(response['type'], "stock")
-        self.assertEqual(book['bids'][0]['creator'], 'init_seed_TSLA')
         self.assertEqual(type(book['bids'][0]['id']), str)
         self.assertEqual(book['bids'][0]['price'], 49500)
         self.assertEqual(book['bids'][0]['qty'], 1)
         self.assertEqual(book['bids'][0]['ticker'], 'TSLA')
-        self.assertEqual(book['asks'][0]['creator'], 'init_seed_TSLA')
         self.assertEqual(type(book['asks'][0]['id']), str)
         self.assertEqual(book['asks'][0]['price'], 50500)
         self.assertEqual(book['asks'][0]['qty'], 1000)
@@ -41,13 +39,11 @@ class GetOrderBookTest(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(type(response), dict)
         self.assertEqual(len(response['bids']), 2)
         self.assertEqual(len(response['asks']), 1)
-        self.assertEqual(response['bids'][0]['creator'], self.mock_requester.responder.agent)
         self.assertEqual(response['bids'][0]['dt'], '2023-01-01 00:00:00')
         self.assertEqual(type(response['bids'][0]['id']), str)
         self.assertEqual(response['bids'][0]['price'], 149)
         self.assertEqual(response['bids'][0]['qty'], 1)
         self.assertEqual(response['bids'][0]['ticker'], 'AAPL')
-        self.assertEqual(response['bids'][1]['creator'], 'init_seed_AAPL')
 
 class GetLatestTradeTest(unittest.IsolatedAsyncioTestCase):
     async def asyncSetUp(self):
@@ -106,7 +102,6 @@ class GetBestBidTest(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(best_bid['ticker'], 'AAPL')
         self.assertEqual(best_bid['price'], 149)
         self.assertEqual(best_bid['qty'], 1)
-        self.assertEqual(best_bid['creator'], self.mock_requester.responder.agent)
 
 class GetBestAskTest(unittest.IsolatedAsyncioTestCase):
     async def asyncSetUp(self):
@@ -120,7 +115,6 @@ class GetBestAskTest(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(best_ask['ticker'], 'AAPL')
         self.assertEqual(best_ask['price'], 151.5)
         self.assertEqual(best_ask['qty'], 1000)
-        self.assertEqual(best_ask['creator'], 'init_seed_AAPL')
 
 class GetMidPriceTest(unittest.IsolatedAsyncioTestCase):
     async def asyncSetUp(self):

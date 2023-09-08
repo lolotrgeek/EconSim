@@ -54,8 +54,8 @@ class MockResponder():
                 else: return f'unknown company {msg["company"]}'
 
         elif msg['topic'] == 'create_asset': return dumps((await self.exchange.create_asset(msg['ticker'],msg['asset_type'],msg['qty'], msg['seed_price'], msg['seed_bid'], msg['seed_ask'])))
-        elif msg['topic'] == 'limit_buy': return dumps((await self.exchange.limit_buy(msg['ticker'], msg['price'], msg['qty'], msg['creator'], msg['fee'])).to_dict())
-        elif msg['topic'] == 'limit_sell': return dumps((await self.exchange.limit_sell(msg['ticker'], msg['price'], msg['qty'], msg['creator'], msg['fee'])).to_dict())
+        elif msg['topic'] == 'limit_buy': return dumps((await self.exchange.limit_buy(msg['ticker'], msg['price'], msg['qty'], msg['creator'], msg['fee'])).to_dict_full())
+        elif msg['topic'] == 'limit_sell': return dumps((await self.exchange.limit_sell(msg['ticker'], msg['price'], msg['qty'], msg['creator'], msg['fee'])).to_dict_full())
         elif msg['topic'] == 'market_buy': return await self.exchange.market_buy(msg['ticker'], msg['qty'], msg['buyer'], msg['fee'])
         elif msg['topic'] == 'market_sell': return await self.exchange.market_sell(msg['ticker'], msg['qty'], msg['seller'], msg['fee'])
         elif msg['topic'] == 'cancel_order': return await self.exchange.cancel_order(msg['order_id'])
