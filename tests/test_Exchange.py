@@ -249,21 +249,22 @@ class LimitBuyTestCase(unittest.IsolatedAsyncioTestCase):
     async def test_limit_buy_match_trades(self):
         await self.exchange.limit_sell("AAPL", price=152, qty=4, creator=self.buyer, fee=0)
         new_order = await self.exchange.limit_buy('AAPL', 152, 4, self.buyer, fee=0)
-
+        agent = await self.exchange.get_agent(self.buyer)
         self.assertEqual(new_order.ticker, 'AAPL')
         self.assertEqual(new_order.price, 152)
         self.assertEqual(new_order.qty, 4)
         self.assertEqual(new_order.creator, self.buyer)
         self.assertEqual(new_order.type, OrderSide.BUY)
+        self.assertEqual(new_order.fills, [{'qty': 4, 'price': 151.5, 'fee': 0.0, 'creator': 'init_seed_AAPL'}])
+        self.assertEqual(agent['assets'], {"AAPL": 4})
 
 class LimitSellTestCase(unittest.IsolatedAsyncioTestCase):
     async def asyncSetUp(self) -> None:
         self.exchange = Exchange(datetime=datetime(2023, 1, 1))
         await self.exchange.create_asset("AAPL", seed_price=150, seed_bid=0.99, seed_ask=1.01)
-        insufficient_seller = await self.exchange.register_agent("insufficient_seller", initial_cash=10000)
-        self.insufficient_seller = insufficient_seller['registered_agent']
-        agent = await self.exchange.register_agent("seller1", initial_cash=10000)
-        self.agent = agent['registered_agent']
+        self.insufficient_seller = (await self.exchange.register_agent("insufficient_seller", initial_cash=10000))['registered_agent']
+        self.agent = (await self.exchange.register_agent("seller1", initial_cash=10000))['registered_agent']
+        self.buyer = (await self.exchange.register_agent("buyer1", initial_cash=10000))['registered_agent']
 
     async def test_limit_sell_sufficient_assets(self):
         await self.exchange.limit_buy("AAPL", price=152, qty=4, creator=self.agent)
@@ -288,20 +289,22 @@ class LimitSellTestCase(unittest.IsolatedAsyncioTestCase):
 
     async def test_limit_sell_match_trades(self):
         await self.exchange.limit_buy("AAPL", price=152, qty=4, creator=self.agent)
-        new_order = await self.exchange.limit_sell('AAPL', 152, 4,self.agent , fee=0)
+        new_order = await self.exchange.limit_sell('AAPL', 80, 4,self.agent , fee=0)
+        await self.exchange.limit_buy("AAPL", price=80, qty=4, creator=self.buyer)
+
+        agent = await self.exchange.get_agent(self.agent)
         self.assertEqual(new_order.ticker, 'AAPL')
-        self.assertEqual(new_order.price, 152)
-        self.assertEqual(new_order.qty, 4)
+        self.assertEqual(new_order.price, 80)
         self.assertEqual(new_order.creator, self.agent)
+        self.assertEqual(len(new_order.fills), 1)  
         self.assertEqual(new_order.type, OrderSide.SELL)
+        self.assertEqual(agent['assets'], {'AAPL':0})
 
 class MarketBuyTestCase(unittest.IsolatedAsyncioTestCase):
     async def asyncSetUp(self) -> None:
         self.exchange = Exchange(datetime=datetime(2023, 1, 1))
-        insufficient_buyer = await self.exchange.register_agent("insufficient_buyer", initial_cash=1)
-        self.insufficient_buyer = insufficient_buyer['registered_agent']
-        agent = await self.exchange.register_agent("buyer1", initial_cash=500000)
-        self.agent = agent['registered_agent']
+        self.insufficient_buyer = (await self.exchange.register_agent("insufficient_buyer", initial_cash=1))['registered_agent']
+        self.agent = (await self.exchange.register_agent("buyer1", initial_cash=500000))['registered_agent']
         await self.exchange.create_asset("AAPL", seed_price=150, seed_bid=0.99, seed_ask=1.01)
 
     async def test_market_buy(self):
@@ -347,7 +350,6 @@ class MarketSellTestCase(unittest.IsolatedAsyncioTestCase):
         await self.exchange.market_buy("AAPL", qty=4, buyer=self.seller1, fee=0.01)
         await self.exchange.limit_buy("AAPL", price=150, qty=3, creator=self.buyer1, fee=0.01)
         result = await self.exchange.market_sell("AAPL", qty=3, seller=self.seller1, fee=0.02)
-
         agent = await self.exchange.get_agent(self.seller1)
         self.assertEqual(result, {'market_sell': 'AAPL', 'seller': self.seller1, 'fills': [{'qty': 3, 'price': 150, 'fee': 0.02}]})
         self.assertEqual(agent['assets'], {"AAPL": 1})
