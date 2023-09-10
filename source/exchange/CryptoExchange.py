@@ -33,7 +33,6 @@ class CryptoExchange(Exchange):
             self.books[ticker] = CryptoOrderBook(symbol, pair)
             quote_position =  {"id":'init_seed_'+ticker,"base": symbol, "quote":pair, "price": 0,"qty": market_qty * seed_price, "dt": self.datetime, "enters":[], "exits": [], }
             self.agents.append({'name':'init_seed_'+ticker,'cash':market_qty * seed_price,'_transactions':[], "taxable_events": [], 'positions': [quote_position],  'assets': {symbol: market_qty, pair: market_qty * seed_price}})
-            # print(self.agents)
             await self._process_trade(symbol, pair, market_qty, seed_price, 'init_seed_'+ticker, 'init_seed_'+ticker, position_id='init_seed_'+ticker)
             await self.limit_buy(symbol, pair, seed_price * seed_bid, 1, 'init_seed_'+ticker, position_id='init_seed_'+ticker)
             await self.limit_sell(symbol, pair,  seed_price * seed_ask, market_qty, 'init_seed_'+ticker)
@@ -41,10 +40,8 @@ class CryptoExchange(Exchange):
     
     async def _process_trade(self, base, quote, qty, price, buyer, seller, accounting='FIFO', fee=0.0, position_id=None):
         if not await self.agent_has_assets(buyer, quote, qty):
-            print('buyer has insufficient quote assets')
             return None
         if not await self.agent_has_assets(seller, base, qty):
-            print('seller has insufficient base assets')
             return None
         
         trade = CryptoTrade(base, quote, qty, price, buyer, seller, self.datetime, fee=fee)
@@ -151,7 +148,6 @@ class CryptoExchange(Exchange):
                 filled_taker_order = LimitOrder(ticker, price, qty, creator, OrderSide.BUY, self.datetime,fee=fee+maker_fee, position_id=position_id, fills=fills)
                 return filled_taker_order
         else:
-            print('insufficient funds')
             return LimitOrder("error", 0, 0, 'insufficient_funds', OrderSide.BUY, self.datetime)
         
     async def limit_sell(self, base: str, quote:str, price: float, qty: int, creator: str, fee=0, tif='GTC', accounting='FIFO') -> LimitOrder:
