@@ -4,6 +4,7 @@ class CryptoTrade():
     def __init__(self, base, quote, qty, price, buyer, seller, dt=None, fee=0):
         self.base = base
         self.quote = quote
+        self.ticker=base+quote
         self.qty = qty
         self.price = price
         self.buyer = buyer
