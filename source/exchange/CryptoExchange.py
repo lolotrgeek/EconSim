@@ -12,14 +12,13 @@ from .types.OrderSide import OrderSide
 
 class CryptoExchange(Exchange):
     def __init__(self, datetime= None):
-        self.datetime = datetime
+        super().__init__(datetime=datetime)
 
     async def create_asset(self, symbol: str, pairs=[], market_qty=1000, seed_price=100, seed_bid=.99, seed_ask=1.01) -> CryptoOrderBook:
         """_summary_
-
         Args:
             symbol (str): the symbol of the new asset
-            pairs (str, optional): aditional quote pairs, beyond the default quote currency, that this asset can be traded against. async defaults to [].
+            pairs (str, optional): a list of symbols for aditional quote pairs, beyond the default quote currency, that this asset can be traded against. async defaults to [].
             marekt_qty (int, optional): the total amount of the asset in circulation. async defaults to 1000.
             seed_price (int, optional): Price of an initial trade that is created for ease of use. async defaults to 100.
             seed_bid (float, optional): Limit price of an initial buy order, expressed as percentage of the seed_price. async defaults to .99.
@@ -27,22 +26,25 @@ class CryptoExchange(Exchange):
         """
         if symbol in self.assets:
             return {"error" :f'asset {symbol} already exists'}
+        pairs.append(self.default_quote_currency['symbol'])
         self.assets[symbol] = {'type': 'crypto', 'id' : str(UUID())}
-        self.default_quote_currency['name']
-        self.books[symbol+self.default_quote_currency['symbol']] = CryptoOrderBook(symbol+self.default_quote_currency['symbol'])
         for pair in pairs:
-            self.books[pair] = CryptoOrderBook(pair)
-        quote_position =  {"id":self.default_quote_currency['id'],"symbol": self.default_quote_currency['symbol'], "price": 1,"qty": market_qty * seed_price, "dt": self.datetime, "enters":[], "exits": [], }
-        self.agents.append({'name':'init_seed_'+symbol,'cash':market_qty * seed_price,'_transactions':[], "taxable_events": [], 'positions': [quote_position],  'assets': {symbol: market_qty}})
-        await self._process_trade(symbol, market_qty, seed_price, 'init_seed_'+symbol, 'init_seed_'+symbol, position_id='init_seed_'+symbol)
-        await self.limit_buy(symbol, seed_price * seed_bid, 1, 'init_seed_'+symbol)
-        await self.limit_sell(symbol, seed_price * seed_ask, market_qty, 'init_seed_'+symbol)
+            ticker = symbol+pair
+            self.books[ticker] = CryptoOrderBook(symbol, pair)
+            quote_position =  {"id":'init_seed_'+ticker,"base": symbol, "quote":pair, "price": 0,"qty": market_qty * seed_price, "dt": self.datetime, "enters":[], "exits": [], }
+            self.agents.append({'name':'init_seed_'+ticker,'cash':market_qty * seed_price,'_transactions':[], "taxable_events": [], 'positions': [quote_position],  'assets': {symbol: market_qty, pair: market_qty * seed_price}})
+            # print(self.agents)
+            await self._process_trade(symbol, pair, market_qty, seed_price, 'init_seed_'+ticker, 'init_seed_'+ticker, position_id='init_seed_'+ticker)
+            await self.limit_buy(symbol, pair, seed_price * seed_bid, 1, 'init_seed_'+ticker, position_id='init_seed_'+ticker)
+            await self.limit_sell(symbol, pair,  seed_price * seed_ask, market_qty, 'init_seed_'+ticker)
         return self.assets[symbol]
     
     async def _process_trade(self, base, quote, qty, price, buyer, seller, accounting='FIFO', fee=0.0, position_id=None):
-        if not await self.agent_has_assets(buyer, base, qty):
+        if not await self.agent_has_assets(buyer, quote, qty):
+            print('buyer has insufficient quote assets')
             return None
-        if not await self.agent_has_assets(seller, quote, qty):
+        if not await self.agent_has_assets(seller, base, qty):
+            print('seller has insufficient base assets')
             return None
         
         trade = CryptoTrade(base, quote, qty, price, buyer, seller, self.datetime, fee=fee)
@@ -86,23 +88,22 @@ class CryptoExchange(Exchange):
             return latest_trade.to_dict()
         else:
             return {'error': 'no trades found'}
+    
+    async def get_trades(self, base:str, quote: str, limit=20) -> list:
+        """Retrieves the most recent trade of a given asset
 
-    async def get_quotes(self, base, quote) -> dict:
-        ticker = base+quote
-        return await super().get_quotes(ticker)
-    
-    async def get_midprice(self, base: str, quote:str) -> float:
-        ticker = base+quote
-        return await super().get_midprice(ticker)
-    
-    async def get_trades(self, base, quote, limit=20) -> list:
-        ticker = base+quote
-        return await super().get_trades(ticker, limit=limit)
-    
-    async def get_price_bars(self, base, quote, limit=20, bar_size='1D') -> list:
-        ticker = base+quote
-        return await super().get_price_bars(ticker, limit, bar_size)
-    
+        Args:
+            ticker (str): the ticker of the trade
+
+        returns:
+            Trade
+        """
+        trades = [trade.to_dict() for trade in self.trade_log[::-1] if trade.base == base and trade.quote == quote][:limit]
+        if len(trades) > 0:
+            return trades
+        else:
+            return [{'error': 'no trades found'}]
+
     async def get_best_ask(self, base: str, quote: str) -> LimitOrder:
         ticker = base+quote
         return await super().get_best_ask(ticker)
@@ -150,6 +151,7 @@ class CryptoExchange(Exchange):
                 filled_taker_order = LimitOrder(ticker, price, qty, creator, OrderSide.BUY, self.datetime,fee=fee+maker_fee, position_id=position_id, fills=fills)
                 return filled_taker_order
         else:
+            print('insufficient funds')
             return LimitOrder("error", 0, 0, 'insufficient_funds', OrderSide.BUY, self.datetime)
         
     async def limit_sell(self, base: str, quote:str, price: float, qty: int, creator: str, fee=0, tif='GTC', accounting='FIFO') -> LimitOrder:
@@ -192,23 +194,19 @@ class CryptoExchange(Exchange):
                 return filled_taker_order
         else:
             return LimitOrder("error", 0, 0, 'insufficient_assets', OrderSide.SELL, self.datetime)
-        
-    async def get_order(self, base, quote, id) -> LimitOrder:
-        ticker = base+quote
-        return await super().get_order(ticker, id)       
-    
+           
     async def cancel_order(self, base, quote, id) -> LimitOrder:
         ticker = base+quote
         return await super().cancel_order(ticker, id)
     
     async def cancel_all_orders(self, base, quote, creator) -> list:
         ticker = base+quote
-        return await super().cancel_all_orders(ticker, creator)
+        return await super().cancel_all_orders(creator, ticker)
     
     async def market_buy(self, base: str, quote:str, qty: int, buyer: str, fee=0.0) -> dict:
         ticker = base+quote
         best_price = (await self.get_best_ask(base, quote)).price
-        has_asset = (await self.agent_has_assets(buyer, quote, qty * best_price))
+        has_asset = await self.agent_has_assets(buyer, quote, qty * best_price)
         if has_asset:
             fills = []
             for idx, ask in enumerate(self.books[ticker].asks):
@@ -259,11 +257,13 @@ class CryptoExchange(Exchange):
         """
         `initial_assets`: a dict where the keys are symbols and values are quantities: e.g. {'BTC': 1000, 'ETH': 1000}
         """
+        registered_name = name + str(UUID())[0:8]
         positions = []
         for asset in initial_assets:
-            positions.append({"id":str(UUID()),"base": asset, "quote": self.default_quote_currency['symbol'], "price": 0, "qty": initial_assets[asset], "dt": self.datetime, "enters":[], "exits": []})
+            side = {'agent': registered_name, 'quote_flow': 0, 'price': 0, 'base': asset, 'quote': self.default_quote_currency['symbol'], 'initial_qty': 0, 'qty': initial_assets[asset], 'dt': self.datetime, 'type': 'buy'}
+            new_position = await self.new_position(side)
+            positions.append(new_position)
 
-        registered_name = name + str(UUID())[0:8]
         self.agents.append({
             'name':registered_name,
             '_transactions':[], 
@@ -272,6 +272,21 @@ class CryptoExchange(Exchange):
             "taxable_events": []
         })
         return {'registered_agent':registered_name}
+    
+    async def new_position(self, side) -> dict:
+        enter = side.copy()
+        enter['initial_qty'] = side['qty']
+        enter['id'] = str(UUID())
+        return {
+            'id': str(UUID()),
+            'base': side['base'],
+            'quote': side['quote'],
+            'price': side['price'],
+            'qty': side['qty'],
+            'dt': side['dt'],
+            'enters': [enter],
+            'exits': []
+        }
     
     async def enter_position(self, side, agent_idx, position_id) -> dict:
         buy = side.copy()
@@ -286,19 +301,7 @@ class CryptoExchange(Exchange):
                 return {'enter_position': 'existing success'}
             
         if start_new_position:
-            enter = side.copy()
-            enter['initial_qty'] = side['qty']
-            enter['id'] = str(UUID())
-            new_position = {
-                'id': str(UUID()),
-                'base': side['base'],
-                'quote': side['quote'],
-                'price': side['price'],
-                'qty': side['qty'],
-                'dt': side['dt'],
-                'enters': [enter],
-                'exits': []
-            }
+            new_position = await self.new_position(side)
             positions.append(new_position)        
             return {'enter_position': 'new success'}
     
@@ -348,23 +351,24 @@ class CryptoExchange(Exchange):
         return {'exit_position': 'no position to exit'}                            
 
     async def update_assets(self, asset, amount, agent_idx) -> None:
-        if asset in self.agents[agent_idx]['assets']: 
+        if asset in self.agents[agent_idx]['assets']:
             self.agents[agent_idx]['assets'][asset] += amount
         else: 
             self.agents[agent_idx]['assets'][asset] = amount        
 
     async def update_agents(self, transaction, accounting, position_id) -> None:
         for side in transaction:
+            if len(self.agents) == 0:
+                return {'update_agents': 'no agents'}
             agent_idx = await self.get_agent_index(side['agent'])
             if agent_idx is None:
                 return {'update_agents': 'agent not found'}
             self.agents[agent_idx]['_transactions'].append(side)
             await self.update_assets(side['base'], side['qty'], agent_idx)
+            await self.update_assets(side['quote'], side['quote_flow'], agent_idx)
             if side['type'] == 'buy':
-                await self.update_assets(side['quote'], agent_idx, -side['quote_flow'])
                 await self.enter_position(side, agent_idx, position_id)
             elif side['type'] == 'sell':
-                await self.update_assets(side['quote'], agent_idx, side['quote_flow'])
                 await self.sort_positions(agent_idx, accounting)
                 await self.exit_position(side, agent_idx)
 
@@ -390,7 +394,23 @@ class CryptoExchange(Exchange):
                     last_action =agent['_transactions'][-1]['type']
                 info.append({agent['name']: {'assets':agent['assets'], 'last_action': last_action }})
         return info
+
+    async def agent_has_assets(self, agent, asset, qty) -> bool:
+        return await super().agent_has_assets(agent, asset, qty)
     
+    async def agent_has_cash(self, agent, amount, qty) -> bool:
+        return await self.agent_has_assets(agent, self.default_quote_currency['symbol'], amount * qty)
+
+    async def agents_cash(self) -> list:
+        """
+        returns a list of all agents and their cash
+        """
+        info = []
+        for agent in self.agents:
+            if agent['name'] != 'init_seed':
+                info.append({agent['name']: {'cash':agent['assets'][self.default_quote_currency['symbol']]}})
+        return info
+
     async def get_cash(self, agent_name) -> dict:
         agent_info = await self.get_agent(agent_name)
         return {'cash':agent_info['assets'][self.default_quote_currency['symbol']]}
@@ -403,7 +423,8 @@ class CryptoExchange(Exchange):
         if agent_idx is not None:
             side = {'id': str(UUID()), 'agent':agent, 'quote_flow':0, 'price': 0, 'base': asset, 'quote': self.default_quote_currency['symbol'], 'qty': amount, 'fee':0, 'dt': self.datetime, 'type': note}
             await self.enter_position(side, agent_idx, str(UUID()))
-            return {'asset':self.agents[agent_idx]['assets'][asset]}
+            await self.update_assets(asset, amount, agent_idx)
+            return {asset: amount}
         else:
             return {'error': 'agent not found'}
 
@@ -415,7 +436,8 @@ class CryptoExchange(Exchange):
         if agent_idx is not None:
             side = {'id': str(UUID()), 'agent':agent,'quote_flow':0, 'price': 0, 'base':asset, 'quote':self.default_quote_currency['symbol'], 'qty': -amount, 'fee':0, 'dt': self.datetime, 'type': 'sell'}
             await self.exit_position(side, agent_idx)
-            return {'asset':self.agents[agent_idx]['assets'][asset]}
+            await self.update_assets(asset, -amount, agent_idx)
+            return {asset: self.agents[agent_idx]['assets'][asset]}
         else:
             return {'error': 'agent not found'}
 
@@ -462,6 +484,23 @@ class CryptoExchange(Exchange):
         for agent in self.agents:
             agents_simple.append({'agent':agent['name'],'assets':agent['assets']})
         return agents_simple
+
+    async def get_agents_positions(self, base=None, quote=None) -> list:
+        """
+        Returns a list of agents and their positions, optionally for a base quote pair
+        """
+        agent_positions = []
+        for agent in self.agents:
+            positions = []
+            for position in agent['positions']:
+                if base is None and quote is None:
+                    positions.append(position)
+                elif position['base'] == base and position['quote'] == quote:
+                    positions.append(position)
+                else:
+                    continue
+            agent_positions.append({'agent':agent['name'],'positions':positions})
+        return agent_positions
 
     async def get_tickers(self) -> list:
         """
