@@ -413,7 +413,7 @@ class CryptoExchange(Exchange):
             agent_idx = await self.get_agent_index(agent)
         if agent_idx is not None:
             side = {'id': str(UUID()), 'agent':agent, 'quote_flow':0, 'price': 0, 'base': asset, 'quote': self.default_quote_currency['symbol'], 'qty': amount, 'fee':0, 'dt': self.datetime, 'type': note}
-            await self.enter_position(side, agent_idx, str(UUID()))
+            await self.enter_position(side, asset, amount, agent_idx, str(UUID()))
             await self.update_assets(asset, amount, agent_idx)
             return {asset: self.agents[agent_idx]['assets'][asset]}
         else:
@@ -426,7 +426,7 @@ class CryptoExchange(Exchange):
             agent_idx = await self.get_agent_index(agent)
         if agent_idx is not None:
             side = {'id': str(UUID()), 'agent':agent,'quote_flow':0, 'price': 0, 'base':asset, 'quote':self.default_quote_currency['symbol'], 'qty': -amount, 'fee':0, 'dt': self.datetime, 'type': 'sell'}
-            await self.exit_position(side, agent_idx)
+            await self.exit_position(side, asset, -amount, agent_idx)
             await self.update_assets(asset, -amount, agent_idx)
             return {asset: self.agents[agent_idx]['assets'][asset]}
         else:
