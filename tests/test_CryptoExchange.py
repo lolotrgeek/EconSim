@@ -31,8 +31,8 @@ class GetOrderBookTestCase(unittest.IsolatedAsyncioTestCase):
         await self.exchange.create_asset("BTC", seed_price=150, seed_bid=0.99, seed_ask=1.01)
 
     async def test_get_order_book(self):
-        order_book = await self.exchange.get_order_book("BTC", "USD")
-        self.assertEqual(order_book.base, "BTC")
+        order_book = await self.exchange.get_order_book("BTCUSD")
+        self.assertEqual(order_book.ticker, "BTCUSD")
         self.assertEqual(len(order_book.bids), 1)
         self.assertEqual(len(order_book.asks), 1)    
 
@@ -95,7 +95,7 @@ class GetBestAskTestCase(unittest.IsolatedAsyncioTestCase):
         await self.exchange.create_asset("BTC", seed_price=150, seed_bid=0.99, seed_ask=1.01)
 
     async def test_get_best_ask(self):
-        best_ask = await self.exchange.get_best_ask("BTC", "USD")
+        best_ask = await self.exchange.get_best_ask("BTCUSD")
         self.assertEqual(best_ask.price, 151.5)
         self.assertEqual(best_ask.qty, 1000)
 
@@ -105,13 +105,13 @@ class GetBestBidTestCase(unittest.IsolatedAsyncioTestCase):
         await self.exchange.create_asset("BTC", seed_price=150, seed_bid=0.99, seed_ask=1.01)
 
     async def test_get_best_bid(self):
-        best_bid = await self.exchange.get_best_bid("BTC", "USD")
+        best_bid = await self.exchange.get_best_bid("BTCUSD")
         self.assertEqual(best_bid.price, 148.5)
         self.assertEqual(best_bid.qty, 1)
 
     async def test_get_best_bid_error(self):
         self.exchange.books["BTCUSD"].bids.clear()
-        best_bid = await self.exchange.get_best_bid("BTC", "USD")
+        best_bid = await self.exchange.get_best_bid("BTCUSD")
         self.assertEqual(best_bid.ticker, "BTCUSD")
         self.assertEqual(best_bid.price, 0)
         self.assertEqual(best_bid.qty, 0)

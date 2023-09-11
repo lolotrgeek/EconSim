@@ -2,7 +2,7 @@ from uuid import uuid4 as UUID
 
 from source.exchange.types.LimitOrder import LimitOrder
 from .Exchange import Exchange
-from .types.CryptoOrderBook import CryptoOrderBook
+from .types.OrderBook import OrderBook
 from .types.CryptoTrade import CryptoTrade
 from .types.LimitOrder import LimitOrder
 from .types.OrderSide import OrderSide
@@ -14,7 +14,7 @@ class CryptoExchange(Exchange):
     def __init__(self, datetime= None):
         super().__init__(datetime=datetime)
 
-    async def create_asset(self, symbol: str, pairs=[], market_qty=1000, seed_price=100, seed_bid=.99, seed_ask=1.01) -> CryptoOrderBook:
+    async def create_asset(self, symbol: str, pairs=[], market_qty=1000, seed_price=100, seed_bid=.99, seed_ask=1.01) -> dict:
         """_summary_
         Args:
             symbol (str): the symbol of the new asset
@@ -30,7 +30,7 @@ class CryptoExchange(Exchange):
         self.assets[symbol] = {'type': 'crypto', 'id' : str(UUID())}
         for pair in pairs:
             ticker = symbol+pair
-            self.books[ticker] = CryptoOrderBook(symbol, pair)
+            self.books[ticker] = OrderBook(ticker)
             quote_position =  {"id":'init_seed_'+ticker,"base": symbol, "quote":pair, "price": 0,"qty": market_qty * seed_price, "dt": self.datetime, "enters":[], "exits": [], }
             self.agents.append({'name':'init_seed_'+ticker,'cash':market_qty * seed_price,'_transactions':[], "taxable_events": [], 'positions': [quote_position],  'assets': {symbol: market_qty, pair: market_qty * seed_price}})
             await self._process_trade(symbol, pair, market_qty, seed_price, 'init_seed_'+ticker, 'init_seed_'+ticker, position_id='init_seed_'+ticker)
@@ -56,20 +56,19 @@ class CryptoExchange(Exchange):
         await self.update_agents(transaction, accounting, position_id=position_id)
         return transaction    
     
-    async def get_order_book(self, base:str, quote: str) -> CryptoOrderBook:
-        """returns the CryptoOrderBook of a given Asset
+    async def get_order_book(self, ticker:str) -> OrderBook:
+        """returns the OrderBook of a given Asset
 
         Args:
             symbol (str): the symbol of the asset
 
         returns:
-            CryptoOrderBook: the orderbook of the asset.
+            OrderBook: the orderbook of the asset.
         """
-        book = base+quote
-        if book in self.books:
-            return self.books[book]
+        if ticker in self.books:
+            return self.books[ticker]
         else:
-            return CryptoOrderBook("error")    
+            return OrderBook("error")    
 
     async def get_latest_trade(self, base:str, quote: str) -> CryptoTrade:
         """Retrieves the most recent trade of a given asset
@@ -101,14 +100,6 @@ class CryptoExchange(Exchange):
         else:
             return [{'error': 'no trades found'}]
 
-    async def get_best_ask(self, base: str, quote: str) -> LimitOrder:
-        ticker = base+quote
-        return await super().get_best_ask(ticker)
-    
-    async def get_best_bid(self, base: str, quote: str) -> LimitOrder:
-        ticker = base+quote
-        return await super().get_best_bid(ticker)
-    
     async def limit_buy(self, base: str, quote:str, price: float, qty: int, creator: str, fee=0, tif='GTC', position_id=UUID()) -> LimitOrder:
         has_asset = await self.agent_has_assets(creator, quote, qty * price)
         ticker = base+quote
@@ -119,7 +110,7 @@ class CryptoExchange(Exchange):
             while unfilled_qty > 0:
                 if tif == 'TEST':
                     break
-                best_ask = await self.get_best_ask(base, quote)
+                best_ask = await self.get_best_ask(ticker)
                 if best_ask.creator != 'null_quote' and best_ask.creator != creator and price >= best_ask.price:
                     trade_qty = min(unfilled_qty, best_ask.qty)
                     taker_fee = self.fees.taker_fee(trade_qty)
@@ -160,7 +151,7 @@ class CryptoExchange(Exchange):
             while unfilled_qty > 0:
                 if tif == 'TEST':
                     break
-                best_bid = await self.get_best_bid(base, quote)
+                best_bid = await self.get_best_bid(ticker)
                 if best_bid.creator != 'null_quote' and best_bid.creator != creator and price <= best_bid.price:
                     trade_qty = min(unfilled_qty, best_bid.qty)
                     taker_fee = self.fees.taker_fee(trade_qty)
@@ -201,7 +192,7 @@ class CryptoExchange(Exchange):
     
     async def market_buy(self, base: str, quote:str, qty: int, buyer: str, fee=0.0) -> dict:
         ticker = base+quote
-        best_price = (await self.get_best_ask(base, quote)).price
+        best_price = (await self.get_best_ask(ticker)).price
         has_asset = await self.agent_has_assets(buyer, quote, qty * best_price)
         if has_asset:
             fills = []
