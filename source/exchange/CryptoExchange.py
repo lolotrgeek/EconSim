@@ -368,6 +368,9 @@ class CryptoExchange(Exchange):
                 await self.sort_positions(agent_idx, accounting)
                 await self.exit_position(side, agent_idx)
 
+    async def get_agents_holding(self, asset) -> list:
+        return await super().get_agents_holding(asset)
+
     async def total_cash(self) -> float:
         """
         returns the total of the default quote currency across all agents
