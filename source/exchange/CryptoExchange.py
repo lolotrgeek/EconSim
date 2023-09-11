@@ -31,8 +31,8 @@ class CryptoExchange(Exchange):
         for pair in pairs:
             ticker = symbol+pair
             self.books[ticker] = OrderBook(ticker)
-            quote_position =  {"id":'init_seed_'+ticker,"base": symbol, "quote":pair, "price": 0,"qty": market_qty * seed_price, "dt": self.datetime, "enters":[], "exits": [], }
-            self.agents.append({'name':'init_seed_'+ticker,'cash':market_qty * seed_price,'_transactions':[], "taxable_events": [], 'positions': [quote_position],  'assets': {symbol: market_qty, pair: market_qty * seed_price}})
+            quote_position =  {"id":'init_seed_'+ticker, 'asset': symbol, "price": 0,"qty": market_qty * seed_price, "dt": self.datetime, "enters":[], "exits": [], }
+            self.agents.append({'name':'init_seed_'+ticker,'_transactions':[], "taxable_events": [], 'positions': [quote_position],  'assets': {symbol: market_qty, pair: market_qty * seed_price}})
             await self._process_trade(symbol, pair, market_qty, seed_price, 'init_seed_'+ticker, 'init_seed_'+ticker, position_id='init_seed_'+ticker)
             await self.limit_buy(symbol, pair, seed_price * seed_bid, 1, 'init_seed_'+ticker, position_id='init_seed_'+ticker)
             await self.limit_sell(symbol, pair,  seed_price * seed_ask, market_qty, 'init_seed_'+ticker)
@@ -248,7 +248,7 @@ class CryptoExchange(Exchange):
         positions = []
         for asset in initial_assets:
             side = {'agent': registered_name, 'quote_flow': 0, 'price': 0, 'base': asset, 'quote': self.default_quote_currency['symbol'], 'initial_qty': 0, 'qty': initial_assets[asset], 'dt': self.datetime, 'type': 'buy'}
-            new_position = await self.new_position(side)
+            new_position = await self.new_position(side, side['base'], side['qty'])
             positions.append(new_position)
 
         self.agents.append({
@@ -260,43 +260,42 @@ class CryptoExchange(Exchange):
         })
         return {'registered_agent':registered_name}
     
-    async def new_position(self, side) -> dict:
+    async def new_position(self, side, asset, qty) -> dict:
         enter = side.copy()
-        enter['initial_qty'] = side['qty']
+        enter['initial_qty'] = qty
         enter['id'] = str(UUID())
         return {
             'id': str(UUID()),
-            'base': side['base'],
-            'quote': side['quote'],
+            'asset': asset,
             'price': side['price'],
-            'qty': side['qty'],
+            'qty': qty,
             'dt': side['dt'],
             'enters': [enter],
             'exits': []
         }
     
-    async def enter_position(self, side, agent_idx, position_id) -> dict:
+    async def enter_position(self, side, asset, qty, agent_idx, position_id) -> dict:
         buy = side.copy()
         start_new_position = True
         agent = self.agents[agent_idx]
         positions = agent['positions']
         for position in positions:
-            if position['id'] == position_id:
+            if position['id'] == position_id or position['asset'] == asset:
                 start_new_position = False
-                position['qty'] += buy['qty']
+                position['qty'] += qty
                 position['enters'].append(buy)
                 return {'enter_position': 'existing success'}
             
         if start_new_position:
-            new_position = await self.new_position(side)
+            new_position = await self.new_position(side, asset, qty)
             positions.append(new_position)        
             return {'enter_position': 'new success'}
     
-    async def exit_position(self, side, agent_idx) -> None:
+    async def exit_position(self, side, asset, qty, agent_idx) -> None:
         sell = side.copy()
         agent = self.agents[agent_idx]
         positions = agent['positions']
-        viable_positions = [position for position in positions if position['base'] == sell['base'] and position['qty'] > 0]
+        viable_positions = [position for position in positions if position['asset'] == asset and position['qty'] > 0]
         if len(viable_positions) == 0: 
             return {'exit_position': 'no viable positions'}
         #NOTE: sell sell['qty'] comes in negative, so we need to flip the sign and add the quantity flow to the sell['qty'] as we pull from enters 
@@ -306,13 +305,13 @@ class CryptoExchange(Exchange):
                 if len(enters) == 0:
                     return {'exit_position': 'no enters'}
                 for enter in enters:
-                    normalised_qty = sell['qty'] * -1
+                    normalised_qty = qty * -1
                     exit = {
                         'id': str(UUID()),
                         'agent': agent['name'],
+                        'base': enter['base'],
+                        'quote': enter['quote'],
                         'quote_flow': sell['quote_flow'],
-                        'base': sell['base'],
-                        'quote': sell['quote'],
                         'qty': normalised_qty,
                         'dt': sell['dt'],
                         'type': sell['type'],
@@ -325,15 +324,15 @@ class CryptoExchange(Exchange):
                         agent['taxable_events'].append(taxable_event)
                         
                     if enter['qty'] >= normalised_qty:
-                        position['qty'] += sell['qty']
-                        enter['qty'] += sell['qty']
+                        position['qty'] += qty
+                        enter['qty'] += qty
                         position['exits'].append(exit)
                         sell['qty'] = 0
                         return {'exit_position': 'success'}
                     else:
                         position['exits'].append(exit)
                         sell['qty'] += position['qty']
-                        enter['qty'] += sell['qty']
+                        enter['qty'] += qty
                         position['qty'] = 0
         return {'exit_position': 'no position to exit'}                            
 
@@ -354,10 +353,12 @@ class CryptoExchange(Exchange):
             await self.update_assets(side['base'], side['qty'], agent_idx)
             await self.update_assets(side['quote'], side['quote_flow'], agent_idx)
             if side['type'] == 'buy':
-                await self.enter_position(side, agent_idx, position_id)
+                await self.enter_position(side, side['base'], side['qty'], agent_idx, position_id)
+                await self.exit_position(side, side['quote'], side['quote_flow'], agent_idx)
             elif side['type'] == 'sell':
                 await self.sort_positions(agent_idx, accounting)
-                await self.exit_position(side, agent_idx)
+                await self.exit_position(side, side['base'], side['qty'], agent_idx)
+                await self.enter_position(side, side['quote'], side['quote_flow'], agent_idx, None)
 
     async def get_agents_holding(self, asset) -> list:
         return await super().get_agents_holding(asset)
@@ -414,7 +415,7 @@ class CryptoExchange(Exchange):
             side = {'id': str(UUID()), 'agent':agent, 'quote_flow':0, 'price': 0, 'base': asset, 'quote': self.default_quote_currency['symbol'], 'qty': amount, 'fee':0, 'dt': self.datetime, 'type': note}
             await self.enter_position(side, agent_idx, str(UUID()))
             await self.update_assets(asset, amount, agent_idx)
-            return {asset: amount}
+            return {asset: self.agents[agent_idx]['assets'][asset]}
         else:
             return {'error': 'agent not found'}
 
@@ -448,22 +449,22 @@ class CryptoExchange(Exchange):
         if "price" in latest_trade:
             price = latest_trade["price"]
         else:
-            price = (await self.get_midprice(base,quote))['midprice']
+            price = (await self.get_midprice(base+quote))['midprice']
 
         market_cap = price  * (await self.get_outstanding_shares(base))
         return market_cap
     
-    async def get_outstanding_shares(self, base) -> int:
+    async def get_outstanding_shares(self, asset) -> int:
         """
-        Calculates the number of shares outstanding for a given ticker
+        Calculates the number of shares outstanding for a given asset
         Args: 
         
-        ticker: the ticker of the asset
+        asset: the symbol of the asset
         """
         shares_outstanding = 0
         for agent in self.agents:
-            if agent['name'] != 'init_seed_'+base and base in agent['assets']:
-                shares_outstanding += agent['assets'][base]
+            if 'init_seed_' not in agent['name'] and asset in agent['assets']:
+                shares_outstanding += agent['assets'][asset]
         return shares_outstanding
   
     async def get_agents_simple(self) -> list:
