@@ -7,16 +7,18 @@ from source.Messaging import Responder, Requester, Subscriber, Pusher
 from source.agents.Government import Government
 from source.exchange.ExchangeRequests import ExchangeRequests as Requests
 from source.utils._utils import dumps, string_to_time
+from Channels import Channels
 from rich import print
 from rich.live import Live
 from rich.table import Table
 
 
-async def run_government(government_channel=5580, exchange_channel = 5570, time_channel = 5114) -> None:
+async def run_government() -> None:
     try:
-        pusher = Pusher(government_channel)
-        requester = Requester(channel=exchange_channel)
-        time_puller = Subscriber(time_channel)
+        channels = Channels()
+        pusher = Pusher(channels.government_channel)
+        requester = Requester(channel=channels.exchange_channel)
+        time_puller = Subscriber(channels.time_channel)
         await requester.connect()
         government = Government(requester=Requests(requester))
         

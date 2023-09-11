@@ -4,8 +4,8 @@ from source.exchange.ExchangeRequests import ExchangeRequests as Requests
 from source.utils._utils import dumps, string_to_time
 import asyncio
 import random
-import string
 import traceback
+from Channels import Channels
 
 names= ['A', 'frXoX', 'wAt', 'Ayc', 'EXCAb', 'Qw', 'vbcY', 'ZM', 'j', 'nNLga', 'Ln', 'ao', 'k', 'icyJ', 'r', 'qk', 'BeHN', 'if', 'yAnL', 'sw']
 
@@ -16,13 +16,14 @@ def generate_companies(names, requester, time) -> dict:
         companies[company.symbol] = company
     return companies
 
-async def run_companies(time_channel=5114, exchange_channel=5570, company_channel=5572) -> None:
-    try:
-        num_companies = 20
 
-        responder = Responder(company_channel)
-        requester = Requester(channel=exchange_channel)
-        time_puller = Subscriber(time_channel)
+
+async def run_companies() -> None:
+    try:
+        channels = Channels()
+        responder = Responder(channels.company_channel)
+        requester = Requester(channel=channels.exchange_channel)
+        time_puller = Subscriber(channels.time_channel)
         await responder.connect()
         await requester.connect()
         

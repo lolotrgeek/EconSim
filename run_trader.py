@@ -6,14 +6,16 @@ from rich import print
 import asyncio
 from source.exchange.ExchangeRequests import ExchangeRequests
 from source.company.PublicCompanyRequests import PublicCompanyRequests
+from Channels import Channels
 asyncio.set_event_loop_policy(asyncio.WindowsSelectorEventLoopPolicy())
 
-async def run_trader(exchange_channel = 5570, company_channel=5572) -> None:
+async def run_trader() -> None:
     try:
         trader = None
         picker = randint(0,4)
-        exchange_requester = Requester(channel=exchange_channel)
-        company_requester = Requester(channel=company_channel)
+        channels = Channels()
+        exchange_requester = Requester(channel=channels.exchange_channel)
+        company_requester = Requester(channel=channels.company_channel)
         await exchange_requester.connect()
         await company_requester.connect()
         exchange_requests = ExchangeRequests(requester=exchange_requester)

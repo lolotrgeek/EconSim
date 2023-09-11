@@ -6,15 +6,17 @@ from source.Messaging import Responder, Requester, Subscriber, Pusher
 from source.agents.Bank import Bank
 from source.exchange.ExchangeRequests import ExchangeRequests as Requests
 from source.utils._utils import dumps, string_to_time
+from Channels import Channels
 from rich import print
 
 
-async def run_banks(bank_channel=5581, bank_response_channel = 5582, exchange_channel = 5570, time_channel = 5114) -> None:
+async def run_banks() -> None:
     try:
-        pusher = Pusher(bank_channel)
-        responder = Responder(bank_response_channel)
-        requester = Requester(channel=exchange_channel)
-        time_puller = Subscriber(time_channel)
+        channels = Channels()
+        pusher = Pusher(channels.bank_channel)
+        responder = Responder(channels.bank_response_channel)
+        requester = Requester(channel=channels.exchange_channel)
+        time_puller = Subscriber(channels.time_channel)
         await responder.connect()
         await requester.connect()
         bank = Bank(requester=Requests(requester))

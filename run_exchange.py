@@ -4,6 +4,7 @@ from source.Messaging import Responder, Requester, Subscriber
 from source.exchange.Exchange import Exchange
 from source.company.PublicCompany import PublicCompany
 from source.utils._utils import dumps, string_to_time
+from Channels import Channels
 from rich import print
 from rich.console import Console
 from rich.table import Table
@@ -11,12 +12,13 @@ import time
 import asyncio
 asyncio.set_event_loop_policy(asyncio.WindowsSelectorEventLoopPolicy())
 
-async def run_exchange(exchange_channel = 5570, time_channel = 5114) -> None:
+async def run_exchange() -> None:
     try: 
+        channels = Channels()
         exchange = Exchange(datetime=datetime(1700,1,1))
-        time_puller = Subscriber(time_channel)
-        responder = Responder(exchange_channel)
-        requester = Requester(exchange_channel)
+        time_puller = Subscriber(channels.time_channel)
+        responder = Responder(channels.exchange_channel)
+        requester = Requester(channels.exchange_channel)
         await responder.connect()
         await requester.connect()
 
