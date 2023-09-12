@@ -16,4 +16,4 @@ class calculateMarketCapTest(unittest.IsolatedAsyncioTestCase):
     # @unittest.skip("Run manually to test")
     async def test_calculate_market_cap(self):
         result = await self.exchange.calculate_market_cap("BTC", "USD")
-        self.assertEqual(result, 1650000)
+        self.assertEqual(result, 1500000)

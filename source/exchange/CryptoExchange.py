@@ -283,6 +283,7 @@ class CryptoExchange(Exchange):
             if position['id'] == position_id or position['asset'] == asset:
                 start_new_position = False
                 position['qty'] += qty
+                buy['initial_qty'] = qty
                 position['enters'].append(buy)
                 return {'enter_position': 'existing success'}
             
@@ -476,7 +477,7 @@ class CryptoExchange(Exchange):
             agents_simple.append({'agent':agent['name'],'assets':agent['assets']})
         return agents_simple
 
-    async def get_agents_positions(self, base=None, quote=None) -> list:
+    async def get_agents_positions(self, asset=None) -> list:
         """
         Returns a list of agents and their positions, optionally for a base quote pair
         """
@@ -484,12 +485,9 @@ class CryptoExchange(Exchange):
         for agent in self.agents:
             positions = []
             for position in agent['positions']:
-                if base is None and quote is None:
+                if asset is None or position['asset'] == asset:
                     positions.append(position)
-                elif position['base'] == base and position['quote'] == quote:
-                    positions.append(position)
-                else:
-                    continue
+
             agent_positions.append({'agent':agent['name'],'positions':positions})
         return agent_positions
 
