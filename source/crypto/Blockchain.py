@@ -23,11 +23,12 @@ class Blockchain():
         self.chain.append(block)
         return block
     
-    async def add_transaction(self, ticker, fee, amount, sender, recipient, dt) -> MempoolTransaction:
+    async def add_transaction(self, asset:str, fee:float, amount:float, sender:str, recipient:str, dt) -> MempoolTransaction:
+        if(fee <= 0.0): return MempoolTransaction("error", 0, 0, "error", "error", dt)
         self.total_transactions += 1
-        mempool_transaction = MempoolTransaction(ticker, fee, amount, sender, recipient, dt)
+        mempool_transaction = MempoolTransaction(asset, fee, amount, sender, recipient, dt)
         self.mempool.transactions.append(mempool_transaction)
-        return self.mempool.transactions[-1]
+        return mempool_transaction
 
     async def process_transactions(self, dt=None) -> None:
         unconfirmed_transactions = self.mempool.get_pending_transactions()
@@ -45,15 +46,25 @@ class Blockchain():
         
         self.mempool.transactions = self.mempool.get_pending_transactions() # clear the mempool of confirmed transactions
     
-    async def get_transactions(self) -> pd.DataFrame:
+    async def get_transactions_df(self) -> pd.DataFrame:
         return pd.DataFrame.from_records([t.to_dict() for t in self.chain]).set_index('dt')
 
+    async def get_transactions (self) -> list:
+        return [t.to_dict() for t in self.chain]
+    
+    async def get_transaction(self, id) -> dict:
+        for transaction in self.chain:
+            if transaction.id == id:
+                return transaction.to_dict()
+        for transaction in self.mempool.transactions:
+            if transaction.id == id:
+                return transaction.to_dict()
+        return None
+    
+    async def get_mempool(self):
+        return self.mempool.transactions
 
     @property
     def last_block(self) -> dict:
         return self.chain[-1]
 
-    @property
-    def transactions(self) -> pd.DataFrame:
-        return pd.DataFrame.from_records([t.to_dict() for t in self.chain]).set_index('dt')
-    
