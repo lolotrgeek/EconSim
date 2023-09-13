@@ -1,7 +1,7 @@
 from datetime import datetime
 
 class CryptoTrade():
-    def __init__(self, base, quote, qty, price, buyer, seller, dt=None, fee=0):
+    def __init__(self, base, quote, qty, price, buyer, seller, dt=None, network_fee=0.0, exchange_fee=0.0):
         self.base = base
         self.quote = quote
         self.ticker=base+quote
@@ -10,7 +10,8 @@ class CryptoTrade():
         self.buyer = buyer
         self.seller = seller
         self.dt = dt
-        self.fee = fee
+        self.network_fee = network_fee
+        self.exchange_fee = exchange_fee
 
     def __repr__(self) -> str:
         return f'<CryptoTrade: {self.base}/{self.quote} {self.qty}@{self.price} {self.dt}>'
@@ -24,6 +25,7 @@ class CryptoTrade():
             'price': self.price,
             'buyer': self.buyer,
             'seller': self.seller,
-            'fee': self.fee
+            'network_fee': self.network_fee,
+            'exchange_fee': self.exchange_fee,
         }
 

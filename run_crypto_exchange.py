@@ -5,21 +5,19 @@ from source.exchange.CryptoExchange import CryptoExchange
 from source.utils._utils import dumps, string_to_time
 from Channels import Channels
 from rich import print
-from rich.console import Console
-from rich.table import Table
-import time
 import asyncio
 asyncio.set_event_loop_policy(asyncio.WindowsSelectorEventLoopPolicy())
 
 async def run_crypto_exchange() -> None:
     try:
         channels = Channels() 
-        exchange = CryptoExchange(datetime=datetime(1700,1,1))
         time_puller = Subscriber(channels.time_channel)
         responder = Responder(channels.exchange_channel)
         requester = Requester(channels.exchange_channel)
         await responder.connect()
         await requester.connect()
+
+        exchange = CryptoExchange(datetime=datetime(1700,1,1), requester=requester)
 
         topic_times = {}
 
@@ -69,26 +67,13 @@ async def run_crypto_exchange() -> None:
             #TODO: exchange topic to get general exchange data
             else: return dumps({"warning":  f'unknown topic {msg["topic"]}'})
 
-        console = Console()
+        exchange.address = await exchange.generate_address()
 
         while True:
             get_time()
             msg = await responder.respond(callback)
             if msg is None:
                 continue
-
-            # # Print the table with topic execution times using rich
-            # table = Table(title="Topic Execution Times", show_header=True, header_style="bold magenta")
-            # table.add_row("Total Execution Time", f"{sum(topic_times.values()):.4f}")
-            # table.add_column("Topic", style="cyan", justify="left")
-            # table.add_column("Execution Time (s)", justify="right")
-
-            # for topic, execution_time in topic_times.items():
-            #     table.add_row(topic, f"{execution_time:.4f}")
-
-            # # Clear the console and print the updated table
-            # console.clear()
-            # console.print(table, justify="left", style="bold", end="\r")
 
     except Exception as e:
         print("[Exchange Error] ", e)

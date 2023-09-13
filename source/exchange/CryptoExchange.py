@@ -1,18 +1,33 @@
 from uuid import uuid4 as UUID
+import random, string
 
-from source.exchange.types.LimitOrder import LimitOrder
 from .Exchange import Exchange
 from .types.OrderBook import OrderBook
 from .types.CryptoTrade import CryptoTrade
-from .types.LimitOrder import LimitOrder
+from .types.CryptoLimitOrder import CryptoLimitOrder
 from .types.OrderSide import OrderSide
+from .types.Fees import Fees
 
 #NOTE: symbols are the letters that represent a given asset, e.g. BTC, ETH, etc.
 #NOTE: tickers are the combination of the symbol and the quote currency, e.g. BTC/USD, ETH/USD, etc.
 
 class CryptoExchange(Exchange):
-    def __init__(self, datetime= None):
+    def __init__(self, datetime= None, requester=None):
         super().__init__(datetime=datetime)
+        self.wallets = {}
+        self.fees = Fees()
+        self.fees.waive_fees = False
+        self.requester = requester
+        self.pending_transactions = []
+
+    async def next(self):
+        for transaction in self.pending_transactions:
+            network_transaction = self.requester.get_transaction(asset=transaction['exchange'][0]['base'], id=transaction['network']['id'])
+            if network_transaction['confirmed']:
+                await self.update_agents(transaction['exchange'], transaction['accounting'], position_id=transaction['position_id'])
+                self.fees.total_fee_revenue += network_transaction['fee']
+                self.pending_transactions.remove(transaction)
+            
 
     async def create_asset(self, symbol: str, pairs=[], market_qty=1000, seed_price=100, seed_bid=.99, seed_ask=1.01) -> dict:
         """_summary_
@@ -28,6 +43,7 @@ class CryptoExchange(Exchange):
             return {"error" :f'asset {symbol} already exists'}
         pairs.append(self.default_quote_currency['symbol'])
         self.assets[symbol] = {'type': 'crypto', 'id' : str(UUID())}
+        self.wallets[symbol] = self.generate_address()
         for pair in pairs:
             ticker = symbol+pair
             self.books[ticker] = OrderBook(ticker)
@@ -38,22 +54,30 @@ class CryptoExchange(Exchange):
             await self.limit_sell(symbol, pair,  seed_price * seed_ask, market_qty, 'init_seed_'+ticker)
         return self.assets[symbol]
     
-    async def _process_trade(self, base, quote, qty, price, buyer, seller, accounting='FIFO', fee=0.0, position_id=None):
+    async def _process_trade(self, base, quote, qty, price, buyer, seller, accounting='FIFO', exchange_fee=0.0, network_fee=0.0, position_id=None):
         if not await self.agent_has_assets(buyer, quote, qty):
             return None
         if not await self.agent_has_assets(seller, base, qty):
             return None
         
-        trade = CryptoTrade(base, quote, qty, price, buyer, seller, self.datetime, fee=fee)
+        txn_time = self.datetime
+        trade = CryptoTrade(base, quote, qty, price, buyer, seller, self.datetime, network_fee=network_fee, exchange_fee=exchange_fee)
         self.trade_log.append(trade)
 
-        txn_time = self.datetime
-
         transaction = [
-            {'id': str(UUID()), 'agent':buyer,'quote_flow':-qty*price, 'price': price, 'base': base, 'quote': quote, 'qty': qty, 'fee':fee, 'dt': txn_time, 'type': 'buy'},
-            {'id': str(UUID()), 'agent':seller,'quote_flow':qty*price, 'price': price, 'base': base, 'quote': quote, 'qty': -qty, 'fee':fee, 'dt': txn_time, 'type': 'sell'}
+            {'id': str(UUID()), 'agent':buyer,'quote_flow':-qty*price, 'price': price, 'base': base, 'quote': quote, 'qty': qty, 'fee':exchange_fee, 'dt': txn_time, 'type': 'buy'},
+            {'id': str(UUID()), 'agent':seller,'quote_flow':qty*price, 'price': price, 'base': base, 'quote': quote, 'qty': -qty, 'fee':exchange_fee, 'dt': txn_time, 'type': 'sell'}
         ]
-        await self.update_agents(transaction, accounting, position_id=position_id)
+
+        sender = self.get_agent(seller)
+        recipient = self.get_agent(buyer)
+
+        sender_wallet = sender['wallets'][base]
+        recipient_wallet = recipient['wallets'][quote]
+
+        pending_transaction = self.requester.add_transaction(asset=base, fee=network_fee, amount=qty, sender=sender_wallet, recipient=recipient_wallet, dt=txn_time)
+        self.pending_transactions.append({'network': pending_transaction, 'exchange': transaction, 'accounting': accounting, 'position_id': position_id})
+
         return transaction    
     
     async def get_order_book(self, ticker:str) -> OrderBook:
@@ -100,8 +124,9 @@ class CryptoExchange(Exchange):
         else:
             return [{'error': 'no trades found'}]
 
-    async def limit_buy(self, base: str, quote:str, price: float, qty: int, creator: str, fee=0, tif='GTC', position_id=UUID()) -> LimitOrder:
-        has_asset = await self.agent_has_assets(creator, quote, qty * price)
+    async def limit_buy(self, base: str, quote:str, price: float, qty: int, creator: str, fee=0.0, tif='GTC', position_id=UUID()) -> CryptoLimitOrder:
+        potential_fees = self.fees.taker_fee(qty)
+        has_asset = await self.agent_has_assets(creator, quote, (qty * price)+fee+potential_fees)
         ticker = base+quote
         if has_asset:
             # check if we can match trades before submitting the limit order
@@ -117,7 +142,7 @@ class CryptoExchange(Exchange):
                     self.fees.total_fee_revenue += taker_fee
                     if(type(fee) is str): fee = float(fee)
                     fills.append({'qty': trade_qty, 'price': best_ask.price, 'fee': fee+taker_fee, 'creator': best_ask.creator})
-                    await self._process_trade(base, quote, trade_qty, best_ask.price, creator, best_ask.creator, fee=fee+taker_fee, position_id=position_id)
+                    await self._process_trade(base, quote, trade_qty, best_ask.price, creator, best_ask.creator, exchange_fee=taker_fee, network_fee=fee, position_id=position_id)
                     unfilled_qty -= trade_qty
                     self.books[ticker].asks[0].qty -= trade_qty
                     self.books[ticker].asks = [ask for ask in self.books[ticker].asks if ask.qty > 0]
@@ -132,18 +157,19 @@ class CryptoExchange(Exchange):
             if unfilled_qty > 0:
                 maker_fee = self.fees.maker_fee(unfilled_qty)
                 self.fees.total_fee_revenue += maker_fee
-                maker_order = LimitOrder(ticker, price, unfilled_qty, creator, OrderSide.BUY, self.datetime,fee=fee+maker_fee, position_id=position_id, fills=fills)
+                maker_order = CryptoLimitOrder(ticker, price, unfilled_qty, creator, OrderSide.BUY, self.datetime, exchange_fee=maker_fee, network_fee=fee, position_id=position_id, fills=fills)
                 self.books[ticker].bids.insert(queue, maker_order)
                 return maker_order
             else:
-                filled_taker_order = LimitOrder(ticker, price, qty, creator, OrderSide.BUY, self.datetime,fee=fee+maker_fee, position_id=position_id, fills=fills)
+                filled_taker_order = CryptoLimitOrder(ticker, price, qty, creator, OrderSide.BUY, self.datetime, exchange_fee=maker_fee, network_fee=fee, position_id=position_id, fills=fills)
                 return filled_taker_order
         else:
-            return LimitOrder("error", 0, 0, 'insufficient_funds', OrderSide.BUY, self.datetime)
+            return CryptoLimitOrder("error", 0, 0, 'insufficient_funds', OrderSide.BUY, self.datetime)
         
-    async def limit_sell(self, base: str, quote:str, price: float, qty: int, creator: str, fee=0, tif='GTC', accounting='FIFO') -> LimitOrder:
+    async def limit_sell(self, base: str, quote:str, price: float, qty: int, creator: str, fee=0.0, tif='GTC', accounting='FIFO') -> CryptoLimitOrder:
         ticker = base+quote
-        has_assets = await self.agent_has_assets(creator, base, qty)
+        potential_fees = self.fees.taker_fee(qty)
+        has_assets = await self.agent_has_assets(creator, base, qty+fee+potential_fees)
         if has_assets:
             unfilled_qty = qty
             # check if we can match trades before submitting the limit order
@@ -158,7 +184,7 @@ class CryptoExchange(Exchange):
                     self.fees.total_fee_revenue += taker_fee
                     if(type(fee) is str): fee = float(fee)
                     fills.append({'qty': trade_qty, 'price': best_bid.price, 'fee': fee+taker_fee, 'creator': best_bid.creator})
-                    await self._process_trade(base, quote, trade_qty, best_bid.price, best_bid.creator, creator, accounting, fee=fee+taker_fee)
+                    await self._process_trade(base, quote, trade_qty, best_bid.price, best_bid.creator, creator, accounting, exchange_fee=taker_fee, network_fee=fee)
                     unfilled_qty -= trade_qty
                     self.books[ticker].bids[0].qty -= trade_qty
                     self.books[ticker].bids = [bid for bid in self.books[ticker].bids if bid.qty > 0]
@@ -173,16 +199,16 @@ class CryptoExchange(Exchange):
             if unfilled_qty > 0:
                 maker_fee = self.fees.maker_fee(unfilled_qty)
                 self.fees.total_fee_revenue += maker_fee
-                maker_order = LimitOrder(ticker, price, unfilled_qty, creator, OrderSide.SELL, self.datetime, fee=fee+maker_fee, accounting=accounting, fills=fills)
+                maker_order = CryptoLimitOrder(ticker, price, unfilled_qty, creator, OrderSide.SELL, self.datetime, exchange_fee=maker_fee, network_fee=fee, accounting=accounting, fills=fills)
                 self.books[ticker].asks.insert(queue, maker_order)
                 return maker_order
             else:
-                filled_taker_order = LimitOrder(ticker, price, qty, creator, OrderSide.SELL, self.datetime, fee=fee+maker_fee, accounting=accounting, fills=fills)
+                filled_taker_order = CryptoLimitOrder(ticker, price, qty, creator, OrderSide.SELL, self.datetime, exchange_fee=maker_fee, network_fee=fee, accounting=accounting, fills=fills)
                 return filled_taker_order
         else:
-            return LimitOrder("error", 0, 0, 'insufficient_assets', OrderSide.SELL, self.datetime)
+            return CryptoLimitOrder("error", 0, 0, 'insufficient_assets', OrderSide.SELL, self.datetime)
            
-    async def cancel_order(self, base, quote, id) -> LimitOrder:
+    async def cancel_order(self, base, quote, id) -> CryptoLimitOrder:
         ticker = base+quote
         return await super().cancel_order(ticker, id)
     
@@ -193,7 +219,8 @@ class CryptoExchange(Exchange):
     async def market_buy(self, base: str, quote:str, qty: int, buyer: str, fee=0.0) -> dict:
         ticker = base+quote
         best_price = (await self.get_best_ask(ticker)).price
-        has_asset = await self.agent_has_assets(buyer, quote, qty * best_price)
+        potential_fees = self.fees.taker_fee(qty)
+        has_asset = await self.agent_has_assets(buyer, quote,( qty * best_price)+fee+potential_fees)
         if has_asset:
             fills = []
             for idx, ask in enumerate(self.books[ticker].asks):
@@ -206,7 +233,8 @@ class CryptoExchange(Exchange):
                 self.fees.total_fee_revenue += taker_fee
                 if(type(fee) is str): fee = float(fee)
                 fills.append({'qty': trade_qty, 'price': ask.price, 'fee': fee+taker_fee})
-                await self._process_trade(base, quote, trade_qty,ask.price, buyer, ask.creator, fee=fee+taker_fee)
+                #TODO: how to handle waiting for network to confirm market orders: essentially place as taker limit order and wait for confirmation?
+                await self._process_trade(base, quote, trade_qty,ask.price, buyer, ask.creator, exchange_fee=taker_fee, network_fee=fee)
                 if qty == 0:
                     break
             self.books[ticker].asks = [ask for ask in self.books[ticker].asks if ask.qty > 0]
@@ -218,7 +246,8 @@ class CryptoExchange(Exchange):
 
     async def market_sell(self, base: str, quote:str, qty: int, seller: str, fee=0.0, accounting='FIFO') -> dict:
         ticker = base+quote
-        if await self.agent_has_assets(seller, base, qty):
+        potential_fees = self.fees.taker_fee(qty)
+        if await self.agent_has_assets(seller, base, qty+fee+potential_fees):
             fills = []
             for idx, bid in enumerate(self.books[ticker].bids):
                 if bid.creator == seller:
@@ -230,7 +259,8 @@ class CryptoExchange(Exchange):
                 self.fees.total_fee_revenue += taker_fee
                 if(type(fee) is str): fee = float(fee)
                 fills.append({'qty': trade_qty, 'price': bid.price, 'fee': fee+taker_fee})
-                await self._process_trade(base, quote, trade_qty,bid.price, bid.creator, seller, accounting, fee=fee+taker_fee)
+                #TODO: how to handle waiting for network to confirm market orders: essentially place as taker limit order and wait for confirmation?
+                await self._process_trade(base, quote, trade_qty,bid.price, bid.creator, seller, accounting, exchange_fee=taker_fee, network_fee=fee )
                 if qty == 0:
                     break
             self.books[ticker].bids = [bid for bid in self.books[ticker].bids if bid.qty > 0]
@@ -240,22 +270,35 @@ class CryptoExchange(Exchange):
         else:
             return {"market_sell": "insufficient assets"}
 
+    async def generate_address(self) -> str:
+        """
+        Generates a random string of letters and numbers to represent a wallet address
+        """
+        length = random.randint(26, 35)
+        if not isinstance(length, int) or length < 1:
+            raise ValueError("Length must be a positive integer")
+        characters = string.ascii_letters + string.digits
+        return ''.join(random.choice(characters) for _ in range(length))    
+
     async def register_agent(self, name, initial_assets={}) -> dict:
         """
         `initial_assets`: a dict where the keys are symbols and values are quantities: e.g. {'BTC': 1000, 'ETH': 1000}
         """
         registered_name = name + str(UUID())[0:8]
         positions = []
+        wallets = {}
         for asset in initial_assets:
             side = {'agent': registered_name, 'quote_flow': 0, 'price': 0, 'base': asset, 'quote': self.default_quote_currency['symbol'], 'initial_qty': 0, 'qty': initial_assets[asset], 'dt': self.datetime, 'type': 'buy'}
             new_position = await self.new_position(side, side['base'], side['qty'])
             positions.append(new_position)
+            wallets[asset] = self.generate_address()
 
         self.agents.append({
             'name':registered_name,
             '_transactions':[], 
             'positions': positions, 
             'assets': initial_assets,
+            'wallets': wallets,
             "taxable_events": []
         })
         return {'registered_agent':registered_name}
