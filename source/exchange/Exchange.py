@@ -344,11 +344,11 @@ class Exchange():
             if bid:
                 self.books[ticker].bids[bid[0]]
                 self.books[ticker].bids.pop(bid[0])
-                return {"cancelled_order": id}
+                return {"cancelled_order": bid.to_dict_full()}
             ask = next(([idx,o] for idx, o in enumerate(self.books[ticker].asks) if o.id == id),None)
             if ask:
                 self.books[ticker].asks.pop(ask[0])
-                return {"cancelled_order": id}
+                return {"cancelled_order": ask.to_dict_full()}
         return {"cancelled_order": "order not found"}
 
     async def cancel_all_orders(self, agent, ticker) -> dict:
