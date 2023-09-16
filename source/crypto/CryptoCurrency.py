@@ -1,18 +1,20 @@
 
-from Blockchain import Blockchain
+from .Blockchain import Blockchain
 import random, string, math
 
 class CryptoCurrency():
-    def __init__(self, name:str, startdate, requester) -> None:
+    def __init__(self, name:str, startdate, max_supply=0, requester=None) -> None:
         self.name = name
         self.symbol = name[:3].upper()
-        self.blockchain = Blockchain()
+        self.blockchain = Blockchain(startdate)
         self.supply = 1
-        self.max_supply = 0
-        self.burn_address = '0x0'
-        self.halving_schedule = (math.log(self.max_supply / self.supply) / math.log(2))        
+        self.block_reward = 50
+        self.max_supply = max_supply
+        self.burn_address = '0x0'        
         self.startdate = startdate
-        self.currentdate = startdate        
+        self.currentdate = startdate
+        self.halving_period = 210_000 # halve the block reward every 210,000 blocks
+        self.last_halving_block = 0        
         self.requests = requester
 
     def __str__(self) -> str:
@@ -32,13 +34,19 @@ class CryptoCurrency():
     async def validate_address(self, address:str) -> bool:
         return type(address) == str and address.isalnum() and len(address) >= 26 and len(address) <= 35
 
-    async def issue_coins(self, fee:float, amount:float) -> None:
+    async def issue_coins(self, pairs:list, amount:float) -> None:
         self.supply += amount
-        self.requests.create_asset(self.symbol, qty=amount, seed_price=fee, seed_bid=fee * 0.99, seed_ask=fee * 1.01)
+        self.requests.create_asset(self.symbol, pairs)
 
-    async def next(self) -> None:
-        self.blockchain.process_transactions()
-        if self.max_supply > 0:
-            # add coins to the supply on a halving schedule, asymptotically approaching the max supply
-            self.supply += (self.max_supply - self.supply) / self.halving_schedule
-        pass
+    async def halving(self):
+        # reduce the block reward on a halving schedule, asymptotically approaching the max supply
+        self.last_halving_block = len(self.blockchain.chain)
+        self.block_reward = self.block_reward / 2
+
+    async def next(self, currentdate) -> None:
+        self.currentdate = currentdate
+        self.blockchain.datetime = currentdate
+        transactions = await self.blockchain.process_transactions()
+        self.supply += transactions['confirmed'] * self.block_reward
+        if self.max_supply > 0 and len(self.blockchain.chain) - self.last_halving_block >= self.halving_period:
+            await self.halving()
