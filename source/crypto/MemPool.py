@@ -1,4 +1,3 @@
-from datetime import datetime
 import pandas as pd
 from uuid import uuid4 as UUID
 
@@ -13,7 +12,7 @@ class MempoolTransaction:
         self.recipient = recipient
         self.confirmed = False
         self.timestamp = None
-        self.dt = dt if dt else datetime.now()
+        self.dt = dt
         
 
     def to_dict(self) -> dict:
@@ -42,10 +41,4 @@ class MemPool:
         if to_dicts: return [transaction.to_dict() for transaction in self.transactions if transaction.confirmed]
         return [transaction for transaction in self.transactions if transaction.confirmed]
     
-    @property
-    def transaction_log(self) -> str:
-        if(len(self.transactions) == 0):
-            return pd.DataFrame()
-        else:
-            return pd.DataFrame.from_records([t.to_dict() for t in self.transactions]).set_index('dt')
 
