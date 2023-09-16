@@ -22,5 +22,11 @@ class FeesTests(unittest.TestCase):
         expected_fee = volume * self.fees.maker_fee_rate
         self.assertEqual(self.fees.maker_fee(volume), expected_fee)
 
+    def test_add_fee(self):
+        asset = 'USD'
+        fee = 100
+        self.assertEqual(self.fees.add_fee(asset, fee), {asset: fee})
+        self.assertEqual(self.fees.fees_collected, {asset: fee})
+
 if __name__ == '__main__':
     unittest.main()

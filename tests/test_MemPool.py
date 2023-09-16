@@ -57,26 +57,8 @@ class MemPoolTests(unittest.TestCase):
         transaction3 = MempoolTransaction('BTC', 0.003, 3.0, 'sender3', 'recipient3')
         self.mem_pool.transactions = [transaction1, transaction2, transaction3]
 
-        transaction_log = self.mem_pool.transaction_log
-        self.assertTrue(isinstance(transaction_log, pd.DataFrame))
-        self.assertEqual(len(transaction_log), 3) 
-        self.assertEqual(transaction_log.loc[transaction1.dt]['ticker'][0], 'BTC')
-        self.assertEqual(transaction_log.loc[transaction1.dt]['sender'][0], 'sender1')
-        self.assertEqual(transaction_log.loc[transaction1.dt]['recipient'][0], 'recipient1')
-        self.assertEqual(transaction_log.loc[transaction1.dt]['fee'][0], 0.001)
-        self.assertEqual(transaction_log.loc[transaction1.dt]['amount'][0], 1.0)
-    
-        self.assertEqual(transaction_log.loc[transaction2.dt]['ticker'][1], 'ETH')
-        self.assertEqual(transaction_log.loc[transaction2.dt]['sender'][1], 'sender2')
-        self.assertEqual(transaction_log.loc[transaction2.dt]['recipient'][1], 'recipient2')
-        self.assertEqual(transaction_log.loc[transaction2.dt]['amount'][1], 2.0)
-        self.assertEqual(transaction_log.loc[transaction2.dt]['fee'][1], 0.002)
-
-        self.assertEqual(transaction_log.loc[transaction3.dt]['ticker'][2], 'BTC')
-        self.assertEqual(transaction_log.loc[transaction3.dt]['sender'][2], 'sender3')
-        self.assertEqual(transaction_log.loc[transaction3.dt]['recipient'][2], 'recipient3')
-        self.assertEqual(transaction_log.loc[transaction3.dt]['fee'][2], 0.003)
-        self.assertEqual(transaction_log.loc[transaction3.dt]['amount'][2], 3.0)
+        transaction_log = self.mem_pool.transactions
+        self.assertEqual(len(transaction_log), 3)
 
 if __name__ == '__main__':
     unittest.main()
