@@ -7,18 +7,16 @@ asyncio.set_event_loop_policy(asyncio.WindowsSelectorEventLoopPolicy())
 from source.utils._utils import dumps, string_to_time
 from Channels import Channels
 
-names= ['A', 'frXoX', 'wAt', 'Ayc', 'EXCAb', 'Qw', 'vbcY', 'ZM', 'j', 'nNLga', 'Ln', 'ao', 'k', 'icyJ', 'r', 'qk', 'BeHN', 'if', 'yAnL', 'sw']
+names = ['A', 'frXoX', 'wAt', 'Ayc', 'EXCAb', 'Qw', 'vbcY', 'ZM', 'j', 'nNLga', 'Ln', 'ao', 'k', 'icyJ', 'r', 'qk', 'BeHN', 'if', 'yAnL', 'sw']
 
 def generate_cryptos(names, requester, time) -> dict:
     cryptos = {}
     for name in names:
-        crypto = CryptoCurrency(name, time, requester)
+        crypto = CryptoCurrency(name, time, requester=requester)
         cryptos[crypto.symbol] = crypto
     return cryptos
 
 async def run_crypto() -> None:
-    #NOTE: the `fee` is the network fee and the exchange fee since the exchange fee is added to the transaction before it is added to the blockchain
-    # while not how this works, this is makes calulating the overall fee easier for the simulator
     try:
         channels = Channels()
         responder = Responder(channels.crypto_channel)
@@ -53,6 +51,9 @@ async def run_crypto() -> None:
             else: return f'unknown topic {msg["topic"]}'
 
         while True:
+            time = get_time()
+            for crypto in cryptos:
+                await cryptos[crypto].next(time)
             msg = await responder.respond(callback)
             if msg == None:
                 continue
