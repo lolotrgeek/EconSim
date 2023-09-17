@@ -210,7 +210,7 @@ class CryptoExchange(Exchange):
     async def freeze_assets(self, agent, asset, qty) -> None:
         print('freezing assets', agent, asset, qty)
         agent_idx = await self.get_agent_index(agent)
-        #NOTE if we want to freeze exchange fees we need to add an id to frozen assets, pass to process transaction, then use id to debt back any remaining frozen assets
+        #NOTE if we want to freeze potential exchange fees we need to add an id to frozen assets, pass id to _process_trade, then use id to debt back any remaining frozen assets in update_agents
         self.agents[agent_idx]['assets'][asset] -= abs(qty)
         if asset not in self.agents[agent_idx]['frozen_assets']:
             self.agents[agent_idx]['frozen_assets'][asset] = abs(qty)
@@ -254,7 +254,8 @@ class CryptoExchange(Exchange):
                     fills.append({'qty': trade_qty, 'price': best_ask.price, 'fee': taker_fee, 'creator': best_ask.creator})
                     partial_fee = fee_per_unit * trade_qty
                     remaining_fee -= partial_fee
-                    await self._process_trade(base, quote, trade_qty, best_ask.price, creator, best_ask.creator, exchange_fee={'quote':taker_fee, 'base': best_ask.exchange_fee}, network_fee={'quote': partial_fee, 'base': best_ask.network_fee}, position_id=position_id)
+                    ask_network_fee = (best_ask.network_fee / best_ask.qty) * trade_qty
+                    await self._process_trade(base, quote, trade_qty, best_ask.price, creator, best_ask.creator, exchange_fee={'quote':taker_fee, 'base': best_ask.exchange_fee}, network_fee={'quote': partial_fee, 'base': ask_network_fee}, position_id=position_id)
                     unfilled_qty -= trade_qty
                     self.books[ticker].asks[0].qty -= trade_qty
                     self.books[ticker].asks = [ask for ask in self.books[ticker].asks if ask.qty > 0]
@@ -304,7 +305,8 @@ class CryptoExchange(Exchange):
                     partial_fee = fee_per_unit * trade_qty
                     remaining_fee -= partial_fee
                     fills.append({'qty': trade_qty, 'price': best_bid.price, 'fee': taker_fee, 'creator': best_bid.creator})
-                    await self._process_trade(base, quote, trade_qty, best_bid.price, best_bid.creator, creator, accounting, exchange_fee={'base': taker_fee, 'quote': best_bid.exchange_fee}, network_fee={'base':partial_fee, 'quote': best_bid.network_fee})
+                    bid_network_fee = (best_bid.network_fee / best_bid.qty) * trade_qty
+                    await self._process_trade(base, quote, trade_qty, best_bid.price, best_bid.creator, creator, accounting, exchange_fee={'base': taker_fee, 'quote': best_bid.exchange_fee}, network_fee={'base':partial_fee, 'quote': bid_network_fee})
                     unfilled_qty -= trade_qty
                     self.books[ticker].bids[0].qty -= trade_qty
                     self.books[ticker].bids = [bid for bid in self.books[ticker].bids if bid.qty > 0]
@@ -352,6 +354,9 @@ class CryptoExchange(Exchange):
         potential_fees = self.fees.taker_fee(qty)
         has_asset = await self.agent_has_assets(buyer, quote,( qty * best_price)+fee+potential_fees)
         if has_asset:
+            await self.freeze_assets(buyer, quote, fee)
+            fee_per_unit = fee/qty
+            remaining_fee = fee
             fills = []
             for idx, ask in enumerate(self.books[ticker].asks):
                 if ask.creator == buyer:
@@ -362,9 +367,13 @@ class CryptoExchange(Exchange):
                 taker_fee = self.fees.taker_fee(qty)
                 self.fees.total_fee_revenue += taker_fee
                 if(type(fee) is str): fee = float(fee)
+                partial_fee = fee_per_unit * trade_qty
+                remaining_fee -= partial_fee
+                network_ask_fee = (ask.network_fee / ask.qty) * trade_qty
+                await self.freeze_assets(buyer, quote, trade_qty*ask.price)
                 fills.append({'qty': trade_qty, 'price': ask.price, 'fee': fee+taker_fee})
                 #TODO: how to handle waiting for network to confirm market orders: essentially place as taker limit order and wait for confirmation?
-                await self._process_trade(base, quote, trade_qty,ask.price, buyer, ask.creator, exchange_fee=taker_fee, network_fee=fee)
+                await self._process_trade(base, quote, trade_qty, ask.price, buyer, ask.creator, exchange_fee={'quote': taker_fee, 'base': ask.exchange_fee}, network_fee={'quote':partial_fee, 'base': network_ask_fee})
                 if qty == 0:
                     break
             self.books[ticker].asks = [ask for ask in self.books[ticker].asks if ask.qty > 0]
@@ -378,6 +387,9 @@ class CryptoExchange(Exchange):
         ticker = base+quote
         potential_fees = self.fees.taker_fee(qty)
         if await self.agent_has_assets(seller, base, qty+fee+potential_fees):
+            await self.freeze_assets(seller, base, fee)
+            fee_per_unit = fee/qty
+            remaining_fee = fee
             fills = []
             for idx, bid in enumerate(self.books[ticker].bids):
                 if bid.creator == seller:
@@ -388,9 +400,13 @@ class CryptoExchange(Exchange):
                 taker_fee = self.fees.taker_fee(qty)
                 self.fees.total_fee_revenue += taker_fee
                 if(type(fee) is str): fee = float(fee)
+                partial_fee = fee_per_unit * trade_qty
+                remaining_fee -= partial_fee
+                network_bid_fee = (bid.network_fee / bid.qty) * trade_qty
+                await self.freeze_assets(seller, base, trade_qty)
                 fills.append({'qty': trade_qty, 'price': bid.price, 'fee': fee+taker_fee})
                 #TODO: how to handle waiting for network to confirm market orders: essentially place as taker limit order and wait for confirmation?
-                await self._process_trade(base, quote, trade_qty,bid.price, bid.creator, seller, accounting, exchange_fee=taker_fee, network_fee=fee )
+                await self._process_trade(base, quote, trade_qty,bid.price, bid.creator, seller, accounting, exchange_fee={'base': taker_fee, 'quote': bid.exchange_fee}, network_fee={'base': partial_fee, 'quote': network_bid_fee} )
                 if qty == 0:
                     break
             self.books[ticker].bids = [bid for bid in self.books[ticker].bids if bid.qty > 0]
