@@ -29,21 +29,40 @@ class CryptoExchange(Exchange):
             quote_transaction = await self.requester.get_transaction(asset=transaction['quote_txn']['asset'], id=transaction['quote_txn']['id'])
             if not base_transaction and not quote_transaction:
                 continue
+            elif 'error' in base_transaction or 'error' in quote_transaction:
+                continue
             if base_transaction['confirmed'] and quote_transaction['confirmed']:
                 if transaction['exchange_txn'][0]['agent'][:10] == 'init_seed_' and transaction['exchange_txn'][1]['agent'][:10] == 'init_seed_':
-                    for asset in self.pending_asset_pairs:
-                        if asset in self.assets and self.assets[asset]['type'] == 'crypto':
-                            del self.pending_asset_pairs[asset]            
-                        else: 
-                            await self.list_asset(asset)
+                    await self.complete_asset_listings()
                 else: 
+                    base = transaction['exchange_txn'][0]['base']
+                    quote = transaction['exchange_txn'][0]['quote']
+                    qty = transaction['exchange_txn'][0]['qty']
+                    price = transaction['exchange_txn'][0]['price']
+                    buyer = transaction['exchange_txn'][0]['agent']
+                    seller = transaction['exchange_txn'][1]['agent']
+                    network_fee = {'base': base_transaction['fee'], 'quote': quote_transaction['fee']}
+                    exchange_fee = {'base': transaction['exchange_txn'][1]['fee'], 'quote': transaction['exchange_txn'][0]['fee']}
+                    trade = CryptoTrade(base, quote, qty, price, buyer, seller, self.datetime, network_fee=network_fee, exchange_fee=exchange_fee)
+                    self.trade_log.append(trade)
                     await self.update_agents(transaction['exchange_txn'], transaction['accounting'], position_id=transaction['position_id'])
                 self.pending_transactions.remove(transaction)
-            # TODO: what to do if the transaction is not confirmed?
+            # NOTE: if transaction is not confirmed, we keep waiting, it will eventually be confirmed
+
+    async def complete_asset_listings(self):
+        for asset in self.pending_asset_pairs:
+            if asset in self.assets and self.assets[asset]['type'] == 'crypto':
+                del self.pending_asset_pairs[asset]            
+            else: 
+                await self.list_asset(asset)
 
     async def list_asset(self, asset):
         for pair in self.pending_asset_pairs[asset]:
             ticker = asset+pair['asset']
+
+            trade = CryptoTrade(asset, pair['asset'], pair['market_qty'], pair['seed_price'], 'init_seed_'+ticker, 'init_seed_'+ticker, self.datetime, network_fee={'base': 0.0001, 'quote': 0.0001}, exchange_fee={'base': 0.0, 'quote': 0.0})
+            self.trade_log.append(trade)
+
             buy = await self.limit_buy(asset, pair['asset'], pair['seed_price'] * pair['seed_bid'], 1, 'init_seed_'+ticker, fee=0.000000001, position_id='init_seed_'+ticker)
             sell_fees = self.fees.taker_fee(pair['market_qty']) + 0.000000001
             qty = pair['market_qty'] - sell_fees
@@ -98,7 +117,7 @@ class CryptoExchange(Exchange):
             base = symbol
             quote = pair['asset']
             network_fee = {'base': 0.0001, 'quote': 0.0001}
-            
+        
             await self._process_trade(base, quote, qty, price, buyer, seller, accounting='FIFO', network_fee=network_fee, position_id='init_seed_'+ticker)
             self.pending_asset_pairs[symbol] = pairs
         
@@ -111,6 +130,7 @@ class CryptoExchange(Exchange):
                 if not await self.agent_has_assets_frozen(seller, base, qty+network_fee['base']):
                     print(seller, ' does not have assets')
                     return None
+
             seller_wallet = (await self.get_agent(seller))['wallets'][base]
             buyer_wallet = (await self.get_agent(buyer))['wallets'][quote]
             await self.pay_network_fees(buyer, quote, network_fee['quote'])
@@ -122,9 +142,6 @@ class CryptoExchange(Exchange):
                 return {'error': 'transaction failed'}
 
             txn_time = self.datetime
-            #TODO: add buy and sell order ids to trade log
-            trade = CryptoTrade(base, quote, qty, price, buyer, seller, self.datetime, network_fee=network_fee, exchange_fee=exchange_fee)
-            self.trade_log.append(trade)
 
             transaction = [
                 {'id': str(UUID()), 'agent':buyer,'quote_flow':-qty*price, 'price': price, 'base': base, 'quote': quote, 'qty': qty, 'fee':exchange_fee['quote'], 'dt': txn_time, 'type': 'buy'},
