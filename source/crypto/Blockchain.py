@@ -63,7 +63,7 @@ class Blockchain():
         for transaction in self.mempool.transactions:
             if transaction.id == id:
                 return transaction.to_dict()
-        return None
+        return {"error": "transaction not found"}
     
     async def get_mempool(self):
         return self.mempool.transactions
