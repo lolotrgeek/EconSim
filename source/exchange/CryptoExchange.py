@@ -138,8 +138,8 @@ class CryptoExchange(Exchange):
             pending_base_transaction = await self.requester.add_transaction(asset=base, fee=network_fee['base'], amount=qty, sender=seller_wallet, recipient=buyer_wallet)
             pending_quote_transaction = await self.requester.add_transaction(asset=quote, fee=network_fee['quote'], amount=qty*price, sender=buyer_wallet, recipient=seller_wallet)
 
-            if(pending_base_transaction['sender'] == 'error' or pending_quote_transaction['sender'] == 'error'):
-                return {'error': 'transaction failed'}
+            if('error' in pending_base_transaction or pending_base_transaction['sender'] == 'error' or 'error' in pending_quote_transaction or pending_quote_transaction['sender'] == 'error'):
+                return {'error': 'add transaction failed'}
 
             txn_time = self.datetime
 
@@ -270,11 +270,13 @@ class CryptoExchange(Exchange):
                     taker_fee = self.fees.taker_fee(trade_qty*best_ask.price)
                     potential_fees -= taker_fee
                     if(type(fee) is str): fee = float(fee)
-                    fills.append({'qty': trade_qty, 'price': best_ask.price, 'fee': taker_fee, 'creator': best_ask.creator})
                     partial_fee = fee_per_unit * trade_qty
                     remaining_fee -= partial_fee
                     ask_network_fee = (best_ask.network_fee / best_ask.qty) * trade_qty
-                    await self._process_trade(base, quote, trade_qty, best_ask.price, creator, best_ask.creator, exchange_fee={'quote':taker_fee, 'base': best_ask.exchange_fee}, network_fee={'quote': partial_fee, 'base': ask_network_fee}, position_id=position_id)
+                    processed = await self._process_trade(base, quote, trade_qty, best_ask.price, creator, best_ask.creator, exchange_fee={'quote':taker_fee, 'base': best_ask.exchange_fee}, network_fee={'quote': partial_fee, 'base': ask_network_fee}, position_id=position_id)
+                    if('error' in processed):
+                        return CryptoLimitOrder("error", 0, 0, processed['error'], OrderSide.BUY, self.datetime)
+                    fills.append({'qty': trade_qty, 'price': best_ask.price, 'fee': taker_fee, 'creator': best_ask.creator})
                     unfilled_qty -= trade_qty
                     self.books[ticker].asks[0].qty -= trade_qty
                     self.books[ticker].asks = [ask for ask in self.books[ticker].asks if ask.qty > 0]
@@ -323,9 +325,11 @@ class CryptoExchange(Exchange):
                     if(type(fee) is str): fee = float(fee)
                     partial_fee = fee_per_unit * trade_qty
                     remaining_fee -= partial_fee
-                    fills.append({'qty': trade_qty, 'price': best_bid.price, 'fee': taker_fee, 'creator': best_bid.creator})
                     bid_network_fee = (best_bid.network_fee / best_bid.qty) * trade_qty
-                    await self._process_trade(base, quote, trade_qty, best_bid.price, best_bid.creator, creator, accounting, exchange_fee={'base': taker_fee, 'quote': best_bid.exchange_fee}, network_fee={'base':partial_fee, 'quote': bid_network_fee})
+                    processed = await self._process_trade(base, quote, trade_qty, best_bid.price, best_bid.creator, creator, accounting, exchange_fee={'base': taker_fee, 'quote': best_bid.exchange_fee}, network_fee={'base':partial_fee, 'quote': bid_network_fee})
+                    if('error' in processed):
+                        return CryptoLimitOrder("error", 0, 0, processed['error'], OrderSide.SELL, self.datetime)
+                    fills.append({'qty': trade_qty, 'price': best_bid.price, 'fee': taker_fee, 'creator': best_bid.creator})
                     unfilled_qty -= trade_qty
                     self.books[ticker].bids[0].qty -= trade_qty
                     self.books[ticker].bids = [bid for bid in self.books[ticker].bids if bid.qty > 0]
