@@ -26,11 +26,11 @@ class Requester:
             return await self.socket.recv_json()
         except zmq.ZMQError as e:
             print("[ZMQ Requester Error]", e, "Request:", msg)
-            return None
+            return {'error': repr(e)}
         except Exception as e:
             print("[Requester Error]", e, "Request:", msg)
             print(traceback.format_exc())
-            return None
+            return {'error': repr(e)}
 
     async def request_lazy(self, msg) -> str:
         try:
