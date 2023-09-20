@@ -8,12 +8,12 @@ from source.utils._utils import get_random_string
 
 class CryptoLimitOrder():
 
-    def __init__(self, ticker, price, qty, creator, side, dt=None, exchange_fee=0.0, network_fee=0.0, accounting='FIFO', position_id=None, fills =[]):
+    def __init__(self, ticker, price, qty, creator, side, dt=None, exchange_fee=0.0, network_fee=0.0, status='open', accounting='FIFO', position_id=None, fills =[]):
         self.id = get_random_string()
         self.ticker: str = ticker
         self.price: Decimal = price
         self.type: OrderSide = side
-        self.qty: int = qty
+        self.qty: Decimal = qty
         self.creator: str = creator
         self.dt: datetime = dt if dt else datetime.now()
         self.exchange_fee = exchange_fee
@@ -21,12 +21,13 @@ class CryptoLimitOrder():
         self.position_id = position_id
         self.accounting = accounting
         self.fills = fills
+        self.status = status # open, filled, cancelled, error, partial, unconfirmed
 
     def to_dict(self) -> dict:
-        if self.ticker == 'error' and self.type == OrderSide.BUY: 
-            return {'limit_buy': "insufficient funds", 'id': self.id}
-        elif self.ticker == 'error' and self.type == OrderSide.SELL:
-            return {'limit_sell': "insufficient assets", 'id': self.id}
+        if self.status == 'error' and self.type == OrderSide.BUY: 
+            return {'limit_buy': self.accounting, 'id': self.id, 'creator': self.creator}
+        elif self.status == 'error' and self.type == OrderSide.SELL:
+            return {'limit_sell': self.accounting, 'id': self.id, 'creator': self.creator}
         return {
             'id': self.id,
             'ticker': self.ticker,
@@ -37,10 +38,10 @@ class CryptoLimitOrder():
         }
     
     def to_dict_full(self) -> dict:
-        if self.ticker == 'error' and self.type == OrderSide.BUY: 
-            return {'limit_buy': "insufficient funds", 'id': self.id}
-        elif self.ticker == 'error' and self.type == OrderSide.SELL:
-            return {'limit_sell': "insufficient assets", 'id': self.id}
+        if self.status == 'error' and self.type == OrderSide.BUY: 
+            return {'limit_buy': self.accounting, 'id': self.id, 'creator': self.creator}
+        elif self.status == 'error' and self.type == OrderSide.SELL:
+            return {'limit_sell': self.accounting, 'id': self.id, 'creator': self.creator}
         return {
             'id': self.id,
             'ticker': self.ticker,
@@ -57,7 +58,7 @@ class CryptoLimitOrder():
         }    
 
     def __repr__(self) -> str:
-        return f'<CryptoLimitOrder: {self.ticker} {self.qty}@{self.price}>'
+        return f'<CryptoLimitOrder: {self.ticker} {self.type} {self.qty}@{self.price}>'
 
     def __str__(self) -> str:
-        return f'<CryptoLimitOrder: {self.ticker} {self.qty}@{self.price}>'
+        return f'<CryptoLimitOrder: {self.ticker} {self.type} {self.qty}@{self.price}>'
