@@ -55,11 +55,13 @@ class BlockchainTests(unittest.IsolatedAsyncioTestCase):
         self.blockchain.datetime = datetime(2022, 1, 6)
         await self.blockchain.add_transaction('LTC', 0.003, 3.0, 'sender3', 'recipient3')
         pending_transactions = self.blockchain.mempool.get_pending_transactions()
+        pending_transactions.sort( key=lambda x: x.fee, reverse=True)
         length_before = len(self.blockchain.chain)
         
         random.seed(42)  # Set seed for predictable random number generation
         await self.blockchain.process_transactions()
         self.assertEqual(len(pending_transactions), len(self.blockchain.chain)-length_before + 1)
+        self.assertEqual(pending_transactions[0].fee, 0.003)
 
     async def test_get_transactions(self):
         transaction1 = MempoolTransaction('BTC', 0.001, 1.0, 'sender1', 'recipient1', datetime(2022, 1, 6))
