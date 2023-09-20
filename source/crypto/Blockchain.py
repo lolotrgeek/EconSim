@@ -31,6 +31,9 @@ class Blockchain():
         mempool_transaction = MempoolTransaction(asset, fee, amount, sender, recipient, dt=self.datetime)
         self.mempool.transactions.append(mempool_transaction)
         return mempool_transaction
+    
+    async def confirmation_odds(self, index, num_unconfirmed, fee) -> float:
+        return 1.0 - (index / num_unconfirmed)       
 
     async def process_transactions(self) -> None:
         unconfirmed_transactions = self.mempool.get_pending_transactions()
@@ -39,7 +42,8 @@ class Blockchain():
         confirmed = 0
         for index, transaction in enumerate(unconfirmed_transactions):
             # create a probablity distribution for confirmation based on the length of the mempool
-            confirmation_odds = .9 - (index / num_unconfirmed)
+            # increase confirmation odds for transactions with higher fees
+            confirmation_odds = await self.confirmation_odds(index, num_unconfirmed, transaction.fee)
             if random.random() < confirmation_odds:
                 confirmed += 1
                 transaction.confirmed = True
