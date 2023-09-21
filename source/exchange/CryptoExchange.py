@@ -152,7 +152,6 @@ class CryptoExchange(Exchange):
             ]
 
             self.pending_transactions.append({'base_txn': pending_base_transaction, 'quote_txn': pending_quote_transaction, 'exchange_txn': transaction, 'accounting': accounting, 'position_id': position_id})
-
             return transaction 
         except Exception as e:
             return {'error': 'transaction failed'}   
@@ -294,6 +293,8 @@ class CryptoExchange(Exchange):
                     remaining_fee -= Decimal(str(partial_fee))
                     self.books[ticker].asks[0].qty -= Decimal(str(trade_qty))
                     self.books[ticker].asks = [ask for ask in self.books[ticker].asks if ask.qty > 0]
+                    deductions = (trade_qty*price) - (trade_qty*best_ask.price)
+                    await self.unfreeze_assets(creator, quote, deductions)
                 else:
                     break
             queue = len(self.books[ticker].bids)
@@ -647,10 +648,13 @@ class CryptoExchange(Exchange):
             if side['type'] == 'buy':
                 print('increasing base by', side['qty'], 'for', side['agent'])
                 await self.update_assets(side['base'], side['qty'], agent_idx)
+
                 print('sending frozen buy asset', side['quote'], side['quote_flow'], 'for', side['agent'])
                 self.agents[agent_idx]['frozen_assets'][side['quote']] -= Decimal(str(abs(side['quote_flow'])))
-                print(side['agent'], 'transacting', side['quote'], side['quote_flow'])
+
+                print(side['agent'], 'transacting', side['quote'], side['quote_flow'], 'price', side['price'], 'qty', side['qty'])
                 print(f"{self.agents[agent_idx]['name']} frozen remaining {side['quote']} {self.agents[agent_idx]['frozen_assets'][side['quote']]:.16f}")
+
                 if side['fee'] > 0.0: await self.pay_exchange_fees(agent_idx, side['quote'], side['fee'])
                 await self.enter_position(side, side['base'], side['qty'], agent_idx, position_id)
                 await self.exit_position(side, side['quote'], side['quote_flow'], agent_idx)
