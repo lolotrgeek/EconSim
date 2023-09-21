@@ -342,18 +342,19 @@ class Exchange():
         if ticker in self.books:
             bid = next(([idx,o] for idx, o in enumerate(self.books[ticker].bids) if o.id == id),None)
             if bid:
-                self.books[ticker].bids[bid[0]]
+                cancel_order = self.books[ticker].bids[bid[0]]
                 self.books[ticker].bids.pop(bid[0])
-                return {"cancelled_order": bid.to_dict_full()}
+                return {"cancelled_order": cancel_order.to_dict_full()}
             ask = next(([idx,o] for idx, o in enumerate(self.books[ticker].asks) if o.id == id),None)
             if ask:
+                cancel_order = self.books[ticker].asks[ask[0]]
                 self.books[ticker].asks.pop(ask[0])
-                return {"cancelled_order": ask.to_dict_full()}
+                return {"cancelled_order": cancel_order.to_dict_full()}
         return {"cancelled_order": "order not found"}
 
     async def cancel_all_orders(self, agent, ticker) -> dict:
-        self.books[ticker].bids = [b for b in self.books[ticker].bids if b.creator != agent]
-        self.books[ticker].asks = [a for a in self.books[ticker].asks if a.creator != agent]
+        self.books[ticker].bids[:] = [b for b in self.books[ticker].bids if b.creator != agent]
+        self.books[ticker].asks[:] = [a for a in self.books[ticker].asks if a.creator != agent]
         return {"cancelled_all_orders": ticker}
 
     async def market_buy(self, ticker: str, qty: int, buyer: str, fee=0.0) -> dict:
