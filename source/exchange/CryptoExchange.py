@@ -251,6 +251,7 @@ class CryptoExchange(Exchange):
         agent_idx = await self.get_agent_index(agent)
         self.agents[agent_idx]['assets'][asset] += Decimal(str(abs(qty)))
         self.agents[agent_idx]['frozen_assets'][asset] -= Decimal(str(abs(qty)))
+        print('unfrozen_assets',Decimal(str(abs(qty))))
 
     async def pay_network_fees(self, agent, asset, qty) -> None:
         print('paying network fees', agent, asset, qty)
@@ -374,18 +375,43 @@ class CryptoExchange(Exchange):
     async def cancel_order(self, base, quote, id) -> dict:
         ticker = base+quote
         canceled = await super().cancel_order(ticker, id)
-        if canceled:
-            self.unfreeze_assets(canceled['creator'], base, canceled['qty'])
-            return canceled
+        if canceled and 'cancelled_order' in canceled and 'creator' in canceled['cancelled_order']:
+            creator = canceled['cancelled_order']['creator']
+            qty = canceled['cancelled_order']['qty']
+            price = canceled['cancelled_order']['price']
+            fee = canceled['cancelled_order']['exchange_fee']
+            if canceled['cancelled_order']['type'] == 'limit_buy':
+                await self.unfreeze_assets(creator, quote, qty*price)
+            elif canceled['cancelled_order']['type'] == 'limit_sell':
+                await self.unfreeze_assets(creator, base, qty)
+            else:
+                return {'error': 'unable to cancel, order type not recognized', 'id': id}
+        return canceled
     
     async def cancel_all_orders(self, base, quote, creator) -> list:
         ticker = base+quote
-        canceled = await super().cancel_all_orders(creator, ticker)
-        if canceled:
-            agent_idx= await self.get_agent_index(creator)
-            asset = canceled['cancelled_all_orders']
-            self.agents[agent_idx]['frozen_assets'][asset] = 0
-            return canceled
+        # canceled = await super().cancel_all_orders(creator, ticker)
+        canceled = []
+        async def cancel_bid(bid, creator):
+            if bid.creator == creator:
+                await self.unfreeze_assets(creator, quote, bid.qty*bid.price)
+                canceled.append(bid)
+                return False
+            else:
+                return True
+            
+        async def cancel_ask(ask, creator):
+            if ask.creator == creator:
+                await self.unfreeze_assets(creator, base, ask.qty)
+                canceled.append(ask)
+                return False
+            else:
+                return True
+            
+        self.books[ticker].bids[:] = [b for b in self.books[ticker].bids if await cancel_bid(b, creator)]
+        self.books[ticker].asks[:] = [a for a in self.books[ticker].asks if await cancel_ask(a, creator)]
+
+        return {'cancelled_orders': canceled}
 
     async def market_buy(self, base: str, quote:str, qty: int, buyer: str, fee=0.0) -> dict:
         qty = Decimal(str(qty))
