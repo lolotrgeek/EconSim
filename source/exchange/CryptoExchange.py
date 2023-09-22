@@ -552,22 +552,35 @@ class CryptoExchange(Exchange):
         })
         return {'registered_agent':registered_name}
     
-    async def new_position(self, side, asset, qty) -> dict:
-        enter = side.copy()
-        enter['initial_qty'] = qty
-        enter['id'] = str(UUID())
+    async def new_enter(self, agent, asset, qty, dt, type, quote, price, basis=None) -> dict:
+        enter = {
+            'id': str(UUID()),
+            'agent': agent,
+            'asset': asset,
+            'initial_qty': Decimal(str(qty)),
+            'qty': Decimal(str(qty)),
+            'dt': dt,
+            'type': type,
+        }
+        if basis is not None:
+            enter['basis'] = basis
+        elif quote == self.default_quote_currency['symbol'] and type == 'buy':
+            enter['basis'] = abs(price) #TODO: this needs to be updated to include network fees
+
+        return enter
+
+    async def new_position(self, side, asset, qty, basis=None) -> dict:
+        enter = await self.new_enter(side['agent'], asset, qty, side['dt'], side['type'], side['quote'], side['price'], basis)
         return {
             'id': str(UUID()),
             'asset': asset,
-            'price': side['price'],
-            'qty': qty,
+            'qty': Decimal(str(qty)),
             'dt': side['dt'],
             'enters': [enter],
             'exits': []
         }
     
-    async def enter_position(self, side, asset, qty, agent_idx, position_id) -> dict:
-        buy = side.copy()
+    async def enter_position(self, side, asset, qty, agent_idx, position_id, basis=None) -> dict:
         start_new_position = True
         agent = self.agents[agent_idx]
         positions = agent['positions']
@@ -575,58 +588,59 @@ class CryptoExchange(Exchange):
             if position['id'] == position_id or position['asset'] == asset:
                 start_new_position = False
                 position['qty'] += Decimal(str(qty))
-                buy['initial_qty'] = qty
-                position['enters'].append(buy)
+                enter = await self.new_enter(side['agent'], asset, qty, side['dt'], side['type'], side['quote'], side['price'], basis)
+                position['enters'].append(enter)
                 return {'enter_position': 'existing success'}
             
         if start_new_position:
-            new_position = await self.new_position(side, asset, qty)
+            new_position = await self.new_position(side, asset, qty, basis)
             positions.append(new_position)        
             return {'enter_position': 'new success'}
     
     async def exit_position(self, side, asset, qty, agent_idx) -> None:
-        sell = side.copy()
+        exit_transaction = side.copy()
         agent = self.agents[agent_idx]
         positions = agent['positions']
-        viable_positions = [position for position in positions if position['asset'] == asset and position['qty'] > 0]
-        if len(viable_positions) == 0: 
-            return {'exit_position': 'no viable positions'}
-        #NOTE: sell sell['qty'] comes in negative, so we need to flip the sign and add the quantity flow to the sell['qty'] as we pull from enters 
-        while sell['qty'] < 0:
-            for position in viable_positions:
+        exit_transaction['qty'] = abs(side['qty'])
+        while exit_transaction['qty'] > 0:
+            for position in positions:
+                if position['asset'] != asset or position['qty'] == 0: continue
                 enters = position['enters']
                 if len(enters) == 0:
                     return {'exit_position': 'no enters'}
                 for enter in enters:
-                    normalised_qty = qty * -1
                     exit = {
                         'id': str(UUID()),
                         'agent': agent['name'],
-                        'base': enter['base'],
-                        'quote': enter['quote'],
-                        'quote_flow': sell['quote_flow'],
-                        'qty': normalised_qty,
-                        'dt': sell['dt'],
-                        'type': sell['type'],
-                        'pnl': (sell['price']*normalised_qty)-(enter['price']*normalised_qty), 
+                        'asset': asset,
+                        'dt': exit_transaction['dt'],
+                        'type': exit_transaction['type'],
+                        'basis': enter['basis'], 
                         'enter_id': enter['id'],
                         'enter_date': enter['dt']
                     }
-                    if exit['pnl'] > 0 and (exit['quote'] == self.default_quote_currency['symbol']):
+
+                    if enter['qty'] >= exit_transaction['qty']:
+                        exit['qty'] = Decimal(str(exit_transaction['qty']))
+                        enter['qty'] -= Decimal(str(exit_transaction['qty']))
+                        position['qty'] -= Decimal(str(exit_transaction['qty']))
+                        exit_transaction['qty'] = 0
+                        position['exits'].append(exit)
+                        return {'exit_position': exit}
+                    else:
+                        # partial exit
+                        exit_transaction['qty'] -= Decimal(str(enter['qty']))
+                        exit['qty'] = Decimal(str(enter['qty']))
+                        enter['qty'] = 0
+                        print('partial exit', exit_transaction['qty'], enter['qty'])
+                        position['qty'] -= Decimal(str(enter['qty']))
+                        position['exits'].append(exit)
+
+                    if exit['asset'] == self.default_quote_currency['symbol']:
+                        exit['pnl'] = exit['qty'] * exit['basis'] - exit['qty'] * exit_transaction['price']
                         taxable_event = {"type": 'capital_gains', 'exit_id': exit['id'], 'enter_id':enter['id'], 'enter_date': enter['dt'], 'exit_date': exit['dt'], 'pnl': exit['pnl']}
                         agent['taxable_events'].append(taxable_event)
-                        
-                    if enter['qty'] >= normalised_qty:
-                        position['qty'] += Decimal(str(qty))
-                        enter['qty'] += Decimal(str(qty))
-                        position['exits'].append(exit)
-                        sell['qty'] = 0
-                        return {'exit_position': 'success'}
-                    else:
-                        position['exits'].append(exit)
-                        sell['qty'] += Decimal(str(position['qty']))
-                        enter['qty'] += Decimal(str(qty))
-                        position['qty'] = 0
+
         return {'exit_position': 'no position to exit'}                            
 
     async def update_assets(self, asset, amount, agent_idx) -> None:
@@ -644,33 +658,40 @@ class CryptoExchange(Exchange):
                 return {'update_agents': 'agent not found'}
             #TODO: maybe don't need to track transactions... check if needed for taxation
             self.agents[agent_idx]['_transactions'].append(side)
-            
+            if 'init_seed_' in self.agents[agent_idx]['name']:
+                continue
             if side['type'] == 'buy':
-                print('increasing base by', side['qty'], 'for', side['agent'])
+                # print('increasing base by', side['qty'], 'for', side['agent'])
                 await self.update_assets(side['base'], side['qty'], agent_idx)
 
-                print('sending frozen buy asset', side['quote'], side['quote_flow'], 'for', side['agent'])
+                # print('sending frozen buy asset', side['quote'], side['quote_flow'], 'for', side['agent'])
                 self.agents[agent_idx]['frozen_assets'][side['quote']] -= Decimal(str(abs(side['quote_flow'])))
 
-                print(side['agent'], 'transacting', side['quote'], side['quote_flow'], 'price', side['price'], 'qty', side['qty'])
-                print(f"{self.agents[agent_idx]['name']} frozen remaining {side['quote']} {self.agents[agent_idx]['frozen_assets'][side['quote']]:.16f}")
+                # print(side['agent'], 'transacting', side['quote'], side['quote_flow'], 'price', side['price'], 'qty', side['qty'])
+                # print(f"{self.agents[agent_idx]['name']} frozen remaining {side['quote']} {self.agents[agent_idx]['frozen_assets'][side['quote']]:.16f}")
 
                 if side['fee'] > 0.0: await self.pay_exchange_fees(agent_idx, side['quote'], side['fee'])
-                await self.enter_position(side, side['base'], side['qty'], agent_idx, position_id)
-                await self.exit_position(side, side['quote'], side['quote_flow'], agent_idx)
+                
+                
+                exit = await self.exit_position(side, side['quote'], side['quote_flow'], agent_idx)
+                print(exit)
+                enter = await self.enter_position(side, side['base'], side['qty'], agent_idx, position_id, basis=exit['exit_position']['basis'])
+                print(enter)
             elif side['type'] == 'sell':
-                print('increasing quote by', side['quote_flow'], 'for', side['agent'])
+                # print('increasing quote by', side['quote_flow'], 'for', side['agent'])
                 await self.update_assets(side['quote'], side['quote_flow'], agent_idx)
-                print('sending frozen sell asset', side['base'], side['qty'], 'for', side['agent'])
+
+                # print('sending frozen sell asset', side['base'], side['qty'], 'for', side['agent'])
                 self.agents[agent_idx]['frozen_assets'][side['base']] -= Decimal(str(abs(side['qty'])))
-                print(side['agent'], 'transacting', side['base'], side['qty'])
-                print(f"{self.agents[agent_idx]['name']} frozen remaining {side['base']} {self.agents[agent_idx]['frozen_assets'][side['base']]:.16f}")
-                #TODO: how do we handle frozen dust? e.g. 0.0000000000000001
+
+                # print(side['agent'], 'transacting', side['base'], side['qty'])
+                # print(f"{self.agents[agent_idx]['name']} frozen remaining {side['base']} {self.agents[agent_idx]['frozen_assets'][side['base']]:.16f}")
                 # we cannot know if it it from this order or a previous order, so we need to track it
                 if side['fee'] > 0.0: await self.pay_exchange_fees(agent_idx, side['base'], side['fee'])
                 await self.sort_positions(agent_idx, accounting)
-                await self.exit_position(side, side['base'], side['qty'], agent_idx)
-                await self.enter_position(side, side['quote'], side['quote_flow'], agent_idx, None)
+                exit = await self.exit_position(side, side['base'], side['qty'], agent_idx)
+                print(exit)
+                await self.enter_position(side, side['quote'], side['quote_flow'], agent_idx, None, basis=exit['exit_position']['basis'])
 
     async def pay_exchange_fees(self, agent_idx, asset, amount) -> None:
             # print(f"{self.agents[agent_idx]['name']} assets before {asset} {self.agents[agent_idx]['assets'][asset]:.16f}")
