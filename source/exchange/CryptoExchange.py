@@ -72,6 +72,12 @@ class CryptoExchange(Exchange):
             self.assets[asset] = {'type': 'crypto', 'id' : str(UUID())}
             self.wallets[asset] = await self.generate_address()
 
+        for agent in self.agents:
+            if 'init_seed_' not in agent['name']:
+                agent['wallets'][asset] = await self.generate_address()
+                print('agent', agent['name'], 'wallets', agent['wallets'])
+                
+
     async def create_asset(self, symbol: str, pairs=[]) -> dict:
         """_summary_
         Args:
@@ -244,19 +250,19 @@ class CryptoExchange(Exchange):
             self.agents[agent_idx]['frozen_assets'][asset] = Decimal(str(abs(qty)))
         else:
             self.agents[agent_idx]['frozen_assets'][asset] += Decimal(str(abs(qty)))
-        print('frozen_assets', self.agents[agent_idx]['frozen_assets'])
+        # print('frozen_assets', self.agents[agent_idx]['frozen_assets'])
 
     async def unfreeze_assets(self, agent, asset, qty) -> None:
         agent_idx = await self.get_agent_index(agent)
         self.agents[agent_idx]['assets'][asset] += Decimal(str(abs(qty)))
         self.agents[agent_idx]['frozen_assets'][asset] -= Decimal(str(abs(qty)))
-        print('unfrozen_assets',Decimal(str(abs(qty))))
+        # print('unfrozen_assets',Decimal(str(abs(qty))))
 
     async def pay_network_fees(self, agent, asset, qty) -> None:
-        print('paying network fees', agent, asset, qty)
+        # print('paying network fees', agent, asset, qty)
         agent_idx = await self.get_agent_index(agent)
         self.agents[agent_idx]['frozen_assets'][asset] -= Decimal(str(abs(qty)))
-        print(self.agents[agent_idx]['name'], 'frozen remaining', asset, self.agents[agent_idx]['frozen_assets'][asset])
+        # print(self.agents[agent_idx]['name'], 'frozen remaining', asset, self.agents[agent_idx]['frozen_assets'][asset])
 
     async def limit_buy(self, base: str, quote:str, price: float, qty: int, creator: str, fee=0.0, tif='GTC', position_id=UUID()) -> CryptoLimitOrder:
         #NOTE: the fee arg here is the network fee... consider renaming
@@ -466,7 +472,8 @@ class CryptoExchange(Exchange):
         fee = Decimal(str(fee))        
         ticker = base+quote
         potential_fees = self.fees.taker_fee(qty)
-        if await self.agent_has_assets(seller, base, qty+fee+potential_fees):
+        has_assets = await self.agent_has_assets(seller, base, qty+fee+potential_fees)
+        if has_assets:
             frozen = 0
             await self.freeze_assets(seller, base, fee)
             frozen += fee
@@ -496,7 +503,7 @@ class CryptoExchange(Exchange):
                 if unfilled_qty == 0:
                     break
             self.books[ticker].bids = [bid for bid in self.books[ticker].bids if bid.qty > 0]
-            print('remaining_fee', f'{remaining_fee:.20f}' )
+            # print('remaining_fee', f'{remaining_fee:.20f}' )
             if (remaining_fee > 0):
                 await self.unfreeze_assets(seller, base, remaining_fee)
             if (unfilled_qty > 0):
@@ -523,7 +530,9 @@ class CryptoExchange(Exchange):
         """
         registered_name = name + str(UUID())[0:8]
         positions = []
-        wallets = {}
+        wallets = {
+            self.default_quote_currency['symbol']: (await self.generate_address())
+        }
         for asset in initial_assets:
             side = {
                 'agent': registered_name, 
@@ -538,8 +547,10 @@ class CryptoExchange(Exchange):
             }
             new_position = await self.new_position(side, asset, side['qty'])
             positions.append(new_position)
-            wallets[asset] = (await self.generate_address())
             initial_assets[asset] = Decimal(str(initial_assets[asset]))
+  
+        for asset in self.assets:
+            wallets[asset] = (await self.generate_address())            
 
         self.agents.append({
             'name':registered_name,
@@ -552,7 +563,7 @@ class CryptoExchange(Exchange):
         })
         return {'registered_agent':registered_name}
     
-    async def new_enter(self, agent, asset, qty, dt, type, quote, price, basis=None) -> dict:
+    async def new_enter(self, agent, asset, qty, dt, type, basis={}) -> dict:
         enter = {
             'id': str(UUID()),
             'agent': agent,
@@ -561,16 +572,12 @@ class CryptoExchange(Exchange):
             'qty': Decimal(str(qty)),
             'dt': dt,
             'type': type,
+            'basis': basis,
         }
-        if basis is not None:
-            enter['basis'] = basis
-        elif quote == self.default_quote_currency['symbol'] and type == 'buy':
-            enter['basis'] = abs(price) #TODO: this needs to be updated to include network fees
-
         return enter
 
-    async def new_position(self, side, asset, qty, basis=None) -> dict:
-        enter = await self.new_enter(side['agent'], asset, qty, side['dt'], side['type'], side['quote'], side['price'], basis)
+    async def new_position(self, side, asset, qty, basis={}) -> dict:
+        enter = await self.new_enter(side['agent'], asset, qty, side['dt'], side['type'], basis)
         return {
             'id': str(UUID()),
             'asset': asset,
@@ -579,8 +586,15 @@ class CryptoExchange(Exchange):
             'enters': [enter],
             'exits': []
         }
-    
-    async def enter_position(self, side, asset, qty, agent_idx, position_id, basis=None) -> dict:
+
+    async def taxable_event(self, agent, amount, dt, basis_amount, basis_date) -> None:
+        pnl = amount - basis_amount
+        print('pnl', pnl)
+        if pnl > 0:
+            taxable_event = {"type": 'capital_gains', 'enter_date': basis_date, 'exit_date': dt, 'pnl': pnl}
+            agent['taxable_events'].append(taxable_event)        
+
+    async def enter_position(self, side, asset, qty, agent_idx, position_id, basis={}) -> dict:
         start_new_position = True
         agent = self.agents[agent_idx]
         positions = agent['positions']
@@ -588,15 +602,24 @@ class CryptoExchange(Exchange):
             if position['id'] == position_id or position['asset'] == asset:
                 start_new_position = False
                 position['qty'] += Decimal(str(qty))
-                enter = await self.new_enter(side['agent'], asset, qty, side['dt'], side['type'], side['quote'], side['price'], basis)
+                enter = await self.new_enter(side['agent'], asset, qty, side['dt'], side['type'], basis)
                 position['enters'].append(enter)
-                return {'enter_position': 'existing success'}
+                if asset == self.default_quote_currency['symbol']:
+                    #NOTE: an 'enter' for the default quote currency is a taxable event because we are increasing it's amount
+                    # basis represents the initial default quote currency amount (quote_flow) traded for the first enter in the chain
+                    # consider the following trade chain:
+                    # USD (exit, basis) -> BTC (enter, consume basis) -> BTC (exit, retain basis) -> ETH (enter, passed basis)
+                    await self.taxable_event(agent, qty, side['dt'], basis['basis_amount'], basis['basis_date'])
+                return {'enter_position': enter}
             
         if start_new_position:
             new_position = await self.new_position(side, asset, qty, basis)
-            positions.append(new_position)        
-            return {'enter_position': 'new success'}
-    
+            positions.append(new_position) 
+            if asset == self.default_quote_currency['symbol']:
+                await self.taxable_event(agent, qty, side['dt'], basis['basis_amount'], basis['basis_date'])       
+            return {'enter_position': new_position['enters'][0]}
+        
+        
     async def exit_position(self, side, asset, qty, agent_idx) -> None:
         exit_transaction = side.copy()
         agent = self.agents[agent_idx]
@@ -608,17 +631,25 @@ class CryptoExchange(Exchange):
                 enters = position['enters']
                 if len(enters) == 0:
                     return {'exit_position': 'no enters'}
+                
                 for enter in enters:
                     exit = {
                         'id': str(UUID()),
                         'agent': agent['name'],
                         'asset': asset,
                         'dt': exit_transaction['dt'],
-                        'type': exit_transaction['type'],
-                        'basis': enter['basis'], 
-                        'enter_id': enter['id'],
-                        'enter_date': enter['dt']
                     }
+                    if asset == self.default_quote_currency['symbol']:
+                        # if this is exiting a quote currency, we calculate it's basis...
+                        exit['basis'] = {
+                            'basis_amount': abs(exit_transaction['quote_flow']),
+                            'basis_txn_id': exit_transaction['id'], #NOTE this txn is stored here -> self.agents[agent_idx]['_transactions']
+                            'basis_date': exit['dt']
+                        }
+                    else:
+                        # ...otherwise, pass the enter basis along
+                        # e.g. USD (exit, set basis) -> BTC (enter, consume basis) -> BTC (exit, retain basis) -> ETH (enter, passed basis)
+                        exit['basis'] = enter['basis']
 
                     if enter['qty'] >= exit_transaction['qty']:
                         exit['qty'] = Decimal(str(exit_transaction['qty']))
@@ -636,10 +667,6 @@ class CryptoExchange(Exchange):
                         position['qty'] -= Decimal(str(enter['qty']))
                         position['exits'].append(exit)
 
-                    if exit['asset'] == self.default_quote_currency['symbol']:
-                        exit['pnl'] = exit['qty'] * exit['basis'] - exit['qty'] * exit_transaction['price']
-                        taxable_event = {"type": 'capital_gains', 'exit_id': exit['id'], 'enter_id':enter['id'], 'enter_date': enter['dt'], 'exit_date': exit['dt'], 'pnl': exit['pnl']}
-                        agent['taxable_events'].append(taxable_event)
 
         return {'exit_position': 'no position to exit'}                            
 
@@ -674,9 +701,9 @@ class CryptoExchange(Exchange):
                 
                 
                 exit = await self.exit_position(side, side['quote'], side['quote_flow'], agent_idx)
-                print(exit)
+                print(f" exit basis: {exit['exit_position']['basis']}, asset {exit['exit_position']['asset']} qty {exit['exit_position']['qty']} ")
                 enter = await self.enter_position(side, side['base'], side['qty'], agent_idx, position_id, basis=exit['exit_position']['basis'])
-                print(enter)
+                print(f" enter basis: {enter['enter_position']['basis']}, asset {enter['enter_position']['asset']} qty {enter['enter_position']['qty']} ")
             elif side['type'] == 'sell':
                 # print('increasing quote by', side['quote_flow'], 'for', side['agent'])
                 await self.update_assets(side['quote'], side['quote_flow'], agent_idx)
@@ -690,8 +717,9 @@ class CryptoExchange(Exchange):
                 if side['fee'] > 0.0: await self.pay_exchange_fees(agent_idx, side['base'], side['fee'])
                 await self.sort_positions(agent_idx, accounting)
                 exit = await self.exit_position(side, side['base'], side['qty'], agent_idx)
-                print(exit)
-                await self.enter_position(side, side['quote'], side['quote_flow'], agent_idx, None, basis=exit['exit_position']['basis'])
+                print(f" exit basis: {exit['exit_position']['basis']}, asset {exit['exit_position']['asset']} qty {exit['exit_position']['qty']} ")
+                enter = await self.enter_position(side, side['quote'], side['quote_flow'], agent_idx, None, basis=exit['exit_position']['basis'])
+                print(f" enter basis: {enter['enter_position']['basis']}, asset {enter['enter_position']['asset']} qty {enter['enter_position']['qty']} ")
 
     async def pay_exchange_fees(self, agent_idx, asset, amount) -> None:
             # print(f"{self.agents[agent_idx]['name']} assets before {asset} {self.agents[agent_idx]['assets'][asset]:.16f}")
