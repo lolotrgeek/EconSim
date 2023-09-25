@@ -29,7 +29,11 @@ class MockResponderCrypto():
         self.exchange = Exchange(datetime=self.time, requester=MockRequesterCrypto)
         self.agent = None
         self.mock_order = None
-        self.cryptos = {'USD': CryptoCurrency("USD", self.exchange.datetime, requester=MockRequesterCrypto), 'BTC': CryptoCurrency("BTC", self.exchange.datetime, requester=MockRequesterCrypto) }
+        self.cryptos = {
+            'USD': CryptoCurrency("USD", self.exchange.datetime, requester=MockRequesterCrypto),
+            'BTC': CryptoCurrency("BTC", self.exchange.datetime, requester=MockRequesterCrypto),
+            'ETH': CryptoCurrency("ETH", self.exchange.datetime, requester=MockRequesterCrypto),  
+        }
 
     async def init(self):
         await self.exchange.create_asset("BTC", pairs = [{'asset': "USD" ,'market_qty':1000 ,'seed_price':150 ,'seed_bid':.99, 'seed_ask':1.01}])
