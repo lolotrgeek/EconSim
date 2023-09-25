@@ -551,7 +551,13 @@ class CryptoExchange(Exchange):
                 'dt': self.datetime, 
                 'type': 'buy'
             }
-            new_position = await self.new_position(side, asset, side['qty'])
+            basis ={
+                'basis_initial_unit': self.default_quote_currency['symbol'],
+                'basis_per_unit': 0,
+                'basis_txn_id': 'seed',
+                'basis_date': self.datetime
+            }
+            new_position = await self.new_position(side, asset, side['qty'], basis)
             positions.append(new_position)
             initial_assets[asset] = Decimal(str(initial_assets[asset]))
   
@@ -627,8 +633,7 @@ class CryptoExchange(Exchange):
             for position in positions:
                 if position['asset'] != asset or position['qty'] == 0: continue
                 enters = position['enters']
-                if len(enters) == 0:
-                    return {'exit_position': 'no enters'}
+                if len(enters) == 0: continue
                 
                 for enter in enters:
                     exit = {
@@ -636,6 +641,7 @@ class CryptoExchange(Exchange):
                         'agent': agent['name'],
                         'asset': asset,
                         'dt': exit_transaction['dt'],
+                        'enter_id': enter['id'],
                     }
                     if asset == self.default_quote_currency['symbol']:
                         # if this is exiting a quote currency, we calculate it's basis...
@@ -660,6 +666,7 @@ class CryptoExchange(Exchange):
                         enter['qty'] -= Decimal(str(exit_transaction['qty']))
                         position['qty'] -= Decimal(str(exit_transaction['qty']))
                         exit_transaction['qty'] = 0
+                        print('full exit', exit_transaction['qty'], position['qty'])
                         position['exits'].append(exit)
                         return {'exit_position': exit}
                     else:
@@ -667,8 +674,8 @@ class CryptoExchange(Exchange):
                         exit_transaction['qty'] -= Decimal(str(enter['qty']))
                         exit['qty'] = Decimal(str(enter['qty']))
                         enter['qty'] = 0
-                        # print('partial exit', exit_transaction['qty'], enter['qty'])
                         position['qty'] -= Decimal(str(enter['qty']))
+                        print('partial exit', exit_transaction['qty'], position['qty'])
                         position['exits'].append(exit)
 
 
@@ -805,7 +812,13 @@ class CryptoExchange(Exchange):
             agent_idx = await self.get_agent_index(agent)
         if agent_idx is not None:
             side = {'id': str(UUID()), 'agent':agent, 'quote_flow':0, 'price': 0, 'base': asset, 'quote': self.default_quote_currency['symbol'], 'qty': amount, 'fee':0, 'dt': self.datetime, 'type': note}
-            await self.enter_position(side, asset, amount, agent_idx, str(UUID()))
+            basis ={
+                'basis_initial_unit': self.default_quote_currency['symbol'],
+                'basis_per_unit': 0,
+                'basis_txn_id': 'seed',
+                'basis_date': self.datetime
+            }
+            await self.enter_position(side, asset, amount, agent_idx, str(UUID()), basis)
             await self.update_assets(asset, amount, agent_idx)
             return {asset: self.agents[agent_idx]['assets'][asset]}
         else:
