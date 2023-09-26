@@ -1,11 +1,8 @@
-import asyncio
 import unittest
-from unittest.mock import MagicMock
 from decimal import Decimal
 from datetime import datetime
 import sys
 import os
-import random
 parent_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 sys.path.append(parent_dir)
 
@@ -571,7 +568,8 @@ class CancelAllOrdersTestCase(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(len(self.exchange.books["BTCUSD"].asks), 1)
 
         canceled = await self.exchange.cancel_all_orders("BTC", "USD", self.agent1 )
-        agent = await self.exchange.get_agent(self.agent1)    
+        agent = await self.exchange.get_agent(self.agent1)
+        print(canceled)    
 
         self.assertEqual(len(self.exchange.books["BTCUSD"].bids), 2)
         self.assertEqual(len(self.exchange.books["BTCUSD"].asks), 1)
@@ -1121,6 +1119,70 @@ class UpdateAgentsTestCase(unittest.IsolatedAsyncioTestCase):
 
         self.assertEqual(self.exchange.agents[1]['positions'][1]['exits'][0]['qty'], 1)
         self.assertEqual(self.exchange.agents[1]['positions'][1]['exits'][0]['asset'], 'BTC')
+
+class getAgentsPositions(unittest.IsolatedAsyncioTestCase):
+    async def asyncSetUp(self) -> None:    
+        self.exchange = await standard_asyncSetUp(self)
+        self.agent1 = (await self.exchange.register_agent("agent16", initial_assets={"BTC": 10000, "USD" : 10000}))['registered_agent']
+        self.agent2 = (await self.exchange.register_agent("agent17", initial_assets={"BTC": 10000, "USD" : 10000}))['registered_agent']
+        self.agent3 = (await self.exchange.register_agent("agent18", initial_assets={"BTC": 10000, "USD" : 10000}))['registered_agent']
+
+    async def test_get_agents_positions_asset(self):
+        await self.exchange.market_buy("BTC", "USD", qty=2, buyer=self.agent1, fee=0.001)
+        await self.exchange.market_buy("BTC", "USD", qty=3, buyer=self.agent2, fee=0.001)
+        await self.exchange.market_buy("BTC", "USD", qty=4, buyer=self.agent3, fee=0.001)
+
+        self.mock_requester.responder.cryptos['BTC'].blockchain.mempool.transactions[1].confirmed = True
+        self.mock_requester.responder.cryptos['USD'].blockchain.mempool.transactions[1].confirmed = True
+        self.mock_requester.responder.cryptos['BTC'].blockchain.mempool.transactions[2].confirmed = True
+        self.mock_requester.responder.cryptos['USD'].blockchain.mempool.transactions[2].confirmed = True
+        self.mock_requester.responder.cryptos['BTC'].blockchain.mempool.transactions[3].confirmed = True
+        self.mock_requester.responder.cryptos['USD'].blockchain.mempool.transactions[3].confirmed = True
+
+        await self.exchange.next()
+
+        result = await self.exchange.get_agents_positions('BTC')
+        print(result)
+        self.assertEqual(result[1]['agent'], self.agent1)
+        self.assertEqual(type(result[1]['positions']), list )
+        self.assertEqual(result[1]['positions'][0]['asset'], 'BTC')
+        self.assertEqual(result[1]['positions'][0]['qty'], 10002)
+        self.assertEqual(result[1]['positions'][0]['dt'], datetime(2023, 1, 1, 0, 0))
+        self.assertEqual(result[1]['positions'][0]['enters'][0]['asset'], 'BTC')
+        self.assertEqual(result[1]['positions'][0]['enters'][1]['qty'], 2)
+        self.assertEqual(result[1]['positions'][0]['enters'][0]['dt'], datetime(2023, 1, 1, 0, 0))
+        self.assertEqual(result[1]['positions'][0]['enters'][0]['type'], 'buy')
+        self.assertEqual(result[1]['positions'][0]['exits'], [])
+
+    async def test_get_agents_positions(self):
+        await self.exchange.market_buy("BTC", "USD", qty=2, buyer=self.agent1, fee=0.001)
+        await self.exchange.market_buy("BTC", "USD", qty=3, buyer=self.agent2, fee=0.001)
+        await self.exchange.market_buy("BTC", "USD", qty=4, buyer=self.agent3, fee=0.001)
+
+        self.mock_requester.responder.cryptos['BTC'].blockchain.mempool.transactions[1].confirmed = True
+        self.mock_requester.responder.cryptos['USD'].blockchain.mempool.transactions[1].confirmed = True
+        self.mock_requester.responder.cryptos['BTC'].blockchain.mempool.transactions[2].confirmed = True
+        self.mock_requester.responder.cryptos['USD'].blockchain.mempool.transactions[2].confirmed = True
+        self.mock_requester.responder.cryptos['BTC'].blockchain.mempool.transactions[3].confirmed = True
+        self.mock_requester.responder.cryptos['USD'].blockchain.mempool.transactions[3].confirmed = True
+
+        await self.exchange.next()
+
+        result = await self.exchange.get_agents_positions()
+        print(result)
+        self.assertEqual(result[1]['agent'], self.agent1)
+        self.assertEqual(type(result[1]['positions']), list )
+        self.assertEqual(result[1]['positions'][0]['asset'], 'BTC')
+        self.assertEqual(result[1]['positions'][0]['qty'], 10002)
+        self.assertEqual(result[1]['positions'][0]['dt'], datetime(2023, 1, 1, 0, 0))
+        self.assertEqual(result[1]['positions'][0]['enters'][0]['asset'], 'BTC')
+        self.assertEqual(result[1]['positions'][0]['enters'][1]['qty'], 2)
+        self.assertEqual(result[1]['positions'][0]['enters'][0]['dt'], datetime(2023, 1, 1, 0, 0))
+        self.assertEqual(result[1]['positions'][0]['enters'][0]['type'], 'buy')
+        self.assertEqual(result[1]['positions'][0]['exits'], []) 
+        self.assertEqual(result[1]['positions'][1]['asset'], 'USD')
+        self.assertEqual(result[1]['positions'][1]['qty'], Decimal('9998'))
+        self.assertEqual(result[1]['positions'][1]['dt'], datetime(2023, 1, 1, 0, 0))       
 
 class getAgentsHoldingTest(unittest.IsolatedAsyncioTestCase):
     async def asyncSetUp(self) -> None:
