@@ -21,8 +21,7 @@ class MemPoolTests(unittest.TestCase):
         self.assertEqual(len(confirmed_transactions), 0)
 
     def test_transaction_log_empty(self):
-        transaction_log = self.mem_pool.transaction_log
-        self.assertTrue(isinstance(transaction_log, pd.DataFrame))
+        transaction_log = self.mem_pool.transactions
         self.assertEqual(len(transaction_log), 0)
 
     def test_get_pending_transactions(self):

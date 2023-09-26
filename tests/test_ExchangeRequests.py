@@ -166,7 +166,7 @@ class CancelOrderTest(unittest.IsolatedAsyncioTestCase):
     async def test_cancel_order(self):
         order = self.mock_requester.responder.mock_order
         response = await self.requests.make_request('cancel_order', {'ticker': order.ticker, 'order_id': order.id}, self.mock_requester)
-        self.assertEqual(response, {'cancelled_order': order.id})
+        self.assertEqual(response, {'cancelled_order': order.to_dict_full()})
 
 class CancelAllOrdersTest(unittest.IsolatedAsyncioTestCase):
     async def asyncSetUp(self):

@@ -188,7 +188,7 @@ class CancelOrderTestCase(unittest.IsolatedAsyncioTestCase):
         order = await self.exchange.limit_buy("AAPL", price=149, qty=2, creator=self.agent)
         self.assertEqual(len(self.exchange.books["AAPL"].bids), 2)
         cancel = await self.exchange.cancel_order("AAPL", order.id)
-        self.assertEqual(cancel, {"cancelled_order": order.id})
+        self.assertEqual(cancel, {"cancelled_order": order.to_dict_full()})
         self.assertEqual(len(self.exchange.books["AAPL"].bids), 1)
         self.assertEqual(await self.exchange.get_order("AAPL", order.id), {'error': 'order not found'})       
 
