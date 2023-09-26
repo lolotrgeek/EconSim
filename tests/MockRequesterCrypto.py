@@ -2,6 +2,7 @@ import random, string, os, sys
 parent_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 sys.path.append(parent_dir)
 from source.exchange.CryptoExchange import CryptoExchange as Exchange
+from source.crypto.CryptoCurrencyRequests import CryptoCurrencyRequests as Requests
 from source.crypto.CryptoCurrency import CryptoCurrency
 from source.utils._utils import dumps
 from datetime import datetime, timedelta
@@ -24,21 +25,13 @@ class MockResponderCrypto():
     """
     Mocked run_exchange and run_company callback responder
     """
-    def __init__(self):
+    def __init__(self, requests=None):
         self.time = datetime(2023, 1, 1)
-        self.exchange = Exchange(datetime=self.time, requester=MockRequesterCrypto)
-        self.agent = None
-        self.mock_order = None
         self.cryptos = {
-            'USD': CryptoCurrency("USD", self.exchange.datetime, requester=MockRequesterCrypto),
-            'BTC': CryptoCurrency("BTC", self.exchange.datetime, requester=MockRequesterCrypto),
-            'ETH': CryptoCurrency("ETH", self.exchange.datetime, requester=MockRequesterCrypto),  
+            'USD': CryptoCurrency("USD", self.time, requester=MockRequesterCryptoExchange),
+            'BTC': CryptoCurrency("BTC", self.time, requester=MockRequesterCryptoExchange),
+            'ETH': CryptoCurrency("ETH", self.time, requester=MockRequesterCryptoExchange),  
         }
-
-    async def init(self):
-        await self.exchange.create_asset("BTC", pairs = [{'asset': "USD" ,'market_qty':1000 ,'seed_price':150 ,'seed_bid':.99, 'seed_ask':1.01}])
-        self.agent = (await self.exchange.register_agent("buyer1", {"USD": 100000}))['registered_agent']
-        self.mock_order = await self.exchange.limit_buy("BTC", "USD", price=151, qty=1, fee=0.0001, creator=self.agent)
 
     async def next(self):
         self.time = self.time + timedelta(days=1)
@@ -57,8 +50,43 @@ class MockResponderCrypto():
                 elif msg['topic'] == 'get_confirmed_transactions': return dumps(await self.cryptos[msg['asset']].blockchain.mempool.get_confirmed_transactions(to_dicts=True))
 
             else: return f'unknown asset {msg["asset"]}'    
-        elif msg['topic'] == 'create_asset': return dumps((await self.exchange.create_asset(msg['symbol'], msg['pairs'] ,msg['qty'], msg['seed_price'], msg['seed_bid'], msg['seed_ask'])))
-        elif msg['topic'] == 'sim_time': return dumps(self.exchange.datetime)
+        
+class MockRequesterCryptoExchange():
+    """
+    Mocked Requester that connects directly to the MockResponder
+    """
+    def __init__(self):
+        self.responder = MockResponderCryptoExchange()
+
+    async def init(self):
+        await self.responder.init()
+    
+    async def request(self, msg):
+        return await self.responder.callback(msg)
+    
+class MockResponderCryptoExchange():
+    def __init__(self) -> None:
+        self.mock_requester = MockRequesterCrypto()
+        self.requests = Requests(self.mock_requester)
+        self.exchange = Exchange(datetime=datetime(2023, 1, 1), requester=self.requests)
+        self.agent = None
+        self.mock_order = None
+
+    async def init(self):
+        await self.exchange.create_asset("BTC", pairs = [{'asset': "USD" ,'market_qty':1000 ,'seed_price':150 ,'seed_bid':.99, 'seed_ask':1.01}])
+        self.mock_requester.responder.cryptos['BTC'].blockchain.mempool.transactions[0].confirmed = True
+        self.mock_requester.responder.cryptos['USD'].blockchain.mempool.transactions[0].confirmed = True
+        await self.exchange.next()
+        self.agent = (await self.exchange.register_agent("buyer1", {"USD": 100000}))['registered_agent']
+        self.mock_order = await self.exchange.limit_buy("BTC", "USD", price=151, qty=1, fee=0.0001, creator=self.agent)        
+
+    async def next(self):
+        self.time = self.time + timedelta(days=1)
+        self.exchange.datetime = self.time
+        await self.exchange.next()
+
+    async def callback(self, msg):
+        if msg['topic'] == 'create_asset': return dumps((await self.exchange.create_asset(msg['symbol'], msg['pairs'])))
         elif msg['topic'] == 'get_tickers': return dumps((await self.exchange.get_tickers()))
         elif msg['topic'] == 'limit_buy': return dumps((await self.exchange.limit_buy(msg['base'] , msg['quote'], msg['price'], msg['qty'], msg['creator'], msg['fee'])).to_dict_full())
         elif msg['topic'] == 'limit_sell': return dumps((await self.exchange.limit_sell(msg['base'] , msg['quote'], msg['price'], msg['qty'], msg['creator'], msg['fee'])).to_dict_full())
@@ -91,4 +119,5 @@ class MockResponderCrypto():
         elif msg['topic'] == 'get_outstanding_shares': return dumps(await self.exchange.get_outstanding_shares(msg['ticker']))
         elif msg['topic'] == 'get_taxable_events': return dumps(await self.exchange.get_taxable_events())
         #TODO: exchange topic to get general exchange data
-        else: return dumps({"warning":  f'unknown topic {msg["topic"]}'})
+        else: return dumps({"warning":  f'unknown topic {msg["topic"]}'})        
+    
