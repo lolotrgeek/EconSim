@@ -134,6 +134,7 @@ class CryptoExchange(Exchange):
         
             await self._process_trade(base, quote, qty, price, buyer, seller, accounting='FIFO', network_fee=network_fee, position_id='init_seed_'+ticker)
             self.pending_asset_pairs[symbol] = pairs
+        return {'asset_created': symbol, 'pairs': pairs}
         
     async def _process_trade(self, base, quote, qty, price, buyer, seller, accounting='FIFO', exchange_fee={'quote':0.0, 'base':0.0}, network_fee={'quote':0.0, 'base':0.0}, position_id=None):
         try:
@@ -679,8 +680,6 @@ class CryptoExchange(Exchange):
                         position['qty'] -= Decimal(str(enter['qty']))
                         print('partial exit', exit_transaction['qty'], position['qty'])
                         position['exits'].append(exit)
-
-
         return {'exit_position': 'no position to exit'}                            
 
     async def update_assets(self, asset, amount, agent_idx) -> None:
