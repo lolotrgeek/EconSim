@@ -408,7 +408,7 @@ class CryptoExchange(Exchange):
         async def cancel_bid(bid, creator):
             if bid.creator == creator:
                 await self.unfreeze_assets(creator, quote, bid.qty*bid.price)
-                canceled.append(bid)
+                canceled.append(bid.id)
                 return False
             else:
                 return True
@@ -416,7 +416,7 @@ class CryptoExchange(Exchange):
         async def cancel_ask(ask, creator):
             if ask.creator == creator:
                 await self.unfreeze_assets(creator, base, ask.qty)
-                canceled.append(ask)
+                canceled.append(ask.id)
                 return False
             else:
                 return True
@@ -804,6 +804,10 @@ class CryptoExchange(Exchange):
     async def get_cash(self, agent_name) -> dict:
         agent_info = await self.get_agent(agent_name)
         return {'cash':agent_info['assets'][self.default_quote_currency['symbol']]}
+
+    async def get_assets(self, agent) -> dict:
+        agent_info = await self.get_agent(agent)
+        return {'assets': agent_info['assets'], 'frozen_assets': agent_info['frozen_assets']}
 
     async def add_asset(self, agent, asset, amount, note=''):
         if type(agent) == int:
