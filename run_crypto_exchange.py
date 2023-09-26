@@ -31,7 +31,7 @@ async def run_crypto_exchange() -> None:
                 exchange.datetime = string_to_time(clock)
 
         async def callback(msg) -> str:
-            if msg['topic'] == 'create_asset': return dumps((await exchange.create_asset(msg['symbol'], msg['pairs'], msg['qty'], msg['seed_price'], msg['seed_bid'], msg['seed_ask'])))
+            if msg['topic'] == 'create_asset': return dumps((await exchange.create_asset(msg['symbol'], msg['pairs'])))
             elif msg['topic'] == 'sim_time': return dumps(exchange.datetime)
             elif msg['topic'] == 'get_tickers': return dumps((await exchange.get_tickers()))
             elif msg['topic'] == 'limit_buy': return dumps((await exchange.limit_buy(msg['base'] , msg['quote'], msg['price'], msg['qty'], msg['creator'], msg['fee'])).to_dict_full())
