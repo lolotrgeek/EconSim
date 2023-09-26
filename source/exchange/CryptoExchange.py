@@ -323,8 +323,9 @@ class CryptoExchange(Exchange):
                 self.books[ticker].bids.insert(queue, maker_order)
                 return maker_order
             else:
-                maker_fee = self.fees.maker_fee(qty*price)
-                filled_taker_order = CryptoLimitOrder(ticker, price, qty, creator, OrderSide.BUY, self.datetime, exchange_fee=maker_fee, network_fee=fee, position_id=position_id, fills=fills)
+                taker_fee = self.fees.taker_fee(qty*price)
+                filled_taker_order = CryptoLimitOrder(ticker, price, qty, creator, OrderSide.BUY, self.datetime, exchange_fee=taker_fee, network_fee=fee, position_id=position_id, fills=fills)
+                filled_taker_order.status = 'filled_unconfirmed'
                 return filled_taker_order
         else:
             return CryptoLimitOrder(ticker, 0, 0, creator, OrderSide.BUY, self.datetime, status='error', accounting='insufficient_funds')
@@ -379,8 +380,9 @@ class CryptoExchange(Exchange):
                 self.books[ticker].asks.insert(queue, maker_order)
                 return maker_order
             else:
-                maker_fee = self.fees.maker_fee(qty*price)
-                filled_taker_order = CryptoLimitOrder(ticker, price, qty, creator, OrderSide.SELL, self.datetime, exchange_fee=maker_fee, network_fee=fee, accounting=accounting, fills=fills)
+                taker_fee = self.fees.taker_fee(qty*price)
+                filled_taker_order = CryptoLimitOrder(ticker, price, qty, creator, OrderSide.SELL, self.datetime, exchange_fee=taker_fee, network_fee=fee, accounting=accounting, fills=fills)
+                filled_taker_order.status = 'filled_unconfirmed'
                 return filled_taker_order
         else:
             return CryptoLimitOrder(ticker, 0, 0, creator, OrderSide.SELL, self.datetime, status='error', accounting='insufficient_assets')
