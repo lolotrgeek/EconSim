@@ -1,8 +1,7 @@
 import unittest
 from decimal import Decimal
 from datetime import datetime
-import sys
-import os
+import sys, os, random
 parent_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 sys.path.append(parent_dir)
 
@@ -103,8 +102,7 @@ class RegisterAgentTestCase(unittest.IsolatedAsyncioTestCase):
         self.exchange = await standard_asyncSetUp(self)
 
     async def test_register_agent(self):
-        agent = await self.exchange.register_agent("agent1", initial_assets={"BTC": 10000, "USD" : 10000})
-        result = agent['registered_agent']
+        result = (await self.exchange.register_agent("agent1", initial_assets={"BTC": 10000, "USD" : 10000}))['registered_agent']
         self.assertEqual(result[:6], "agent1")
         self.assertEqual(len(self.exchange.agents), 2)
         self.assertEqual(self.exchange.agents[1]['name'], result)
@@ -599,9 +597,10 @@ class GetAssetsTestCase(unittest.IsolatedAsyncioTestCase):
         await self.exchange.next()
         result = await self.exchange.get_assets(self.agent)
         agent = await self.exchange.get_agent(self.agent)
-        self.assertEqual(result, {"assets": {"BTC": 2, "USD": Decimal('9696.3890')}})
-        self.assertEqual(agent['assets'], {"BTC": 2, "USD": Decimal('9696.3890')})
-        self.assertEqual(agent['frozen_assets'], {'USD': 0})
+        self.assertEqual(result['assets']['BTC'],2 )
+        self.assertEqual(result['assets']['USD'], Decimal('9696.389000'))
+        self.assertEqual(agent['assets'], {"BTC": Decimal('2'), "USD": Decimal('9696.389000')})
+        self.assertEqual(agent['frozen_assets'], {'USD': Decimal('0.0000')})
 
 class GetAgentTestCase(unittest.IsolatedAsyncioTestCase):
     async def asyncSetUp(self) -> None:
@@ -1223,3 +1222,98 @@ class getSharesOutstandingTest(unittest.IsolatedAsyncioTestCase):
         print(self.exchange.books['BTCUSD'].asks)
         print(self.exchange.books['BTCUSD'].bids)
 
+class getAgentsSimpleTest(unittest.IsolatedAsyncioTestCase):
+    async def asyncSetUp(self) -> None:
+        self.mock_requester = MockRequester()
+        self.requests = Requests(self.mock_requester)
+        self.exchange = Exchange(datetime=datetime(2023, 1, 1), requester=self.requests)
+        await self.exchange.create_asset("BTC", pairs=[{'asset': 'USD','market_qty':1000 ,'seed_price':150 ,'seed_bid':.99, 'seed_ask':1.01}])
+        self.mock_requester.responder.cryptos['BTC'].blockchain.mempool.transactions[0].confirmed = True
+        self.mock_requester.responder.cryptos['USD'].blockchain.mempool.transactions[0].confirmed = True
+        await self.exchange.next()
+        self.agent1 = (await self.exchange.register_agent("agent1", initial_assets={"BTC": 10000, "USD" : 10000}))['registered_agent']
+        self.agent2 = (await self.exchange.register_agent("agent2", initial_assets={"BTC": 10000, "USD" : 10000}))['registered_agent']
+        self.agent3 = (await self.exchange.register_agent("agent3", initial_assets={"BTC": 10000, "USD" : 10000}))['registered_agent']
+
+    async def test_get_agents_simple(self):
+        await self.exchange.market_buy("BTC", "USD", qty=2, buyer=self.agent1, fee=0)
+        await self.exchange.market_buy("BTC", "USD", qty=3, buyer=self.agent2, fee=0)
+        await self.exchange.market_buy("BTC", "USD", qty=4, buyer=self.agent3, fee=0)
+        result = await self.exchange.get_agents_simple()
+        print(result)
+        self.assertCountEqual(result, [
+            {'agent': 'init_seed_BTCUSD', 'assets': {'BTC': Decimal('2.000000000'), 'USD': Decimal('149851.499999999')}},
+            {'agent': self.agent1, 'assets': {'BTC': Decimal('10000'), 'USD': Decimal('10000.00')}},
+            {'agent': self.agent2, 'assets': {'BTC': Decimal('10000'), 'USD': Decimal('10000.00')}},
+            {'agent': self.agent3, 'assets': {'BTC': Decimal('10000'), 'USD': Decimal('10000.00')}}
+        ])
+
+class GetPriceBarsTestCase(unittest.IsolatedAsyncioTestCase):
+    async def asyncSetUp(self) -> None:
+        self.mock_requester = MockRequester()
+        self.requests = Requests(self.mock_requester)
+        self.exchange = Exchange(datetime=datetime(2023, 1, 1), requester=self.requests)
+        await self.exchange.create_asset("BTC", pairs=[{'asset': 'USD','market_qty':1000 ,'seed_price':150 ,'seed_bid':.99, 'seed_ask':1.01}])
+        self.mock_requester.responder.cryptos['BTC'].blockchain.mempool.transactions[0].confirmed = True
+        self.mock_requester.responder.cryptos['USD'].blockchain.mempool.transactions[0].confirmed = True
+        await self.exchange.next()
+        self.agent = (await self.exchange.register_agent("agent", initial_assets={"BTC": 10000, "USD" : 10000}))['registered_agent']
+
+    async def test_get_price_bars(self):
+        price_bars = await self.exchange.get_price_bars("BTCUSD", limit=10)
+        self.assertEqual(len(price_bars), 1)
+        self.assertEqual(price_bars[0], {'open': 150, 'high': 150, 'low': 150, 'close': 150, 'volume': 1000, 'dt': datetime(2023, 1, 1, 0, 0)})
+
+    async def test_get_minute_price_bars(self):
+        price_bars = await self.exchange.get_price_bars("BTCUSD", limit=10, bar_size="1T")
+        self.assertEqual(len(price_bars), 1)
+        self.assertEqual(price_bars[0], {'open': 150, 'high': 150, 'low': 150, 'close': 150, 'volume': 1000, 'dt': datetime(2023, 1, 1, 0, 0, )})     
+
+    async def test_get_5minute_price_bars(self):
+        price_bars = await self.exchange.get_price_bars("BTCUSD", limit=10, bar_size="5T")
+        self.assertEqual(len(price_bars), 1)
+        self.assertEqual(price_bars[0], {'open': 150, 'high': 150, 'low': 150, 'close': 150, 'volume': 1000, 'dt': datetime(2023, 1, 1, 0, 0, )})
+
+    async def test_get_week_price_bars(self):
+        price_bars = await self.exchange.get_price_bars("BTCUSD", limit=10, bar_size="1W")
+        self.assertEqual(len(price_bars), 1)
+        self.assertEqual(price_bars[0], {'open': 150, 'high': 150, 'low': 150, 'close': 150, 'volume': 1000, 'dt': datetime(2023, 1, 1, 0, 0, )}) 
+
+    async def test_get_month_price_bars(self):
+        price_bars = await self.exchange.get_price_bars("BTCUSD", limit=10, bar_size="1M")
+        self.assertEqual(len(price_bars), 1)
+        self.assertEqual(price_bars[0], {'open': 150, 'high': 150, 'low': 150, 'close': 150, 'volume': 1000, 'dt': datetime(2023, 1, 1, 0, 0, )})
+
+    async def test_get_year_price_bars(self):
+        price_bars = await self.exchange.get_price_bars("BTCUSD", limit=10, bar_size="1Y")
+        self.assertEqual(len(price_bars), 1)
+        self.assertEqual(price_bars[0], {'open': 150, 'high': 150, 'low': 150, 'close': 150, 'volume': 1000, 'dt': datetime(2023, 1, 1, 0, 0, )})
+
+    async def test_get_price_bars_over_time(self):
+        day = 1
+        while day < 10:
+            self.exchange.datetime = datetime(2023, 1, day)
+            await self.exchange.limit_buy("BTC", "USD", price=random.randint(100,180), qty=random.randint(1,10), creator=self.agent, fee=0)
+            await self.exchange.limit_sell("BTC", "USD", price=random.randint(100,180), qty=random.randint(1,10), creator=self.agent, fee=0)
+            day+=1
+
+        get_price_bars = await self.exchange.get_price_bars("BTC", limit=10)
+        print(self.exchange.trade_log)
+        print(len(get_price_bars), get_price_bars)
+
+class calculateMarketCapTest(unittest.IsolatedAsyncioTestCase):
+    async def asyncSetUp(self) -> None:
+        self.mock_requester = MockRequester()
+        self.requests = Requests(self.mock_requester)
+        self.exchange = Exchange(datetime=datetime(2023, 1, 1), requester=self.requests)
+        await self.exchange.create_asset("BTC", pairs=[{'asset': 'USD','market_qty':1000 ,'seed_price':150 ,'seed_bid':.99, 'seed_ask':1.01}])
+        self.mock_requester.responder.cryptos['BTC'].blockchain.mempool.transactions[0].confirmed = True
+        self.mock_requester.responder.cryptos['USD'].blockchain.mempool.transactions[0].confirmed = True
+        await self.exchange.next()
+        self.agent1 = (await self.exchange.register_agent("agentcap", initial_assets={"BTC": 10000, "USD" : 10000}))['registered_agent']
+        await self.exchange.market_buy("BTC", "USD", qty=1000, buyer=self.agent1, fee=0)
+
+    # @unittest.skip("Run manually to test")
+    async def test_calculate_market_cap(self):
+        result = await self.exchange.calculate_market_cap("BTC", "USD")
+        self.assertEqual(result, 1500000)
