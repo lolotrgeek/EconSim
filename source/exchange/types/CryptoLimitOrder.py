@@ -54,7 +54,8 @@ class CryptoLimitOrder():
             'network_fee': self.network_fee,
             'accounting': self.accounting,
             'position_id': self.position_id,
-            'fills': self.fills
+            'fills': self.fills,
+            'status': self.status
         }    
 
     def __repr__(self) -> str:
