@@ -7,12 +7,12 @@ import unittest
 from datetime import datetime
 import random
 import pandas as pd
-from source.crypto.Blockchain import Blockchain,  MempoolTransaction
+from source.crypto.Blockchain import Blockchain, MempoolTransaction
 
 class BlockchainTests(unittest.IsolatedAsyncioTestCase):
 
     async def asyncSetUp(self):
-        self.blockchain = Blockchain(datetime(2022, 1, 1))
+        self.blockchain = Blockchain("test", datetime(2022, 1, 1))
 
     async def test_new_block(self):
         transactions = [
@@ -54,7 +54,7 @@ class BlockchainTests(unittest.IsolatedAsyncioTestCase):
         await self.blockchain.add_transaction('ETH', 0.002, 2.0, 'sender2', 'recipient2')
         self.blockchain.datetime = datetime(2022, 1, 6)
         await self.blockchain.add_transaction('LTC', 0.003, 3.0, 'sender3', 'recipient3')
-        pending_transactions = self.blockchain.mempool.get_pending_transactions()
+        pending_transactions = await self.blockchain.mempool.get_pending_transactions()
         pending_transactions.sort( key=lambda x: x.fee, reverse=True)
         
         length_before = len(self.blockchain.chain)
