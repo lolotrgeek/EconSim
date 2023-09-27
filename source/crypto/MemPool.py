@@ -33,11 +33,11 @@ class MemPool:
     def __init__(self) :
         self.transactions = []
 
-    def get_pending_transactions(self, to_dicts=False) -> str:
+    async def get_pending_transactions(self, to_dicts=False) -> str:
         if to_dicts: return [transaction.to_dict() for transaction in self.transactions if not transaction.confirmed]
         return [transaction for transaction in self.transactions if not transaction.confirmed]
     
-    def get_confirmed_transactions(self, to_dicts=False) -> str:
+    async def get_confirmed_transactions(self, to_dicts=False) -> str:
         if to_dicts: return [transaction.to_dict() for transaction in self.transactions if transaction.confirmed]
         return [transaction for transaction in self.transactions if transaction.confirmed]
     
