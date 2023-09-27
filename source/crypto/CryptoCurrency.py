@@ -6,7 +6,7 @@ class CryptoCurrency():
     def __init__(self, name:str, startdate, max_supply=0, requester=None) -> None:
         self.name = name
         self.symbol = name[:3].upper()
-        self.blockchain = Blockchain(startdate)
+        self.blockchain = Blockchain(self.symbol, startdate)
         self.supply = 1
         self.block_reward = 50
         self.max_supply = max_supply
