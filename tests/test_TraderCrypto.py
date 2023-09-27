@@ -353,3 +353,44 @@ class GetAssetsTest(unittest.IsolatedAsyncioTestCase):
 
     async def test_get_assets(self):
         self.assertEqual(await self.trader.get_assets(), await self.requests[0].get_assets(self.trader.name))
+
+class GetMemPool(unittest.IsolatedAsyncioTestCase):
+    async def asyncSetUp(self) -> None:
+        self.trader_name = "TestTrader"
+        self.mock_requester = MockRequester()
+        self.requests = (ExchangeRequests(self.mock_requester), CryptoCurrencyRequests(self.mock_requester))
+        
+        await self.mock_requester.init()
+        self.trader = Trader(self.trader_name, exchange_requests=self.requests[0], crypto_requests=self.requests[1])
+        await self.trader.register()
+
+    async def test_get_mempool(self):
+        self.assertEqual(await self.trader.get_mempool("BTC"), await self.requests[1].get_mempool("BTC"))
+
+class GetTransactions(unittest.IsolatedAsyncioTestCase):
+    async def asyncSetUp(self) -> None:
+        self.trader_name = "TestTrader"
+        self.mock_requester = MockRequester()
+        
+        self.requests = (ExchangeRequests(self.mock_requester), CryptoCurrencyRequests(self.mock_requester))
+        
+        await self.mock_requester.init()
+        self.trader = Trader(self.trader_name, exchange_requests=self.requests[0], crypto_requests=self.requests[1])
+        await self.trader.register()
+
+    async def test_get_transactions(self):
+        self.assertEqual(await self.trader.get_transactions("BTC"), await self.requests[1].get_transactions("BTC"))
+
+class GetTransaction(unittest.IsolatedAsyncioTestCase):
+    async def asyncSetUp(self) -> None:
+        self.trader_name = "TestTrader"
+        self.mock_requester = MockRequester()
+
+        self.requests = (ExchangeRequests(self.mock_requester), CryptoCurrencyRequests(self.mock_requester))
+        
+        await self.mock_requester.init()
+        self.trader = Trader(self.trader_name, exchange_requests=self.requests[0], crypto_requests=self.requests[1])
+        await self.trader.register()
+
+    async def test_get_transaction(self):
+        self.assertEqual(await self.trader.get_transaction("BTC", "1"), await self.requests[1].get_transaction("BTC", "1"))

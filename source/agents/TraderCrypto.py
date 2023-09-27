@@ -138,5 +138,12 @@ class CryptoTrader(Trader):
         else:
             return 'UnRegistered Agent'
 
-    async def next(self) -> None:  
-        pass
+    async def get_mempool(self, asset) -> dict:
+        return await self.crypto_requests.get_mempool(asset)
+    
+    async def get_transactions(self,asset) -> dict:
+        return await self.crypto_requests.get_transactions(asset)
+    
+    async def get_transaction(self,asset, id) -> dict:
+        return await self.crypto_requests.get_transaction(asset,id)
+    
