@@ -1,25 +1,6 @@
 from .Trader import Trader
 import random
 
-class Fundamental(Trader):
-    def __init__(self, name, aum, qty_per_order=1, requests=()):
-        Trader.__init__(self, name, aum, requests=requests)
-        self.qty_per_order = qty_per_order
-
-    async def next(self) -> bool:
-        self.tickers = await self.get_tickers()
-        if len(self.tickers) == 0: return True
-        if (await self.has_cash_and_assets()) == False: return False
-
-        for ticker in self.tickers:
-            await self.get_income_statement(ticker)
-            await self.get_balance_sheet(ticker)
-            await self.get_cash_flow(ticker)
-            await self.get_dividend_payment_date(ticker)
-            await self.get_ex_dividend_date(ticker)
-            await self.get_dividends_to_distribute(ticker)
-        return True
-
 class RandomMarketTaker(Trader):
     def __init__(self,name , aum=10000,prob_buy=.2,prob_sell=.2,qty_per_order=1,seed=None, requests=()):
         Trader.__init__(self, name, aum, requests=requests)
@@ -53,7 +34,7 @@ class RandomMarketTaker(Trader):
             order = await self.market_buy(ticker,self.qty_per_order)
 
         elif action == 'close':
-            order = await self.market_sell(ticker,(await self.get_position(ticker)))
+            order = await self.market_sell(ticker,(await self.get_simple_position(ticker)))
 
         # if order is not None:
         #     print(order)

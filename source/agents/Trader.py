@@ -8,10 +8,9 @@ sys.path.append(parent_dir)
 
 
 class Trader(Agent):
-    def __init__(self, name:str, aum:int=10_000, requests=(None, None)):
+    def __init__(self, name:str, aum:int=10_000, requests=None):
         super().__init__(name, aum, requester=None)
-        self.exchange_requests = requests[0]
-        self.public_company_requests = requests[1]
+        self.exchange_requests = requests
         self.assets = {}
         self.tickers = []
         self.aum = aum
@@ -29,24 +28,6 @@ class Trader(Agent):
             dict: a list of all tickers in the market
         """
         return await self.exchange_requests.get_tickers()
-    
-    async def get_income_statement(self, company) -> str:
-        return await self.public_company_requests.get_income_statement(company)
-    
-    async def get_balance_sheet(self, company) -> str:
-        return await self.public_company_requests.get_balance_sheet(company)
-
-    async def get_cash_flow(self, company) -> str:
-        return await self.public_company_requests.get_cash_flow(company)
-    
-    async def get_dividend_payment_date(self, company) -> str:
-        return await self.public_company_requests.get_dividend_payment_date(company)
-    
-    async def get_ex_dividend_date(self, company) -> str:
-        return await self.public_company_requests.get_ex_dividend_date(company)
-    
-    async def get_dividends_to_distribute(self, company) -> str:
-        return await self.public_company_requests.get_dividends_to_distribute(company)
 
     async def get_latest_trade(self, ticker:str) -> dict:
         """returns the most recent trade of a given asset
