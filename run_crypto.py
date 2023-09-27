@@ -22,8 +22,8 @@ async def run_crypto() -> None:
         responder = Responder(channels.crypto_channel)
         requester = Requester(channel=channels.exchange_channel)
         time_puller = Subscriber(channels.time_channel)
-        asyncio.run(responder.connect())
-        asyncio.run(requester.connect())
+        await responder.connect()
+        await requester.connect()
 
         def get_time():
             clock = time_puller.subscribe("time")
@@ -62,4 +62,4 @@ async def run_crypto() -> None:
         print(e)
 
 if __name__ == '__main__':
-    asyncio.run(run_crypto)
+    asyncio.run(run_crypto())

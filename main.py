@@ -5,14 +5,14 @@ import sys
 import os
 parent_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 files = [
-    parent_dir+'\\EconSim\\run_exchange.py',
-    parent_dir+'\\EconSim\\run_companies.py',
+    parent_dir+'\\EconSim\\run_crypto_exchange.py',
+    parent_dir+'\\EconSim\\run_crypto.py',
     parent_dir+'\\EconSim\\run_government.py',
     parent_dir+'\\EconSim\\run_clock.py',
     parent_dir+'\\EconSim\\run_traders.py',
 ]
 api = [
-    parent_dir+'\\EconSim\\source\\api\exchange_api.js',
+    parent_dir+'\\EconSim\\source\\api\crypto_exchange_api.js',
     parent_dir+'\\EconSim\\source\\api\government_api.js',
     parent_dir+'\\EconSim\\source\\api\companies_api.js',
 ]
