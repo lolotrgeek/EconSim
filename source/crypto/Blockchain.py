@@ -3,8 +3,8 @@ import random
 import pandas as pd
 
 class Blockchain():
-    def __init__(self, datetime=None):
-        seed = MempoolTransaction('init_seed', 0, 0, 'init_seed', 'init_seed', datetime)
+    def __init__(self, asset="", datetime=None):
+        seed = MempoolTransaction(asset, 0, 0, 'init_seed', 'init_seed', datetime)
         self.no_fee = False
         seed.confirmed = True
         self.chain = [seed]
@@ -36,7 +36,7 @@ class Blockchain():
         return 1.0 - (index / num_unconfirmed)       
 
     async def process_transactions(self) -> None:
-        unconfirmed_transactions = self.mempool.get_pending_transactions()
+        unconfirmed_transactions = await self.mempool.get_pending_transactions()
         unconfirmed_transactions.sort(key=lambda x: x.fee, reverse=True)
         num_unconfirmed = len(unconfirmed_transactions)
         confirmed = 0
@@ -51,7 +51,7 @@ class Blockchain():
                 self.accumulated_fees += transaction.fee
                 num_unconfirmed -= 1
                 self.chain.append(transaction)
-        self.mempool.transactions = self.mempool.get_pending_transactions() # clear the mempool of confirmed transactions
+        self.mempool.transactions = await self.mempool.get_pending_transactions() # clear the mempool of confirmed transactions
         return {'confirmed': confirmed, 'unconfirmed': len(self.mempool.transactions) }
     
     async def get_transactions_df(self) -> pd.DataFrame:
