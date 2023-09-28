@@ -5,7 +5,7 @@ import sys
 import os
 parent_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 sys.path.append(parent_dir)
-
+from decimal import Decimal
 
 class CryptoTrader(Trader):
     def __init__(self, name:str, aum:int=10_000, exchange_requests=None, crypto_requests=None):
@@ -31,7 +31,9 @@ class CryptoTrader(Trader):
         returns:
             Trade: the most recent trade
         """
-        return await self.exchange_requests.get_latest_trade(base, quote)
+        latest_trade = await self.exchange_requests.get_latest_trade(base, quote)
+        latest_trade['price'] = Decimal(latest_trade['price'])
+        return latest_trade
 
     async def get_trades(self, base:str, quote:str, limit=20) -> List[dict]:
         return await self.exchange_requests.get_trades(base, quote, limit=limit)
@@ -146,4 +148,13 @@ class CryptoTrader(Trader):
     
     async def get_transaction(self,asset, id) -> dict:
         return await self.crypto_requests.get_transaction(asset,id)
-    
+
+    async def has_cash_and_assets(self) -> bool:
+        self.cash = Decimal(((await self.get_cash())['cash']))
+        self.assets = (await self.get_assets())['assets']
+        for asset in self.assets:
+            self.assets[asset] = Decimal(self.assets[asset])
+        if self.cash <= 0 and all(asset == 0 for asset in self.assets.values()) == True:
+            print(self.name, "has no cash and no assets. Terminating.", self.cash, self.assets)
+            return False
+        else: return True
