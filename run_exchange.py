@@ -18,9 +18,7 @@ async def run_exchange() -> None:
         exchange = Exchange(datetime=datetime(1700,1,1))
         time_puller = Subscriber(channels.time_channel)
         responder = Responder(channels.exchange_channel)
-        requester = Requester(channels.exchange_channel)
         await responder.connect()
-        await requester.connect()
 
         topic_times = {}
 
