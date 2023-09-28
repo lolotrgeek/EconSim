@@ -1,6 +1,7 @@
 import unittest
 import sys
 import os
+from decimal import Decimal
 parent_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 sys.path.append(parent_dir)
 from source.agents.TraderCrypto import CryptoTrader as Trader
@@ -56,7 +57,10 @@ class GetLatestTradeTest(unittest.IsolatedAsyncioTestCase):
         self.trader = Trader(self.trader_name,  self.aum, exchange_requests=self.requests[0], crypto_requests=self.requests[1])
 
     async def test_get_latest_trade(self):
-        self.assertEqual(await self.trader.get_latest_trade("BTC","USD"), await self.requests[0].get_latest_trade("BTC", "USD"))
+        latest_trade = await self.trader.get_latest_trade("BTC","USD")
+        latest_trade_remote = await self.requests[0].get_latest_trade("BTC", "USD")
+        latest_trade_remote['price'] = Decimal(latest_trade_remote['price'])
+        self.assertEqual(latest_trade, latest_trade_remote)
 
 class GetBestBidTest(unittest.IsolatedAsyncioTestCase):
     async def asyncSetUp(self) -> None:

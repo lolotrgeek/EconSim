@@ -15,14 +15,8 @@ class CreateAssetTest(unittest.IsolatedAsyncioTestCase):
 
     async def test_create_asset(self):
         response = await self.requests.make_request('create_asset', {'symbol': "ETH", 'pairs': [{'asset': 'USD','market_qty':50000 ,'seed_price':100 ,'seed_bid':.99, 'seed_ask':1.01}]}, self.mock_requester)
-        self.mock_requester.responder.mock_requester.responder.cryptos['ETH'].blockchain.mempool.transactions[0].confirmed = True
-        self.mock_requester.responder.mock_requester.responder.cryptos['USD'].blockchain.mempool.transactions[1].confirmed = True
-        
-        print(self.mock_requester.responder.mock_requester.responder.cryptos['ETH'].blockchain.mempool.transactions)
-        print(self.mock_requester.responder.mock_requester.responder.cryptos['USD'].blockchain.mempool.transactions)
-        
-        print(self.mock_requester.responder.exchange.assets)
-        
+       
+     
         print (response)
         await self.mock_requester.responder.exchange.next()
         
@@ -235,7 +229,7 @@ class GetAssetsTest(unittest.IsolatedAsyncioTestCase):
 
     async def test_get_assets(self):
         response = await self.requests.make_request('assets', {'agent': 'init_seed_BTCUSD'}, self.mock_requester)
-        self.assertEqual(response, {'assets': {'BTC': Decimal('2.000000000'), 'USD': Decimal('149851.499999999')}, 'frozen_assets': {'BTC': Decimal('998.000000000'),'USD': Decimal('148.500000001')}})
+        self.assertEqual(response, {'assets': {'BTC': Decimal('2.000000000'), 'USD': Decimal('149851.499999999')}, 'frozen_assets': {'BTC': Decimal('998.000100000'),'USD': Decimal('148.500100001')}})
 
 class RegisterAgentTest(unittest.IsolatedAsyncioTestCase):
     async def asyncSetUp(self):

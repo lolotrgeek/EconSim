@@ -72,7 +72,6 @@ class BlockchainTests(unittest.IsolatedAsyncioTestCase):
         odds = await self.blockchain.confirmation_odds(0, 10, 1)
         lower_odds = await self.blockchain.confirmation_odds(1, 10, .5)
         lowest_odds = await self.blockchain.confirmation_odds(2, 10, .001)
-        print(odds, lower_odds, lowest_odds)
         self.assertGreater(odds, lower_odds)
         self.assertGreater(lower_odds, lowest_odds)
 
