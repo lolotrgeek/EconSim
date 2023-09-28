@@ -2,6 +2,7 @@ from datetime import datetime
 import traceback
 from source.Messaging import Responder, Requester, Subscriber
 from source.exchange.CryptoExchange import CryptoExchange
+from source.crypto.CryptoCurrencyRequests import CryptoCurrencyRequests
 from source.utils._utils import dumps, string_to_time
 from Channels import Channels
 from rich import print
@@ -13,13 +14,11 @@ async def run_crypto_exchange() -> None:
         channels = Channels() 
         time_puller = Subscriber(channels.time_channel)
         responder = Responder(channels.exchange_channel)
-        requester = Requester(channels.exchange_channel)
+        requester = Requester(channels.crypto_channel)
         await responder.connect()
         await requester.connect()
 
-        exchange = CryptoExchange(datetime=datetime(1700,1,1), requester=requester)
-
-        topic_times = {}
+        exchange = CryptoExchange(datetime=datetime(1700,1,1), requester=CryptoCurrencyRequests(requester))
 
         def get_time():
             clock = time_puller.subscribe("time")
@@ -31,7 +30,9 @@ async def run_crypto_exchange() -> None:
                 exchange.datetime = string_to_time(clock)
 
         async def callback(msg) -> str:
-            if msg['topic'] == 'create_asset': return dumps((await exchange.create_asset(msg['symbol'], msg['pairs'])))
+            if msg['topic'] == 'create_asset': 
+                print(type(msg), msg)
+                return dumps((await exchange.create_asset(msg['symbol'], msg['pairs'])))
             elif msg['topic'] == 'sim_time': return dumps(exchange.datetime)
             elif msg['topic'] == 'get_tickers': return dumps((await exchange.get_tickers()))
             elif msg['topic'] == 'limit_buy': return dumps((await exchange.limit_buy(msg['base'] , msg['quote'], msg['price'], msg['qty'], msg['creator'], msg['fee'])).to_dict_full())
@@ -67,10 +68,9 @@ async def run_crypto_exchange() -> None:
             #TODO: exchange topic to get general exchange data
             else: return dumps({"warning":  f'unknown topic {msg["topic"]}'})
 
-        exchange.address = await exchange.generate_address()
-
         while True:
             get_time()
+            await exchange.next()
             msg = await responder.respond(callback)
             if msg is None:
                 continue
