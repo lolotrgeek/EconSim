@@ -58,25 +58,24 @@ class CryptoExchange(Exchange):
                 await self.list_asset(asset)
         self.pending_asset_pairs = {}
 
-    async def list_asset(self, asset, pairs):
-        for pair in pairs:
-            self.pairs.append({'base': asset, 'quote': pair['asset']})
-            ticker = asset+pair['asset']
+    async def list_asset(self, asset, pair):
+        self.pairs.append({'base': asset, 'quote': pair['asset']})
+        ticker = asset+pair['asset']
 
-            seed_price = Decimal(str(pair['seed_price']))
-            seed_bid = Decimal(str(pair['seed_bid']))
-            seed_ask = Decimal(str(pair['seed_ask']))
+        seed_price = Decimal(str(pair['seed_price']))
+        seed_bid = Decimal(str(pair['seed_bid']))
+        seed_ask = Decimal(str(pair['seed_ask']))
 
-            trade = CryptoTrade(asset, pair['asset'], pair['market_qty'], seed_price, 'init_seed_'+ticker, 'init_seed_'+ticker, self.datetime, network_fee={'base': 0.0001, 'quote': 0.0001}, exchange_fee={'base': 0.0, 'quote': 0.0})
-            self.trade_log.append(trade)
-            
-            buy = await self.limit_buy(asset, pair['asset'], seed_price * seed_bid, 1, 'init_seed_'+ticker, fee=0.000000001, position_id='init_seed_'+ticker)
-            sell_fees = self.fees.taker_fee(pair['market_qty']) + Decimal('0.000000001')
-            qty = pair['market_qty'] - Decimal(str(sell_fees))
-            sell = await self.limit_sell(asset, pair['asset'],  seed_price * seed_ask, qty,  'init_seed_'+ticker, fee=0.000000001)
-            
-            self.assets[asset] = {'type': 'crypto', 'id' : str(UUID())}
-            self.wallets[asset] = await self.generate_address()
+        trade = CryptoTrade(asset, pair['asset'], pair['market_qty'], seed_price, 'init_seed_'+ticker, 'init_seed_'+ticker, self.datetime, network_fee={'base': 0.0001, 'quote': 0.0001}, exchange_fee={'base': 0.0, 'quote': 0.0})
+        self.trade_log.append(trade)
+        
+        buy = await self.limit_buy(asset, pair['asset'], seed_price * seed_bid, 1, 'init_seed_'+ticker, fee=0.000000001, position_id='init_seed_'+ticker)
+        sell_fees = self.fees.taker_fee(pair['market_qty']) + Decimal('0.000000001')
+        qty = pair['market_qty'] - Decimal(str(sell_fees))
+        sell = await self.limit_sell(asset, pair['asset'],  seed_price * seed_ask, qty,  'init_seed_'+ticker, fee=0.000000001)
+        
+        self.assets[asset] = {'type': 'crypto', 'id' : str(UUID())}
+        self.wallets[asset] = await self.generate_address()
 
         for agent in self.agents:
             if 'init_seed_' not in agent['name']:
@@ -124,6 +123,7 @@ class CryptoExchange(Exchange):
                 'assets': {symbol: pair['market_qty'], pair['asset']: pair['market_qty'] * pair['seed_price']},
                 'frozen_assets': {symbol: Decimal('0.0001'), pair['asset']: Decimal('0.0001')}
             })
+            
             # await self.register_agent('init_seed_'+ticker, {symbol: pair['market_qty'], pair['asset']: pair['market_qty'] * pair['seed_price']})
 
             # buyer = 'init_seed_'+ticker
@@ -136,7 +136,7 @@ class CryptoExchange(Exchange):
             # exchange_fee={'quote':0.0, 'base':0.0}
             # txn_time = self.datetime
 
-            await self.list_asset(symbol, pairs)
+            await self.list_asset(symbol, pair)
 
             # await self._process_trade(base, quote, qty, price, buyer, seller, accounting='FIFO', network_fee=network_fee, position_id='init_seed_'+ticker)
             # self.pending_asset_pairs[symbol] = pairs
@@ -543,7 +543,7 @@ class CryptoExchange(Exchange):
         """
         `initial_assets`: a dict where the keys are symbols and values are quantities: e.g. {'BTC': 1000, 'ETH': 1000}
         """
-        print('registering agent', name)
+        # print('registering agent', name)
         registered_name = name + str(UUID())[0:8]
         positions = []
         wallets = {
@@ -610,9 +610,9 @@ class CryptoExchange(Exchange):
         }
 
     async def taxable_event(self, agent, amount, dt, basis_amount, basis_date) -> None:
-        print('taxable event', amount, basis_amount)
+        # print('taxable event', amount, basis_amount)
         pnl = amount - basis_amount
-        print('pnl', pnl)
+        # print('pnl', pnl)
         if pnl > 0:
             taxable_event = {"type": 'capital_gains', 'enter_date': basis_date, 'exit_date': dt, 'pnl': pnl}
             agent['taxable_events'].append(taxable_event)        
@@ -668,7 +668,7 @@ class CryptoExchange(Exchange):
                             # chain basis and update if needed
                             # e.g. USD (exit, set basis) -> BTC (enter, consume basis) -> BTC (exit, retain basis) -> ETH (enter, pass basis and adjust to ETH)
                             cost_basis_per_unit = (enter['basis']['basis_per_unit'] * abs(side['quote_flow'])) / abs(side['qty'])
-                            print(f"cost_basis_per_unit: {cost_basis_per_unit:.16f}")
+                            # print(f"cost_basis_per_unit: {cost_basis_per_unit:.16f}")
                             exit['basis']['basis_per_unit'] = cost_basis_per_unit
 
                     if enter['qty'] >= exit_transaction['qty']:
@@ -676,7 +676,7 @@ class CryptoExchange(Exchange):
                         enter['qty'] -= Decimal(str(exit_transaction['qty']))
                         position['qty'] -= Decimal(str(exit_transaction['qty']))
                         exit_transaction['qty'] = 0
-                        print('full exit', exit_transaction['qty'], position['qty'])
+                        # print('full exit', exit_transaction['qty'], position['qty'])
                         position['exits'].append(exit)
                         return {'exit_position': exit}
                     else:
@@ -685,7 +685,7 @@ class CryptoExchange(Exchange):
                         exit['qty'] = Decimal(str(enter['qty']))
                         enter['qty'] = 0
                         position['qty'] -= Decimal(str(enter['qty']))
-                        print('partial exit', exit_transaction['qty'], position['qty'])
+                        # print('partial exit', exit_transaction['qty'], position['qty'])
                         position['exits'].append(exit)
         return {'exit_position': 'no position to exit'}                            
 
