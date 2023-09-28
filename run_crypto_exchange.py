@@ -13,7 +13,7 @@ async def run_crypto_exchange() -> None:
     try:
         channels = Channels() 
         time_puller = Subscriber(channels.time_channel)
-        responder = Responder(channels.exchange_channel)
+        responder = Responder(channels.crypto_exchange_channel)
         requester = Requester(channels.crypto_channel)
         await responder.connect()
         await requester.connect()
@@ -40,7 +40,6 @@ async def run_crypto_exchange() -> None:
             elif msg['topic'] == 'cancel_order': return await exchange.cancel_order(msg['base'] , msg['quote'], msg['order_id'])
             elif msg['topic'] == 'cancel_all_orders': return await exchange.cancel_all_orders(msg['base'] , msg['quote'], msg['agent'])
             elif msg['topic'] == 'candles': return dumps(await exchange.get_price_bars(ticker=msg['ticker'], bar_size=msg['interval'], limit=msg['limit']))
-            # elif msg['topic'] == 'mempool': return await exchange.mempool(msg['limit'])
             elif msg['topic'] == 'order_book': return dumps( (await exchange.get_order_book(msg['ticker'])).to_dict(msg['limit']))
             elif msg['topic'] == 'latest_trade': return dumps(await exchange.get_latest_trade(msg['base'] , msg['quote']))
             elif msg['topic'] == 'trades': return dumps( await exchange.get_trades(msg['base'] , msg['quote'], msg['limit']))

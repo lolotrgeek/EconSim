@@ -100,7 +100,9 @@ class Responder:
     async def respond(self, callback=lambda msg: msg) -> str: 
         try:
             msg = await self.socket.recv_json()
-            response = await callback(json.loads(msg))
+            if type(msg) == str:
+                msg = json.loads(msg)
+            response = await callback(msg)
             await self.socket.send_json(json.dumps(response, cls=DecimalEncoder))
             return response
         except zmq.ZMQError as e:
@@ -118,7 +120,9 @@ class Responder:
             socks = dict(await self.poller.poll(self.listen_timeout) )
             if socks.get(self.socket) == zmq.POLLIN:            
                 msg = await self.socket.recv_json()
-                response = await callback(json.loads(msg))
+                if type(msg) == str:
+                    msg = json.loads(msg)
+                response = await callback(msg)
                 await self.socket.send_json(response)
                 return response
         except zmq.ZMQError as e:

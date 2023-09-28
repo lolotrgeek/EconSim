@@ -23,7 +23,7 @@ async def run_crypto() -> None:
     try:
         channels = Channels()
         responder = Responder(channels.crypto_channel)
-        requester = Requester(channel=channels.exchange_channel)
+        requester = Requester(channel=channels.crypto_exchange_channel)
         time_puller = Subscriber(channels.time_channel)
         await responder.connect()
         await requester.connect()

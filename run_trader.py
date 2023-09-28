@@ -14,7 +14,7 @@ async def run_trader() -> None:
         trader = None
         picker = randint(0,2)
         channels = Channels()
-        exchange_requester = Requester(channel=channels.exchange_channel)
+        exchange_requester = Requester(channel=channels.crypto_exchange_channel)
         crypto_requester = Requester(channel=channels.crypto_channel)
         await exchange_requester.connect()
         await crypto_requester.connect()

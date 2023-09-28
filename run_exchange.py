@@ -42,7 +42,6 @@ async def run_exchange() -> None:
             elif msg['topic'] == 'cancel_order': return await exchange.cancel_order(msg['order_id'])
             elif msg['topic'] == 'cancel_all_orders': return await exchange.cancel_all_orders(msg['agent'], msg['ticker'])
             elif msg['topic'] == 'candles': return dumps(await exchange.get_price_bars(ticker=msg['ticker'], bar_size=msg['interval'], limit=msg['limit']))
-            # elif msg['topic'] == 'mempool': return await exchange.mempool(msg['limit'])
             elif msg['topic'] == 'order_book': return dumps( (await exchange.get_order_book(msg['ticker'])).to_dict(msg['limit']))
             elif msg['topic'] == 'latest_trade': return dumps(await exchange.get_latest_trade(msg['ticker']))
             elif msg['topic'] == 'trades': return dumps( await exchange.get_trades(msg['ticker']))

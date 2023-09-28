@@ -133,7 +133,7 @@ class CryptoTrader(Trader):
         return await self.exchange_requests.get_assets(self.name)
     
     async def register(self) -> dict:
-        agent = await self.exchange_requests.register_agent(self.name, {"USD": self.initial_cash})
+        agent = await self.exchange_requests.register_agent(self.name, {"USD": self.aum})
         if 'registered_agent' in agent:
             self.name = agent['registered_agent']
             return agent
@@ -149,12 +149,11 @@ class CryptoTrader(Trader):
     async def get_transaction(self,asset, id) -> dict:
         return await self.crypto_requests.get_transaction(asset,id)
 
-    async def has_cash_and_assets(self) -> bool:
-        self.cash = Decimal(((await self.get_cash())['cash']))
+    async def has_assets(self) -> bool:
         self.assets = (await self.get_assets())['assets']
         for asset in self.assets:
             self.assets[asset] = Decimal(self.assets[asset])
-        if self.cash <= 0 and all(asset == 0 for asset in self.assets.values()) == True:
-            print(self.name, "has no cash and no assets. Terminating.", self.cash, self.assets)
+        if all(asset == 0 for asset in self.assets.values()) == True:
+            print(self.name, "has no assets. Terminating.", self.cash, self.assets)
             return False
         else: return True
