@@ -3,9 +3,17 @@ import json
 import zmq
 import zmq.asyncio
 import asyncio
+from .utils._utils import dumps
+from decimal import Decimal
 asyncio.set_event_loop_policy(asyncio.WindowsSelectorEventLoopPolicy())
 
 # logging.basicConfig(format="%(levelname)s: %(message)s", level=logging.WARN)
+
+class DecimalEncoder(json.JSONEncoder):
+    def default(self, o):
+        if isinstance(o, Decimal):
+            return str(o)
+        return super().default(o)
 
 class Requester:
     def __init__(self, channel='5556', max_retries=3):
@@ -22,8 +30,10 @@ class Requester:
 
     async def request(self, msg) -> str:
         try:
+            msg = json.dumps(msg, cls=DecimalEncoder)
             await self.socket.send_json(msg)
-            return await self.socket.recv_json()
+            response = await self.socket.recv_json()
+            return json.loads(response)
         except zmq.ZMQError as e:
             print("[ZMQ Requester Error]", e, "Request:", msg)
             return {'error': repr(e)}
@@ -85,8 +95,9 @@ class Responder:
     async def respond(self, callback=lambda msg: msg) -> str: 
         try:
             msg = await self.socket.recv_json()
-            response = await callback(msg)
-            await self.socket.send_json(response)
+            response = await callback(json.loads(msg))
+            print(response)
+            await self.socket.send_json(json.dumps(response, cls=DecimalEncoder))
             return response
         except zmq.ZMQError as e:
             print("[ZMQ Response Error]", e, "Request:", msg)
