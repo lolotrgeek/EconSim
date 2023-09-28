@@ -101,7 +101,6 @@ class Responder:
         try:
             msg = await self.socket.recv_json()
             response = await callback(json.loads(msg))
-            print(response)
             await self.socket.send_json(json.dumps(response, cls=DecimalEncoder))
             return response
         except zmq.ZMQError as e:
