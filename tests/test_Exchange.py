@@ -807,6 +807,15 @@ class addCashTest(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(self.exchange.agents[0]['taxable_events'][0]['exit_date'], self.exchange.agents[0]['positions'][0]['enters'][0]['dt'])
         self.assertEqual(self.exchange.agents[0]['taxable_events'][0]['pnl'], 5000)
 
+class getTickersTest(unittest.IsolatedAsyncioTestCase):
+    async def asyncSetUp(self) -> None:
+        self.exchange = Exchange(datetime=datetime(2023, 1, 1))
+        await self.exchange.create_asset("AAPL", market_qty=2, seed_price=150, seed_bid=0.99, seed_ask=1.01)
+
+    async def test_get_tickers(self):
+        result = await self.exchange.get_tickers()
+        self.assertEqual(result, ['AAPL'])
+
 class UpdateAgentsTestCase(unittest.IsolatedAsyncioTestCase):
     #NOTE: This Test has to be run last! It is Leaky! update_agents method is stateful and will insert positions into other tests run after it...
     async def asyncSetUp(self) -> None:
