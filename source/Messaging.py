@@ -33,7 +33,9 @@ class Requester:
             msg = json.dumps(msg, cls=DecimalEncoder)
             await self.socket.send_json(msg)
             response = await self.socket.recv_json()
-            return json.loads(response)
+            if type(response) == str:
+                response = json.loads(response)
+            return response
         except zmq.ZMQError as e:
             print("[ZMQ Requester Error]", e, "Request:", msg)
             return {'error': repr(e)}
@@ -44,12 +46,15 @@ class Requester:
 
     async def request_lazy(self, msg) -> str:
         try:
+            msg = json.dumps(msg, cls=DecimalEncoder)
             await self.socket.send_json(msg)
             retries_left = self.max_retries
             while True:
                 socks = dict(await self.poller.poll(self.request_timeout) )
                 if socks.get(self.socket) == zmq.POLLIN:
                     reply = await self.socket.recv_json()
+                    if type(reply) == str:
+                        reply = json.loads(reply)
                     return reply
                 else:
                     print("[Requester Warning] No response from server, retrying...")
@@ -114,7 +119,7 @@ class Responder:
             socks = dict(await self.poller.poll(self.listen_timeout) )
             if socks.get(self.socket) == zmq.POLLIN:            
                 msg = await self.socket.recv_json()
-                response = await callback(msg)
+                response = await callback(json.loads(msg))
                 await self.socket.send_json(response)
                 return response
         except zmq.ZMQError as e:
