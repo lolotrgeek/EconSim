@@ -17,6 +17,7 @@ class CryptoExchange(Exchange):
     def __init__(self, datetime= None, requester=None):
         super().__init__(datetime=datetime)
         getcontext().prec = 18 #NOTE: this is the precision of the decimal module, it is set to 18 to match the precision of the blockchain
+        self.pairs = []
         self.wallets = {}
         self.fees = Fees()
         self.fees.waive_fees = False
@@ -59,6 +60,7 @@ class CryptoExchange(Exchange):
 
     async def list_asset(self, asset, pairs):
         for pair in pairs:
+            self.pairs.append({'base': asset, 'quote': pair['asset']})
             ticker = asset+pair['asset']
 
             seed_price = Decimal(str(pair['seed_price']))
@@ -79,7 +81,6 @@ class CryptoExchange(Exchange):
         for agent in self.agents:
             if 'init_seed_' not in agent['name']:
                 agent['wallets'][asset] = await self.generate_address()
-                print('agent', agent['name'], 'wallets', agent['wallets'])
                 
     async def create_asset(self, symbol: str, pairs=[]) -> dict:
         """_summary_
@@ -98,7 +99,6 @@ class CryptoExchange(Exchange):
 
             `seed_ask` (float, optional): Limit price of an initial sell order, expressed as percentage of the seed_price. async defaults to 1.01.
         """
-        print('creating asset', symbol, 'with pairs', pairs)
         if symbol in self.assets:
             return {"error" :f'asset {symbol} already exists'}
         if len(pairs) == 0:
@@ -175,6 +175,7 @@ class CryptoExchange(Exchange):
             return transaction 
         except Exception as e:
             return {'error': 'transaction failed'}   
+    
     async def get_order_book(self, ticker:str) -> CryptoOrderBook:
         """returns the CryptoOrderBook of a given Asset
 
@@ -487,7 +488,7 @@ class CryptoExchange(Exchange):
         ticker = base+quote
         potential_fees = self.fees.taker_fee(qty)
         has_assets = await self.agent_has_assets(seller, base, qty+fee+potential_fees)
-        if has_assets:
+        if has_assets and qty > 0:
             frozen = 0
             await self.freeze_assets(seller, base, fee)
             frozen += fee
@@ -905,3 +906,9 @@ class CryptoExchange(Exchange):
 
             agent_positions.append({'agent':agent['name'],'positions':positions})
         return agent_positions
+    
+    async def get_tickers(self) -> list:
+        """
+        Returns a list of all asset pairs
+        """
+        return self.pairs
