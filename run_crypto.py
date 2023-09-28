@@ -16,7 +16,7 @@ async def generate_cryptos(names, requester, time) -> dict:
     for name in names:
         crypto = CryptoCurrency(name, time, requester=requester)
         cryptos[crypto.symbol] = crypto
-        await crypto.issue_coins([{'asset': crypto.symbol ,'market_qty':1000 ,'seed_price':100 ,'seed_bid':.99, 'seed_ask':1.01}], 1_000_000_000)
+        await crypto.issue_coins([{'asset': 'USD' ,'market_qty':1000 ,'seed_price':100 ,'seed_bid':.99, 'seed_ask':1.01}], 1_000_000_000)
     return cryptos
 
 async def run_crypto() -> None:
@@ -41,12 +41,11 @@ async def run_crypto() -> None:
         cryptos = await generate_cryptos(names, CryptoExchangeRequests(requester), time)
 
         async def callback(msg):
-            print(msg)
             if 'asset' in msg:
                 if msg['asset'] in cryptos:
                     if msg['topic'] == 'get_transactions': return dumps(await cryptos[msg['asset']].blockchain.get_transactions())
                     if msg['topic'] == 'get_transaction': return dumps(await cryptos[msg['asset']].blockchain.get_transaction(msg['id']))
-                    elif msg['topic'] == 'add_transaction': return dumps(await cryptos[msg['asset']].blockchain.add_transaction(msg['asset'], msg['fee'], msg['amount'], msg['sender'], msg['recipient'], msg['dt']).to_dict())
+                    elif msg['topic'] == 'add_transaction': return dumps((await cryptos[msg['asset']].blockchain.add_transaction(msg['asset'], float(msg['fee']), float(msg['amount']), msg['sender'], msg['recipient'])).to_dict())
                     elif msg['topic'] == 'get_mempool': return dumps(await cryptos[msg['asset']].blockchain.get_mempool())
                     elif msg['topic'] == 'get_pending_transactions': return dumps(await cryptos[msg['asset']].blockchain.mempool.get_pending_transactions(to_dicts=True))
                     elif msg['topic'] == 'get_confirmed_transactions': return dumps(await cryptos[msg['asset']].blockchain.mempool.get_confirmed_transactions(to_dicts=True))
