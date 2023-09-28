@@ -1,6 +1,7 @@
 from uuid import uuid4 as UUID
 import random, string
 from decimal import Decimal, getcontext
+from rich import print
 from .Exchange import Exchange
 from .types.CryptoOrderBook import CryptoOrderBook
 from .types.CryptoTrade import CryptoTrade
@@ -56,8 +57,8 @@ class CryptoExchange(Exchange):
                 await self.list_asset(asset)
         self.pending_asset_pairs = {}
 
-    async def list_asset(self, asset):
-        for pair in self.pending_asset_pairs[asset]:
+    async def list_asset(self, asset, pairs):
+        for pair in pairs:
             ticker = asset+pair['asset']
 
             seed_price = Decimal(str(pair['seed_price']))
@@ -97,6 +98,7 @@ class CryptoExchange(Exchange):
 
             `seed_ask` (float, optional): Limit price of an initial sell order, expressed as percentage of the seed_price. async defaults to 1.01.
         """
+        print('creating asset', symbol, 'with pairs', pairs)
         if symbol in self.assets:
             return {"error" :f'asset {symbol} already exists'}
         if len(pairs) == 0:
@@ -124,16 +126,20 @@ class CryptoExchange(Exchange):
             })
             # await self.register_agent('init_seed_'+ticker, {symbol: pair['market_qty'], pair['asset']: pair['market_qty'] * pair['seed_price']})
 
-            buyer = 'init_seed_'+ticker
-            seller = 'init_seed_'+ticker
-            price = Decimal(str(pair['seed_price']))
-            qty = Decimal(str(pair['market_qty']))
-            base = symbol
-            quote = pair['asset']
-            network_fee = {'base': Decimal('0.0001'), 'quote': Decimal('0.0001')}
-        
-            await self._process_trade(base, quote, qty, price, buyer, seller, accounting='FIFO', network_fee=network_fee, position_id='init_seed_'+ticker)
-            self.pending_asset_pairs[symbol] = pairs
+            # buyer = 'init_seed_'+ticker
+            # seller = 'init_seed_'+ticker
+            # price = Decimal(str(pair['seed_price']))
+            # qty = Decimal(str(pair['market_qty']))
+            # base = symbol
+            # quote = pair['asset']
+            # network_fee = {'base': Decimal('0.0001'), 'quote': Decimal('0.0001')}
+            # exchange_fee={'quote':0.0, 'base':0.0}
+            # txn_time = self.datetime
+
+            await self.list_asset(symbol, pairs)
+
+            # await self._process_trade(base, quote, qty, price, buyer, seller, accounting='FIFO', network_fee=network_fee, position_id='init_seed_'+ticker)
+            # self.pending_asset_pairs[symbol] = pairs
         return {'asset_created': symbol, 'pairs': pairs}
         
     async def _process_trade(self, base, quote, qty, price, buyer, seller, accounting='FIFO', exchange_fee={'quote':0.0, 'base':0.0}, network_fee={'quote':0.0, 'base':0.0}, position_id=None):
@@ -169,7 +175,6 @@ class CryptoExchange(Exchange):
             return transaction 
         except Exception as e:
             return {'error': 'transaction failed'}   
-    
     async def get_order_book(self, ticker:str) -> CryptoOrderBook:
         """returns the CryptoOrderBook of a given Asset
 
@@ -537,6 +542,7 @@ class CryptoExchange(Exchange):
         """
         `initial_assets`: a dict where the keys are symbols and values are quantities: e.g. {'BTC': 1000, 'ETH': 1000}
         """
+        print('registering agent', name)
         registered_name = name + str(UUID())[0:8]
         positions = []
         wallets = {
@@ -899,12 +905,3 @@ class CryptoExchange(Exchange):
 
             agent_positions.append({'agent':agent['name'],'positions':positions})
         return agent_positions
-
-    async def get_tickers(self) -> list:
-        """
-        Returns a list of tickers
-        """
-        tickers = []
-        for book in self.books:
-            tickers.append(book.base+book.quote)
-        return tickers
