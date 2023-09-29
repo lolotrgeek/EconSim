@@ -23,7 +23,6 @@ class CryptoExchange(Exchange):
         self.fees.waive_fees = False
         self.requester = requester
         self.pending_transactions = []
-        self.pending_asset_pairs = {}
 
     async def next(self):
         for transaction in self.pending_transactions: 
@@ -35,28 +34,19 @@ class CryptoExchange(Exchange):
             elif 'error' in base_transaction or 'error' in quote_transaction:
                 continue
             elif base_transaction['confirmed'] and quote_transaction['confirmed']:
-                if transaction['exchange_txn'][0]['agent'][:10] == 'init_seed_' and transaction['exchange_txn'][1]['agent'][:10] == 'init_seed_':
-                    await self.complete_asset_listings()
-                else: 
-                    base = transaction['exchange_txn'][0]['base']
-                    quote = transaction['exchange_txn'][0]['quote']
-                    qty = transaction['exchange_txn'][0]['qty']
-                    price = transaction['exchange_txn'][0]['price']
-                    buyer = transaction['exchange_txn'][0]['agent']
-                    seller = transaction['exchange_txn'][1]['agent']
-                    network_fee = {'base': base_transaction['fee'], 'quote': quote_transaction['fee']}
-                    exchange_fee = {'base': transaction['exchange_txn'][1]['fee'], 'quote': transaction['exchange_txn'][0]['fee']}
-                    trade = CryptoTrade(base, quote, qty, price, buyer, seller, self.datetime, network_fee=network_fee, exchange_fee=exchange_fee)
-                    self.trade_log.append(trade)
-                    await self.update_agents(transaction['exchange_txn'], transaction['accounting'], position_id=transaction['position_id'])
+                base = transaction['exchange_txn'][0]['base']
+                quote = transaction['exchange_txn'][0]['quote']
+                qty = transaction['exchange_txn'][0]['qty']
+                price = transaction['exchange_txn'][0]['price']
+                buyer = transaction['exchange_txn'][0]['agent']
+                seller = transaction['exchange_txn'][1]['agent']
+                network_fee = {'base': base_transaction['fee'], 'quote': quote_transaction['fee']}
+                exchange_fee = {'base': transaction['exchange_txn'][1]['fee'], 'quote': transaction['exchange_txn'][0]['fee']}
+                trade = CryptoTrade(base, quote, qty, price, buyer, seller, self.datetime, network_fee=network_fee, exchange_fee=exchange_fee)
+                self.trade_log.append(trade)
+                await self.update_agents(transaction['exchange_txn'], transaction['accounting'], position_id=transaction['position_id'])
                 self.pending_transactions.remove(transaction)
             # NOTE: if transaction is not confirmed, we keep waiting, it will eventually be confirmed
-
-    async def complete_asset_listings(self):
-        for asset in self.pending_asset_pairs:
-            if asset not in self.assets:
-                await self.list_asset(asset)
-        self.pending_asset_pairs = {}
 
     async def list_asset(self, asset, pair):
         self.pairs.append({'base': asset, 'quote': pair['asset']})
