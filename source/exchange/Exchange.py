@@ -1,5 +1,4 @@
-import sys
-import os
+import sys, os
 parent_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 sys.path.append(parent_dir)
 import pandas as pd
@@ -10,9 +9,8 @@ from .types.Trade import Trade
 from .types.LimitOrder import LimitOrder
 from .types.OrderSide import OrderSide
 from .types.Fees import Fees
-from .types.Transaction import Transaction, Exit
-from .types.Position import Position
 from source.utils._utils import format_dataframe_rows_to_dict
+from source.Archive import Archive
 from uuid import uuid4 as UUID
 from datetime import timedelta
 
@@ -25,6 +23,10 @@ class Exchange():
         self.datetime = datetime
         self.default_quote_currency = {'name': 'US Dollar', 'symbol': 'USD', 'id': str(UUID())}
         self.fees = Fees()
+        self.agents_archive = Archive('agents')
+        self.assets_archive = Archive('assets')
+        self.books_archive = Archive('books')
+        self.trade_log_archive = Archive('trade_log')
         self.max_agents = 100000
         self.max_assets = 1000
         self.trade_log_limit = 100000
@@ -33,6 +35,23 @@ class Exchange():
 
     async def __str__(self):
         return ', '.join(ob for ob in self.books)
+
+    async def next(self):
+        await self.archive()
+        await self.prune_trades()
+        
+    async def archive(self):
+        self.agents_archive.store(self.agents)
+        self.assets_archive.store(self.assets)
+        self.books_archive.store(self.books)
+        self.trade_log_archive.store(self.trade_log)
+
+    async def prune_trades(self):
+        """
+        Removes old trades from memory, if archiving can still be retrieved from the archive
+        """
+        if len(self.trade_log) >= self.trade_log_limit:
+            self.trade_log = self.trade_log[int(len(self.trade_log)/2):]
 
     async def create_asset(self, ticker: str, asset_type='stock', market_qty=1000, seed_price=100, seed_bid=.99, seed_ask=1.01) -> OrderBook:
         """_summary_
@@ -45,6 +64,8 @@ class Exchange():
             seed_bid (float, optional): Limit price of an initial buy order, expressed as percentage of the seed_price. async defaults to .99.
             seed_ask (float, optional): Limit price of an initial sell order, expressed as percentage of the seed_price. async defaults to 1.01.
         """
+        if len(self.assets) >= self.max_assets:
+            return {"error" : "max assets reached"}
         if ticker in self.assets:
             return {"error" :f'asset {ticker} already exists'}
         self.assets[ticker] = {'type':asset_type}
