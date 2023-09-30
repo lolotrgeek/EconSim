@@ -25,6 +25,11 @@ class Exchange():
         self.datetime = datetime
         self.default_quote_currency = {'name': 'US Dollar', 'symbol': 'USD', 'id': str(UUID())}
         self.fees = Fees()
+        self.max_agents = 100000
+        self.max_assets = 1000
+        self.trade_log_limit = 100000
+        self.max_asks = 100000
+        self.max_bids = 100000
 
     async def __str__(self):
         return ', '.join(ob for ob in self.books)
@@ -245,6 +250,8 @@ class Exchange():
             return LimitOrder(ticker, 0, 0, 'null_quote', OrderSide.BUY, self.datetime)
 
     async def limit_buy(self, ticker: str, price: float, qty: int, creator: str, fee=0, tif='GTC', position_id=UUID()) -> LimitOrder:
+        if len(self.books[ticker].bids) >= self.max_bids:
+            return LimitOrder(ticker, 0, 0, creator, OrderSide.BUY, self.datetime, status='error', accounting='max_bid_depth_reached')        
         has_cash = await self.agent_has_cash(creator, price, qty)
         if has_cash:
             if not self.assets[ticker]['type'] == 'crypto':
@@ -287,6 +294,8 @@ class Exchange():
             return LimitOrder("error", 0, 0, 'insufficient_funds', OrderSide.BUY, self.datetime)
 
     async def limit_sell(self, ticker: str, price: float, qty: int, creator: str, fee=0, tif='GTC', accounting='FIFO') -> LimitOrder:
+        if len(self.books[ticker].asks) >= self.max_asks:
+            return LimitOrder(ticker, 0, 0, creator, OrderSide.SELL, self.datetime, status='error', accounting='max_ask_depth_reached')        
         has_assets = await self.agent_has_assets(creator, ticker, qty)
         if has_assets:
             if not self.assets[ticker]['type'] == 'crypto':
@@ -428,6 +437,8 @@ class Exchange():
 
     async def register_agent(self, name, initial_cash) -> dict:
         #TODO: use an agent class???
+        if(len(self.agents) >= self.max_agents):
+            return {'error': 'max agents reached'}
         registered_name = name + str(UUID())[0:8]
         self.agents.append({
             'name':registered_name,
