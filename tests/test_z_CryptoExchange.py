@@ -114,6 +114,12 @@ class RegisterAgentTestCase(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(self.exchange.agents[1]['name'], result)
         self.assertEqual(self.exchange.agents[1]['assets'], {"BTC": 10000, "USD" : 10000})
         self.assertEqual(len(self.exchange.agents[0]['_transactions']), 0)
+
+    async def test_register_agent_error(self):
+        self.exchange.max_agents = 1
+        await self.exchange.register_agent("agent1", initial_assets={"BTC": 10000, "USD" : 10000})
+        agent = await self.exchange.register_agent("agent2", initial_assets={"BTC": 10000, "USD" : 10000})
+        self.assertEqual(agent, {"error": "max agents reached"})        
         
 class GetBestAskTestCase(unittest.IsolatedAsyncioTestCase):
     async def asyncSetUp(self) -> None:
