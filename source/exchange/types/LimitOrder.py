@@ -8,7 +8,7 @@ from source.utils._utils import get_random_string
 
 class LimitOrder():
 
-    def __init__(self, ticker, price, qty, creator, side, dt=None, fee=0, accounting='FIFO', position_id=None, fills =[]):
+    def __init__(self, ticker, price, qty, creator, side, dt=None, fee=0, status='open', accounting='FIFO', position_id=None, fills =[]):
         self.id = get_random_string()
         self.ticker: str = ticker
         self.price: Decimal = price
@@ -20,6 +20,7 @@ class LimitOrder():
         self.position_id = position_id
         self.accounting = accounting
         self.fills = fills
+        self.status = status
 
     def to_dict(self) -> dict:
         if self.ticker == 'error' and self.type == OrderSide.BUY: 
@@ -51,7 +52,8 @@ class LimitOrder():
             'fee': self.fee,
             'accounting': self.accounting,
             'position_id': self.position_id,
-            'fills': self.fills
+            'fills': self.fills,
+            'status': self.status
         }    
 
     def __repr__(self) -> str:
