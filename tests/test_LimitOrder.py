@@ -58,7 +58,8 @@ class LimitOrderTests(unittest.TestCase):
             'type': 'limit_buy',
             'dt': self.limit_order.dt,
             'accounting': 'FIFO',
-            'position_id': None
+            'position_id': None,
+            'status': 'open',
         }
         self.assertDictEqual(self.limit_order.to_dict_full(), expected_dict)
 
