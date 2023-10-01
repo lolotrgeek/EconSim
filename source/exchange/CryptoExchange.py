@@ -1,7 +1,11 @@
+import sys, os
+parent_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+sys.path.append(parent_dir)
 from uuid import uuid4 as UUID
-import random, string
+import random, string, time
 from decimal import Decimal, getcontext
 from rich import print
+from source.Archive import Archive
 from .Exchange import Exchange
 from .types.CryptoOrderBook import CryptoOrderBook
 from .types.CryptoTrade import CryptoTrade
@@ -14,39 +18,41 @@ from .types.Fees import Fees
 
 
 class CryptoExchange(Exchange):
-    def __init__(self, datetime= None, requester=None):
+    def __init__(self, datetime= None, requester=None, archiver=None):
         super().__init__(datetime=datetime)
         getcontext().prec = 18 #NOTE: this is the precision of the decimal module, it is set to 18 to match the precision of the blockchain
+        self.archiver = archiver
+        self.requester = requester
         self.pairs = []
         self.wallets = {}
+        self.pairs_archive = Archive('pairs')
+        self.wallets_archive = Archive('wallets')
         self.fees = Fees()
         self.fees.waive_fees = False
-        self.requester = requester
         self.pending_transactions = []
-
+        self.max_pending_transactions = 1_000_000
+        self.max_pairs = 10000 
+        
     async def next(self):
         for transaction in self.pending_transactions: 
             # NOTE: base and quote transactions return a MempoolTransaction, see `source\crypto\MemPool.py`
             base_transaction = await self.requester.get_transaction(asset=transaction['base_txn']['asset'], id=transaction['base_txn']['id'])
             quote_transaction = await self.requester.get_transaction(asset=transaction['quote_txn']['asset'], id=transaction['quote_txn']['id'])
             if not base_transaction and not quote_transaction:
+                # NOTE: if transaction is not confirmed, we keep waiting, it will eventually be confirmed
                 continue
             elif 'error' in base_transaction or 'error' in quote_transaction:
                 continue
             elif base_transaction['confirmed'] and quote_transaction['confirmed']:
-                base = transaction['exchange_txn'][0]['base']
-                quote = transaction['exchange_txn'][0]['quote']
-                qty = transaction['exchange_txn'][0]['qty']
-                price = transaction['exchange_txn'][0]['price']
-                buyer = transaction['exchange_txn'][0]['agent']
-                seller = transaction['exchange_txn'][1]['agent']
-                network_fee = {'base': base_transaction['fee'], 'quote': quote_transaction['fee']}
-                exchange_fee = {'base': transaction['exchange_txn'][1]['fee'], 'quote': transaction['exchange_txn'][0]['fee']}
-                trade = CryptoTrade(base, quote, qty, price, buyer, seller, self.datetime, network_fee=network_fee, exchange_fee=exchange_fee)
-                self.trade_log.append(trade)
-                await self.update_agents(transaction['exchange_txn'], transaction['accounting'], position_id=transaction['position_id'])
-                self.pending_transactions.remove(transaction)
-            # NOTE: if transaction is not confirmed, we keep waiting, it will eventually be confirmed
+                await self._complete_trade(transaction, base_transaction, quote_transaction)
+        await self.archive()
+        await self.prune_trades()
+
+        
+    async def archive(self):
+        await super().archive()
+        self.pairs_archive.store(self.pairs)
+        self.wallets_archive.store(self.wallets)
 
     async def list_asset(self, asset, pair):
         self.pairs.append({'base': asset, 'quote': pair['asset']})
@@ -88,6 +94,10 @@ class CryptoExchange(Exchange):
 
             `seed_ask` (float, optional): Limit price of an initial sell order, expressed as percentage of the seed_price. async defaults to 1.01.
         """
+        if len(self.assets) >= self.max_assets:
+            return {'error': 'cannot create, max_assets_reached'}        
+        if len(pairs) >= self.max_pairs or len(self.books) >= self.max_pairs:
+            return {'error': 'cannot create, max_pairs_reached'}
         if symbol in self.assets:
             return {"error" :f'asset {symbol} already exists'}
         if len(pairs) == 0:
@@ -165,7 +175,24 @@ class CryptoExchange(Exchange):
             return transaction 
         except Exception as e:
             return {'error': 'transaction failed'}   
-    
+
+    async def _complete_trade(self, transaction, base_transaction, quote_transaction):
+        """
+        Completes a trade once the quote and base transactions have been confirmed on their respective blockchains
+        """
+        base = transaction['exchange_txn'][0]['base']
+        quote = transaction['exchange_txn'][0]['quote']
+        qty = transaction['exchange_txn'][0]['qty']
+        price = transaction['exchange_txn'][0]['price']
+        buyer = transaction['exchange_txn'][0]['agent']
+        seller = transaction['exchange_txn'][1]['agent']
+        network_fee = {'base': base_transaction['fee'], 'quote': quote_transaction['fee']}
+        exchange_fee = {'base': transaction['exchange_txn'][1]['fee'], 'quote': transaction['exchange_txn'][0]['fee']}
+        trade = CryptoTrade(base, quote, qty, price, buyer, seller, self.datetime, network_fee=network_fee, exchange_fee=exchange_fee)
+        self.trade_log.append(trade)
+        await self.update_agents(transaction['exchange_txn'], transaction['accounting'], position_id=transaction['position_id'])
+        self.pending_transactions.remove(transaction)
+
     async def get_order_book(self, ticker:str) -> CryptoOrderBook:
         """returns the CryptoOrderBook of a given Asset
 
@@ -269,6 +296,10 @@ class CryptoExchange(Exchange):
         # print(self.agents[agent_idx]['name'], 'frozen remaining', asset, self.agents[agent_idx]['frozen_assets'][asset])
 
     async def limit_buy(self, base: str, quote:str, price: float, qty: int, creator: str, fee=0.0, tif='GTC', position_id=UUID()) -> CryptoLimitOrder:
+        if len(self.books[base+quote].bids) >= self.max_bids:
+            return CryptoLimitOrder(base+quote, 0, 0, creator, OrderSide.BUY, self.datetime, status='error', accounting='max_bid_depth_reached')
+        if len(self.pending_transactions) >= self.max_pending_transactions:
+            return CryptoLimitOrder(base+quote, 0, 0, creator, OrderSide.BUY, self.datetime, status='error', accounting='max_pending_transactions_reached')
         #NOTE: the fee arg here is the network fee... consider renaming
         qty = Decimal(str(qty))
         price = Decimal(str(price))
@@ -328,6 +359,10 @@ class CryptoExchange(Exchange):
             return CryptoLimitOrder(ticker, 0, 0, creator, OrderSide.BUY, self.datetime, status='error', accounting='insufficient_funds')
         
     async def limit_sell(self, base: str, quote:str, price: float, qty: int, creator: str, fee=0.0, tif='GTC', accounting='FIFO') -> CryptoLimitOrder:
+        if len(self.books[base+quote].asks) >= self.max_asks:
+            return CryptoLimitOrder(base+quote, 0, 0, creator, OrderSide.SELL, self.datetime, status='error', accounting='max_ask_depth_reached')
+        if len(self.pending_transactions) >= self.max_pending_transactions:
+            return CryptoLimitOrder(base+quote, 0, 0, creator, OrderSide.SELL, self.datetime, status='error', accounting='max_pending_transactions_reached')
         #NOTE: the fee arg here is the network fee... consider renaming
         qty = Decimal(str(qty))
         price = Decimal(str(price))
@@ -426,6 +461,8 @@ class CryptoExchange(Exchange):
         return {'cancelled_orders': canceled}
 
     async def market_buy(self, base: str, quote:str, qty: int, buyer: str, fee=0.0) -> dict:
+        if len(self.pending_transactions) >= self.max_pending_transactions:
+            return {"market_buy": "max_pending_transactions_reached", "buyer": buyer}
         qty = Decimal(str(qty))
         fee = Decimal(str(fee))
         ticker = base+quote
@@ -473,6 +510,8 @@ class CryptoExchange(Exchange):
             return {"market_buy": "insufficient funds", "buyer": buyer}
 
     async def market_sell(self, base: str, quote:str, qty: int, seller: str, fee=0.0, accounting='FIFO') -> dict:
+        if len(self.pending_transactions) >= self.max_pending_transactions:
+            return {"market_sell": "max_pending_transactions_reached", "seller": seller}
         qty = Decimal(str(qty))
         fee = Decimal(str(fee))        
         ticker = base+quote
@@ -534,6 +573,8 @@ class CryptoExchange(Exchange):
         `initial_assets`: a dict where the keys are symbols and values are quantities: e.g. {'BTC': 1000, 'ETH': 1000}
         """
         # print('registering agent', name)
+        if(len(self.agents) >= self.max_agents):
+            return {'error': 'max agents reached'}
         registered_name = name + str(UUID())[0:8]
         positions = []
         wallets = {
