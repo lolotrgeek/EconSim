@@ -27,7 +27,13 @@ class CreateAssetTestCase(unittest.IsolatedAsyncioTestCase):
     async def test_create_duplicate_asset(self):
         await self.exchange.create_asset("BTC", 'stock', seed_price=50000)
         asset = await self.exchange.create_asset("BTC", 'stock', seed_price=50000)
-        self.assertEqual(asset, {"error": "asset BTC already exists"})        
+        self.assertEqual(asset, {"error": "asset BTC already exists"})
+    
+    async def test_create_max_asset(self):
+        self.exchange.max_assets = 1
+        await self.exchange.create_asset("BTC", 'stock', seed_price=50000)
+        asset = await self.exchange.create_asset("ETH", 'stock', seed_price=50000)
+        self.assertEqual(asset, {"error": "max assets reached"})    
 
 class GetOrderBookTestCase(unittest.IsolatedAsyncioTestCase):
     async def asyncSetUp(self) -> None:
@@ -226,6 +232,13 @@ class LimitBuyTestCase(unittest.IsolatedAsyncioTestCase):
         self.buyer = buyer['registered_agent']
         await self.exchange.create_asset("AAPL", seed_price=150, seed_bid=0.99, seed_ask=1.01)
 
+    async def test_limit_buy_max_bids(self):
+        self.exchange.max_bids = 1
+        maxed_order = await self.exchange.limit_buy("AAPL", price=152, qty=2, creator=self.buyer, fee=0)
+        print(type(maxed_order.status))
+        self.assertEqual(maxed_order.status, 'error')
+        self.assertEqual(maxed_order.accounting, 'max_bid_depth_reached')
+
     async def test_limit_buy_sufficient_funds(self):
         new_order = await self.exchange.limit_buy('AAPL', 148, 3, self.buyer, fee=0)
 
@@ -265,6 +278,14 @@ class LimitSellTestCase(unittest.IsolatedAsyncioTestCase):
         self.insufficient_seller = (await self.exchange.register_agent("insufficient_seller", initial_cash=10000))['registered_agent']
         self.agent = (await self.exchange.register_agent("seller1", initial_cash=10000))['registered_agent']
         self.buyer = (await self.exchange.register_agent("buyer1", initial_cash=10000))['registered_agent']
+
+    async def test_limit_sell_max_bids(self):
+        self.exchange.max_asks = 1
+        await self.exchange.limit_buy("AAPL", price=152, qty=4, creator=self.agent)
+        maxed_order = await self.exchange.limit_sell('AAPL', 180, 4,self.agent , fee=0)
+        print(type(maxed_order.status))
+        self.assertEqual(maxed_order.status, 'error')
+        self.assertEqual(maxed_order.accounting, 'max_ask_depth_reached')
 
     async def test_limit_sell_sufficient_assets(self):
         await self.exchange.limit_buy("AAPL", price=152, qty=4, creator=self.agent)
@@ -398,6 +419,12 @@ class RegisterAgentTestCase(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(self.exchange.agents[0]['cash'], 10000)
         self.assertEqual(len(self.exchange.agents[0]['_transactions']), 0)
         self.assertEqual(self.exchange.agents[0]['assets'], {})
+
+    async def test_register_agent_error(self):
+        self.exchange.max_agents = 1
+        await self.exchange.register_agent("agent1", initial_cash=10000)
+        agent = await self.exchange.register_agent("agent2", initial_cash=10000)
+        self.assertEqual(agent, {"error": "max agents reached"})
 
 class GetCashTestCase(unittest.IsolatedAsyncioTestCase):
     async def asyncSetUp(self) -> None:
@@ -815,6 +842,18 @@ class getTickersTest(unittest.IsolatedAsyncioTestCase):
     async def test_get_tickers(self):
         result = await self.exchange.get_tickers()
         self.assertEqual(result, ['AAPL'])
+
+class pruneTradesTest(unittest.IsolatedAsyncioTestCase):
+    async def asyncSetUp(self) -> None:
+        self.exchange = Exchange(datetime=datetime(2023, 1, 1))
+        self.agent = (await self.exchange.register_agent("agent24", initial_cash=10000))['registered_agent']
+        self.exchange.trade_log = [ 1,2,3,4,5,6,7,8,9]
+
+    async def test_prune_trades(self):
+        self.exchange.trade_log_limit = 5
+        result = await self.exchange.prune_trades()
+        self.assertEqual(self.exchange.trade_log, [5,6,7,8,9])
+
 
 class UpdateAgentsTestCase(unittest.IsolatedAsyncioTestCase):
     #NOTE: This Test has to be run last! It is Leaky! update_agents method is stateful and will insert positions into other tests run after it...

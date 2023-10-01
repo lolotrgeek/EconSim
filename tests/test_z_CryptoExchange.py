@@ -43,11 +43,16 @@ class CreateAssetTestCase(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(book.bids[0].price, Decimal('0.495'))
         self.assertEqual(book.asks[0].price, Decimal('0.505'))
 
-
     async def test_create_duplicate_asset(self):
         asset = await self.exchange.create_asset("BTC", pairs=[{'asset': 'USD','market_qty':50000 ,'seed_price':100 ,'seed_bid':.99, 'seed_ask':1.01}])      
         asset = await self.exchange.create_asset("BTC", pairs=[{'asset': 'USD','market_qty':50000 ,'seed_price':100 ,'seed_bid':.99, 'seed_ask':1.01}])
-        self.assertEqual(asset, {"error": "asset BTC already exists"})        
+        self.assertEqual(asset, {"error": "asset BTC already exists"})
+
+    async def test_create_max_asset(self):
+        self.exchange.max_assets = 1
+        await self.exchange.create_asset("BTC", pairs=[{'asset': 'USD','market_qty':50000 ,'seed_price':100 ,'seed_bid':.99, 'seed_ask':1.01}])        
+        asset = await self.exchange.create_asset("LTC", pairs=[{'asset': 'USD','market_qty':50000 ,'seed_price':100 ,'seed_bid':.99, 'seed_ask':1.01}])      
+        self.assertEqual(asset, {'error': 'cannot create, max_assets_reached'})                   
 
 class GetOrderBookTestCase(unittest.IsolatedAsyncioTestCase):
     async def asyncSetUp(self) -> None:
@@ -144,9 +149,15 @@ class LimitBuyTestCase(unittest.IsolatedAsyncioTestCase):
         self.seller = (await self.exchange.register_agent("seller1", initial_assets={"BTC": 10000, "USD" : 10000}))['registered_agent']
         self.match_buyer = (await self.exchange.register_agent("match_buyer", initial_assets={"BTC": 10000, "USD" : 10000}))['registered_agent']
     
+    async def test_limit_buy_max_bids(self):
+        self.exchange.max_bids = 1
+        maxed_order = await self.exchange.limit_buy("BTC", "USD", price=152, qty=2, creator=self.buyer, fee=0)
+        print(type(maxed_order.status))
+        self.assertEqual(maxed_order.status, 'error')
+        self.assertEqual(maxed_order.accounting, 'max_bid_depth_reached')    
+
     async def test_limit_buy_sufficient_funds(self):
         new_order = await self.exchange.limit_buy('BTC', 'USD', 148, 3, self.buyer, fee=0)
-
         self.assertEqual(len(self.exchange.books['BTCUSD'].bids), 2)
         self.assertEqual(self.exchange.books['BTCUSD'].bids[1].price, 148)
         self.assertEqual(self.exchange.books['BTCUSD'].bids[1].qty, 3)
@@ -169,6 +180,14 @@ class LimitSellTestCase(unittest.IsolatedAsyncioTestCase):
         self.insufficient_seller = (await self.exchange.register_agent("insufficient_seller", initial_assets={"USD" : 10000}))['registered_agent']
         self.agent = (await self.exchange.register_agent("seller1", initial_assets={"BTC": 10000, "USD" : 10000}))['registered_agent']
         self.buyer = (await self.exchange.register_agent("buyer1", initial_assets={"BTC": 10000, "USD" : 10000}))['registered_agent']
+
+    async def test_limit_sell_max_bids(self):
+        self.exchange.max_asks = 1
+        await self.exchange.limit_buy("BTC" , "USD", price=152, qty=4, creator=self.agent)
+        maxed_order = await self.exchange.limit_sell('BTC', "USD", 180, 4,self.agent , fee=0)
+        print(type(maxed_order.status))
+        self.assertEqual(maxed_order.status, 'error')
+        self.assertEqual(maxed_order.accounting, 'max_ask_depth_reached')
 
     async def test_limit_sell_sufficient_assets(self):
         await self.exchange.limit_buy("BTC" , "USD", price=152, qty=4, creator=self.agent)
@@ -286,6 +305,11 @@ class MarketBuyTestCase(unittest.IsolatedAsyncioTestCase):
         self.agent = (await self.exchange.register_agent("buyer1", initial_assets={"USD" : 500000}))['registered_agent']
         await self.exchange.create_asset("BTC", pairs=[{'asset': 'USD','market_qty':1000 ,'seed_price':150 ,'seed_bid':.99, 'seed_ask':1.01}])
 
+    async def test_market_buy_max_pending(self):
+        self.exchange.max_pending_transactions = 0
+        maxed_order = await self.exchange.market_buy("BTC", "USD", qty=4, buyer=self.agent, fee=0.01)
+        self.assertEqual(maxed_order, {'market_buy': 'max_pending_transactions_reached', 'buyer': self.agent})
+
     async def test_market_buy(self):
         result = await self.exchange.market_buy("BTC", "USD", qty=4, buyer=self.agent, fee=0.01)
         self.mock_requester.responder.cryptos['BTC'].blockchain.mempool.transactions[0].confirmed = True
@@ -328,6 +352,11 @@ class MarketSellTestCase(unittest.IsolatedAsyncioTestCase):
         self.insufficient_seller = (await self.exchange.register_agent("insufficient_seller", initial_assets={"BTC": 1}))['registered_agent']
         self.seller1 = (await self.exchange.register_agent("seller1", initial_assets={"BTC": 500000}))['registered_agent']
         self.buyer1 = (await self.exchange.register_agent("buyer1", initial_assets={"USD":500000}))['registered_agent']
+
+    async def test_market_sell_max_pending(self):
+        self.exchange.max_pending_transactions = 0
+        maxed_order = await self.exchange.market_sell("BTC", "USD", qty=4, seller=self.seller1, fee=0.01)
+        self.assertEqual(maxed_order, {'market_sell': 'max_pending_transactions_reached', 'seller': self.seller1})
 
     async def test_market_sell(self):
         buy = await self.exchange.limit_buy("BTC" , "USD", price=145, qty=3, creator=self.buyer1, fee=0.01)
