@@ -13,9 +13,9 @@ class ArchiveTest(unittest.TestCase):
     def tearDown(self):
         self.archive = None
         sleep(1)
-        os.remove("test_archive.bak")
-        os.remove("test_archive.dat")
-        os.remove("test_archive.dir")
+        os.remove("archive/test_archive.bak")
+        os.remove("archive/test_archive.dat")
+        os.remove("archive/test_archive.dir")
         
     def test_store(self):
         data = [1,2,3,4,5]
