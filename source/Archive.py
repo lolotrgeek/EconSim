@@ -15,6 +15,14 @@ class Archive:
         self.interval = interval
         self.archive_path = Path(parent_dir) / Path("archive")/ Path(self.name)
 
+    def put(self, key, value):
+        with shelve.open(fr'{self.archive_path}', writeback=True) as db:
+            db[str(key)] = value
+
+    def get(self, key):
+        with shelve.open(self.archive_path) as db:
+            return db[str(key)]
+
     def store(self, data):
         if self.last_archive_time+self.interval <= time.time():
             with shelve.open(fr'{self.archive_path}', writeback=True) as db:
