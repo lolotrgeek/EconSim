@@ -1,11 +1,10 @@
-import sys
-import os
-parent_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-sys.path.append(parent_dir)
+import sys, os
+sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 import random
 from datetime import datetime, timedelta
 from .operations import Operations
 from source.utils._utils import string_to_time
+from source.Archive import Archive
 
 class PublicCompany:
     """
@@ -28,6 +27,9 @@ class PublicCompany:
         self.cash_flow = None
         self.ex_dividend_date = None
         self.dividend_payment_date = None
+        self.balance_sheet_archive = Archive(self.symbol+"_balance_sheet")
+        self.income_statement_archive = Archive(self.symbol+"_income_statement")
+        self.cash_flow_archive = Archive(self.symbol+"_cash_flow")
         self.dividends_to_distribute = 0
         self.requests = requester
 
@@ -152,10 +154,16 @@ class PublicCompany:
         self.operations.next(outstanding_shares_value, shares_issued_value, self.shares_repurchased)
         
         await self.generate_financial_report(self.currentdate, period)
+        await self.archive_reports(period)
 
         if self.dividends_to_distribute > 0:
             self.ex_dividend_date = self.ex_dividend_date = self.currentdate + timedelta(weeks=2)
             self.dividend_payment_date = self.ex_dividend_date + timedelta(weeks=4)
+
+    async def archive_reports(self, period) -> None:
+        self.balance_sheet_archive.put(str(self.currentdate), {"period": period, "report": self.balance_sheet})
+        self.income_statement_archive.put(str(self.currentdate), {"period": period, "report": self.income_statement})
+        self.cash_flow_archive.put(str(self.currentdate), {"period": period, "report": self.cash_flow})
 
     async def next(self, current_date) -> None:
         self.currentdate = current_date

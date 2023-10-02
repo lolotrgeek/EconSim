@@ -93,6 +93,44 @@ class TestPublicCompany(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(company.ex_dividend_date, company.currentdate + timedelta(weeks=2))
         self.assertEqual(company.dividend_payment_date, company.ex_dividend_date + timedelta(weeks=4))
 
+    async def test_archive_reports(self):
+        date = datetime(2023, 1, 1)
+        company = PublicCompany("TestCompany", date, self.requests)
+        period = "annual"
+
+        company.balance_sheet = {"test": "test balance"}
+        company.income_statement = {"test": "test income"}
+        company.cash_flow = {"test": "test cash flow"}
+
+        await company.archive_reports(period)
+
+        next_date = datetime(2023, 5, 1)
+        company.currentdate = next_date
+
+        company.balance_sheet = {"test": "Q1 balance"}
+        company.income_statement = {"test": "Q1 income"}
+        company.cash_flow = {"test": "Q1 cash flow"}
+
+        await company.archive_reports("Q1")
+
+        self.assertEqual(company.balance_sheet_archive.get(str(date)), {"period": "annual", "report":{"test": "test balance"}})
+        self.assertEqual(company.income_statement_archive.get(str(date)), {"period": "annual", "report":{"test": "test income"}})
+        self.assertEqual(company.cash_flow_archive.get(str(date)), {"period": "annual", "report":{"test": "test cash flow"}})
+        self.assertEqual(company.balance_sheet_archive.get(str(next_date)), {"period": "Q1", "report":{"test": "Q1 balance"}})
+        self.assertEqual(company.income_statement_archive.get(str(next_date)), {"period": "Q1", "report":{"test": "Q1 income"}})
+        self.assertEqual(company.cash_flow_archive.get(str(next_date)), {"period": "Q1", "report":{"test": "Q1 cash flow"}})
+
+        os.remove("archive/TES_balance_sheet.bak")
+        os.remove("archive/TES_balance_sheet.dat")
+        os.remove("archive/TES_balance_sheet.dir")
+        os.remove("archive/TES_income_statement.bak")
+        os.remove("archive/TES_income_statement.dat")
+        os.remove("archive/TES_income_statement.dir")
+        os.remove("archive/TES_cash_flow.bak")
+        os.remove("archive/TES_cash_flow.dat")
+        os.remove("archive/TES_cash_flow.dir")
+
+
     async def test_issue_initial_shares(self):
         company = PublicCompany("TestCompany", datetime(2023, 1, 1), self.requests)
         shares = 1000
