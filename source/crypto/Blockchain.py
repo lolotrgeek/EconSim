@@ -1,4 +1,7 @@
+import sys, os
+sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 from .MemPool import MemPool, MempoolTransaction
+from source.Archive import Archive
 import random
 import pandas as pd
 
@@ -12,6 +15,8 @@ class Blockchain():
         self.datetime = datetime
         self.total_transactions = 0
         self.accumulated_fees = 0
+        self.max_transactions=100_000
+        self.pruned_chain = Archive(asset+"chain")
         # self.new_block(transactions=[], previous_hash=1)
 
     async def new_block(self, transactions, previous_hash=None) -> dict:
@@ -54,6 +59,12 @@ class Blockchain():
         self.mempool.transactions = await self.mempool.get_pending_transactions() # clear the mempool of confirmed transactions
         return {'confirmed': confirmed, 'unconfirmed': len(self.mempool.transactions) }
     
+    async def prune(self, ) -> None:
+        if len(self.chain) >= self.max_transactions:
+            amount_to_prune = int(self.max_transactions/2)
+            self.pruned_chain.put(str(self.chain[amount_to_prune].dt), self.chain[:amount_to_prune])
+            self.chain = self.chain[amount_to_prune:]
+
     async def get_transactions_df(self) -> pd.DataFrame:
         return pd.DataFrame.from_records([t.to_dict() for t in self.chain]).set_index('dt')
 

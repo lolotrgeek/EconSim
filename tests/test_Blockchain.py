@@ -75,6 +75,21 @@ class BlockchainTests(unittest.IsolatedAsyncioTestCase):
         self.assertGreater(odds, lower_odds)
         self.assertGreater(lower_odds, lowest_odds)
 
+    async def test_prune(self):
+        self.blockchain.max_transactions = 20
+        for i in range(20):
+            self.blockchain.chain.append(MempoolTransaction('BTC', 0.001, 1.0, 'sender1', 'recipient1', datetime(2022, 1, i+1)))
+
+        self.assertEqual(len(self.blockchain.chain), 21)
+
+        await self.blockchain.prune()
+        self.assertEqual(len(self.blockchain.chain), 11)
+        self.assertEqual(datetime(2022, 1, 10), self.blockchain.chain[0].dt)
+        self.assertEqual(datetime(2022, 1, 20), self.blockchain.chain[-1].dt)
+        self.assertEqual(len(self.blockchain.pruned_chain.get(str(datetime(2022, 1, 10)))), 10)
+        os.remove("archive/testchain.bak")
+        os.remove("archive/testchain.dat")
+        os.remove("archive/testchain.dir")
 
     async def test_get_transactions(self):
         transaction1 = MempoolTransaction('BTC', 0.001, 1.0, 'sender1', 'recipient1', datetime(2022, 1, 6))
