@@ -2,17 +2,20 @@ from .Agent import Agent
 from datetime import datetime, timedelta
 import sys
 import os
-parent_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 from source.Instruments.Tax import Tax
 from source.utils._utils import string_to_time
+from source.Archive import Archive
 
 class Government(Agent):
     def __init__(self, initial_balance=10000000, requester=None):
         super().__init__("Government", initial_balance, requester=requester)
         self.current_date = datetime(1700,1,1)
         self.taxes_last_collected = {"date": self.current_date, "amount": 0}
-        self.taxes_collected = []
+        self.max_tax_records = 100000 #NOTE: this needs to be at least larger than the amount of agents in the simulation
+        self.tax_records = []
         self.taxes = Tax()
+        self.tax_records_archive = Archive('tax_records')
 
     async def collect_taxes(self) -> None:
         self.taxes_last_collected['amount'] = 0
@@ -33,7 +36,7 @@ class Government(Agent):
             local_tax = await self.taxes.calculate_tax(long_term_capital_gains + short_term_capital_gains, 'state', debug=False)
             self.taxes_last_collected['amount'] += long_term_tax['amount'] + short_term_tax['amount'] + local_tax['amount']
             tax_record = {"date": self.current_date, "agent": event['agent'], "long_term": long_term_tax['amount'], "short_term": short_term_tax['amount'], "local": local_tax['amount']}
-            self.taxes_collected.append(tax_record)
+            self.tax_records.append(tax_record)
             await self.requests.remove_cash(event['agent'], long_term_tax['amount'] + short_term_tax['amount'], 'taxes')
             
 
@@ -81,6 +84,10 @@ class Government(Agent):
         """
         pass
 
+    async def archive_tax_records(self):
+        self.tax_records_archive.put(str(self.current_date.year), self.tax_records)
+        self.tax_records = []
+
     async def next(self) -> None:
         """The government's next action.
 
@@ -90,6 +97,8 @@ class Government(Agent):
         
         # if the date is april 15th, collect tax bills
         if self.current_date.month == 4 and self.current_date.day == 15:
+            await self.archive_tax_records()
             self.taxes_last_collected['date'] = self.current_date
             await self.collect_taxes()
+            
         return None

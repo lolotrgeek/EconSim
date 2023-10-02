@@ -38,6 +38,14 @@ class TestCollectTaxes(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(self.govnerment.taxes_collected[0]['local'], 4346.155)        
         self.assertEqual(self.govnerment.taxes_last_collected['amount'], 4643.655)
 
+    async def test_archive_tax_records(self):
+        pre_archive_records = self.govnerment.tax_records
+        await self.govnerment.collect_taxes()
+        await self.govnerment.archive_tax_records()
+        self.assertEqual(self.govnerment.tax_records_archive.get('2023'), pre_archive_records)
+        os.remove('archive/tax_records.bak')
+        os.remove('archive/tax_records.dat')
+        os.remove('archive/tax_records.dir')
 
 if __name__ == '__main__':
     asyncio.run(unittest.main())
