@@ -5,9 +5,8 @@ A simulated economy with an exchange using backed assets.
 Train agents to develop strategies of resource acquisition and allocation via interaction with continuously generative data as opposed to discrete historical data.
 
 ## UNDER DEVELOPMENT
--- version 0.3 -- 
-- Crypto exchange and crypto currencies
-- Databases for exchanges
+-- version 0.4 -- 
+- Quality of life improvements
 
 ## Next Features
 - Banks
