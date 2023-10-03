@@ -51,7 +51,8 @@ class Exchange():
         Removes old trades from memory, if archiving can still be retrieved from the archive
         """
         if len(self.trade_log) >= self.trade_log_limit:
-            self.trade_log = self.trade_log[int(len(self.trade_log)/2):]
+            trades_to_prune = int(len(self.trade_log)/2)
+            self.trade_log = self.trade_log[trades_to_prune:]
 
     async def create_asset(self, ticker: str, asset_type='stock', market_qty=1000, seed_price=100, seed_bid=.99, seed_ask=1.01) -> OrderBook:
         """_summary_
