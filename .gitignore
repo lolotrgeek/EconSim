@@ -166,3 +166,8 @@ source/backend/API.py
 flask_monitoringdashboard.db
 flask_monitoringdashboard.db-journal
 .vscode/settings.json
+
+# Python Shelve
+*.bak
+*.dat
+*.dir
