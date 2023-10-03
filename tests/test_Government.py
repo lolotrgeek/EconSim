@@ -31,11 +31,11 @@ class TestCollectTaxes(unittest.IsolatedAsyncioTestCase):
     async def test_collect_taxes(self):
         taxable_events = await self.mock_requester.responder.exchange.get_taxable_events()
         await self.govnerment.collect_taxes()
-        print(self.govnerment.taxes_collected[0])
+        print(self.govnerment.tax_records[0])
 
-        self.assertEqual(self.govnerment.taxes_collected[0]['long_term'], 247.5)
-        self.assertEqual(self.govnerment.taxes_collected[0]['short_term'], 50)
-        self.assertEqual(self.govnerment.taxes_collected[0]['local'], 4346.155)        
+        self.assertEqual(self.govnerment.tax_records[0]['long_term'], 247.5)
+        self.assertEqual(self.govnerment.tax_records[0]['short_term'], 50)
+        self.assertEqual(self.govnerment.tax_records[0]['local'], 4346.155)        
         self.assertEqual(self.govnerment.taxes_last_collected['amount'], 4643.655)
 
     async def test_archive_tax_records(self):
