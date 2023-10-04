@@ -25,8 +25,12 @@ class CryptoExchange(Exchange):
         self.requester = requester
         self.pairs = []
         self.wallets = {}
-        self.pairs_archive = Archive('pairs')
-        self.wallets_archive = Archive('wallets')
+        self.agents_archive = Archive('crypto_agents')
+        self.assets_archive = Archive('crypto_assets')
+        self.books_archive = Archive('crypto_books')
+        self.trade_log_archive = Archive('crypto_trade_log')        
+        self.pairs_archive = Archive('crypto_pairs')
+        self.wallets_archive = Archive('crypto_wallets')
         self.fees = Fees()
         self.fees.waive_fees = False
         self.pending_transactions = []
