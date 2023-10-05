@@ -8,15 +8,17 @@ from source.utils.logger import Logger
 
 class LoggerTest(unittest.TestCase):
     def test_logger(self):
-        logger = Logger('test_logger', level=0)
-        logger.info('test')
-        logger.debug('test')
-        logger.error('test')
+        logger = Logger('test_logger', level=3)
+        logger.info('info')
+        logger.debug('debug')
+        logger.error('error')
         
         # read the log and check if the message is there
-        with open('logs/test_logger_info.log', 'r') as f:
+        with open('logs/test_logger.log', 'r') as f:
             log = f.read()
-            self.assertIn('test', log)
+            self.assertIn('info', log)
+            self.assertIn('debug', log)
+            self.assertIn('error', log)
             f.close()
 
         logger.ch.close()
@@ -28,4 +30,4 @@ class LoggerTest(unittest.TestCase):
 
         logger.logger = None
 
-        os.remove('logs/test_logger_info.log')
+        os.remove('logs/test_logger.log')
