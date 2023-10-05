@@ -1,7 +1,13 @@
 import logging 
 
 class Logger():
-    def __init__(self, name, level=logging.ERROR):
+    def __init__(self, name, level=logging.INFO):
+        """
+        Create a logger object with a name and a level
+        args:
+            name: name of the logger
+            level: level of the logger (default: logging.INFO - `20`), possible values: ERROR - `40`, WARNING - `30`, INFO - `20`, DEBUG - `10`, NOTSET - `0`
+        """
         self.logger = logging.getLogger(name)
         self.logger.setLevel(level)
         self.formatter = logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s')
@@ -9,16 +15,21 @@ class Logger():
         self.ch.setLevel(level)
         self.ch.setFormatter(self.formatter)
         self.logger.addHandler(self.ch)
-        self.fh = logging.FileHandler('logs/' + name + '_info.log')
-        self.fh.setLevel(logging.INFO)
+        self.fh = logging.FileHandler('logs/' + name + '.log')
+        self.fh.setLevel(level)
         self.fh.setFormatter(self.formatter)
         self.logger.addHandler(self.fh)
         
-    def info(self, message):
-        self.logger.info(message)
+    def info(self, message, *args):
+        self.logger.info(self._format_message(message, *args))
 
-    def debug(self, message):
-        self.logger.debug(message)
+    def debug(self, message, *args):
+        self.logger.debug(self._format_message(message, *args))
 
-    def error(self, message):
-        self.logger.error(message)
+    def error(self, message, *args):
+        self.logger.error(self._format_message(message, *args))
+
+    def _format_message(self, message, *args):
+        if args:
+            message += ' ' + ' '.join(str(arg) for arg in args)
+        return message
