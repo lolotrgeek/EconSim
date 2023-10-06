@@ -925,7 +925,7 @@ class CryptoExchange(Exchange):
         """
         agents_simple = []
         for agent in self.agents:
-            agents_simple.append({'agent':agent['name'],'assets':agent['assets']})
+            agents_simple.append({'agent':agent['name'],'assets':agent['assets'], 'frozen_assets': agent['frozen_assets']})
         return agents_simple
 
     async def get_agents_positions(self, asset=None) -> list:
