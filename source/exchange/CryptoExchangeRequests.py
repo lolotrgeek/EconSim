@@ -102,3 +102,6 @@ class CryptoExchangeRequests(Requests):
     
     async def get_outstanding_shares(self, ticker):
         return await self.make_request('get_outstanding_shares', {'ticker': ticker}, self.requester)
+    
+    async def get_pending_transactions(self, limit=100):
+        return await self.make_request('get_pending_transactions', {"limit": limit}, self.requester)

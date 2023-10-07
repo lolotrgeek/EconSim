@@ -947,3 +947,9 @@ class CryptoExchange(Exchange):
         Returns a list of all asset pairs
         """
         return self.pairs
+    
+    async def get_pending_transactions(self, limit=100) -> list:
+        """
+        Returns a list of all pending transactions
+        """
+        return self.pending_transactions[:limit]

@@ -62,6 +62,7 @@ async def run_crypto_exchange() -> None:
             elif msg['topic'] == 'get_positions': return dumps(await exchange.get_positions(msg['agent'], msg['page_size'], msg['page']))
             elif msg['topic'] == 'get_outstanding_shares': return dumps(await exchange.get_outstanding_shares(msg['ticker']))
             elif msg['topic'] == 'get_taxable_events': return dumps(await exchange.get_taxable_events())
+            elif msg['topic'] == 'get_pending_transactions': return dumps(await exchange.get_pending_transactions(msg['limit']))
             #TODO: exchange topic to get general exchange data
             else: return dumps({"warning":  f'unknown topic {msg["topic"]}'})
 
