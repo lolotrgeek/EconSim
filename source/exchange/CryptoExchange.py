@@ -16,7 +16,6 @@ from source.utils.logger import Logger
 #NOTE: symbols are the letters that represent a given asset, e.g. BTC, ETH, etc.
 #NOTE: tickers are the combination of the symbol and the quote currency, e.g. BTC/USD, ETH/USD, etc.
 
-
 class CryptoExchange(Exchange):
     def __init__(self, datetime= None, requester=None, archiver=None):
         super().__init__(datetime=datetime)
@@ -98,6 +97,8 @@ class CryptoExchange(Exchange):
 
             `seed_ask` (float, optional): Limit price of an initial sell order, expressed as percentage of the seed_price. async defaults to 1.01.
         """
+        if symbol == self.default_quote_currency['symbol']:
+            return {'error': 'cannot create default_quote_currency'}
         if len(self.assets) >= self.max_assets:
             return {'error': 'cannot create, max_assets_reached'}        
         if len(pairs) >= self.max_pairs or len(self.books) >= self.max_pairs:
@@ -196,6 +197,7 @@ class CryptoExchange(Exchange):
         self.trade_log.append(trade)
         await self.update_agents(transaction['exchange_txn'], transaction['accounting'], position_id=transaction['position_id'])
         self.pending_transactions.remove(transaction)
+        self.logger.info('completed trade', trade.to_dict())
 
     async def get_order_book(self, ticker:str) -> CryptoOrderBook:
         """returns the CryptoOrderBook of a given Asset

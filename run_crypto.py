@@ -8,11 +8,11 @@ asyncio.set_event_loop_policy(asyncio.WindowsSelectorEventLoopPolicy())
 from source.utils._utils import dumps, string_to_time
 from Channels import Channels
 
-names = ['BTC', 'ETH']
+names = ['BTC', 'ETH', 'LTC']
 
 async def generate_cryptos(names, requester, time) -> dict:
+    # create the default currency chain
     cryptos = {"USD": CryptoCurrency("USD", time, requester=requester)}
-    await cryptos["USD"].issue_coins([{'asset': cryptos["USD"].symbol ,'market_qty':1000 ,'seed_price':100 ,'seed_bid':.99, 'seed_ask':1.01}], 1_000_000_000)
     for name in names:
         crypto = CryptoCurrency(name, time, requester=requester)
         cryptos[crypto.symbol] = crypto
