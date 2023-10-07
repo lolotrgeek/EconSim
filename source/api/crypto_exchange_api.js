@@ -32,8 +32,7 @@ app.get('/api/v1/get_agents', async (req, res) => {
 const get_pending_transactions_requests = new Requester('5575')
 app.get('/api/v1/get_pending_transactions', async (req, res) => {
     const limit = parseInt(req.query.limit) || 100
-    if (!ticker) { res.status(400).json({ message: 'Ticker not found.' }); return }
-    await get_pending_transactions_requests.request('pending_transactions', { limit: limit, })
+    await get_pending_transactions_requests.request('get_pending_transactions', { limit: limit, })
     res.json(get_pending_transactions_requests.latest_result)
 })
 
