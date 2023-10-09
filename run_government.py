@@ -39,6 +39,7 @@ async def run_government() -> None:
                 "get_date": dumps(government.current_date),
                 "get_last_collected_taxes": dumps(government.taxes_last_collected),
                 "get_taxes_collected": dumps(government.tax_records),
+                "get_back_taxes": dumps(government.back_taxes),
             }
             await pusher.push(msg)
 

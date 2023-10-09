@@ -9,7 +9,9 @@ const endpoints = {
     get_date: '/api/v1/get_date',
     get_cash: '/api/v1/get_cash',
     get_last_collected_taxes: '/api/v1/get_last_collected_taxes',
-    get_taxes_collected: '/api/v1/get_taxes_collected'
+    get_taxes_collected: '/api/v1/get_taxes_collected',
+    get_back_taxes: '/api/v1/get_back_taxes',
+
 }
 
 app.get('/', (req, res) => {
@@ -40,6 +42,12 @@ const get_taxes_collected_pulls = new Puller('5580')
 app.get(endpoints.get_taxes_collected, async (req, res) => {
     await get_taxes_collected_pulls.pull('get_taxes_collected')
     res.json(get_taxes_collected_pulls.latest_result)
+})
+
+const get_back_taxes_pulls = new Puller('5580')
+app.get(endpoints.get_back_taxes, async (req, res) => {
+    await get_back_taxes_pulls.pull('get_back_taxes')
+    res.json(get_back_taxes_pulls.latest_result)
 })
 
 app.listen(PORT, () => {
