@@ -5,6 +5,7 @@ import sys
 import os
 parent_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 sys.path.append(parent_dir)
+from source.utils.logger import Logger
 
 
 class Trader(Agent):
@@ -14,6 +15,7 @@ class Trader(Agent):
         self.assets = {}
         self.tickers = []
         self.aum = aum
+        self.logger = None #NOTE: this gets added when the agent is registered
 
     def __repr__(self):
         return f'<Trader: {self.name}>'
@@ -174,9 +176,10 @@ class Trader(Agent):
         agent = await self.exchange_requests.register_agent(self.name, self.initial_cash)
         if 'registered_agent' in agent:
             self.name = agent['registered_agent']
+            self.logger = Logger(agent['registered_agent'], 0)
             return agent
         else:
-            return 'UnRegistered Agent'
+            return None
 
     async def send_cash(self, amount, recipient) -> dict:
         await self.exchange_requests.remove_cash(self.name, amount)

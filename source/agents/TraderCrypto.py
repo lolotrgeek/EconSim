@@ -6,6 +6,7 @@ import os
 parent_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 sys.path.append(parent_dir)
 from decimal import Decimal
+from source.utils.logger import Logger
 
 class CryptoTrader(Trader):
     def __init__(self, name:str, aum:int=10_000, exchange_requests=None, crypto_requests=None):
@@ -15,6 +16,7 @@ class CryptoTrader(Trader):
         self.assets = {}
         self.tickers = []
         self.aum = aum
+        self.logger = None #NOTE: this gets added when the agent is registered
 
     def __repr__(self):
         return f'<CryptoTrader: {self.name}>'
@@ -94,10 +96,12 @@ class CryptoTrader(Trader):
             if position['asset'] == asset:
                 return position
 
-    async def get_simple_position(self,asset) -> dict:
+    async def get_simple_position(self,asset) -> int:
         agent = (await self.exchange_requests.get_agent(self.name))
         _transactions = agent['_transactions']
-        return sum(t['qty'] for t in _transactions if t['asset'] == asset)
+        if len(_transactions) == 0:
+            return 0
+        return sum(int(t['qty']) for t in _transactions if t['base'] == asset)
 
     async def cancel_order(self, base:str, quote:str, id:str) -> Union[dict,None]:
         """Cancels the order with a given id (if it exists)
@@ -136,6 +140,7 @@ class CryptoTrader(Trader):
         agent = await self.exchange_requests.register_agent(self.name, {"USD": self.aum})
         if 'registered_agent' in agent:
             self.name = agent['registered_agent']
+            self.logger = Logger(agent['registered_agent'], 0)
             return agent
         else:
             return 'UnRegistered Agent'

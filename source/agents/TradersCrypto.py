@@ -32,12 +32,16 @@ class RandomMarketTaker(Trader):
             action = 'close'
         
         if action == 'buy':
-            order = await self.market_buy(ticker['base'], ticker['quote'], self.qty_per_order)
+            order = await self.market_buy(ticker['base'], ticker['quote'], self.qty_per_order, 0.01)
+            if order is None or order['market_buy'] == "insufficient funds":
+                return False
 
         elif action == 'close':
-            order = await self.market_sell(ticker['base'],ticker['quote'], (await self.get_simple_position(ticker['base'])))
+            qty = await self.get_simple_position(ticker['base'])
+            order = await self.market_sell(ticker['base'],ticker['quote'], qty, 0.01)
+            if order is None or order['market_sell'] == "insufficient assets":
+                return False
 
-                    
         return True
 
 class LowBidder(Trader):
@@ -58,9 +62,9 @@ class LowBidder(Trader):
             
             if self.cash < price:
                 await self.cancel_all_orders(ticker['base'], ticker['quote'])
-                await self.limit_sell(ticker['base'], ticker['quote'], price-len(self.assets) , qty=self.qty_per_order)
+                await self.limit_sell(ticker['base'], ticker['quote'], price-len(self.assets) , qty=self.qty_per_order, fee=0.01)
             else:
-                await self.limit_buy(ticker['base'], ticker['quote'], price+len(self.assets), qty=self.qty_per_order)
+                await self.limit_buy(ticker['base'], ticker['quote'], price+len(self.assets), qty=self.qty_per_order, fee=0.01)
         return True
 
 class GreedyScalper(Trader):
@@ -84,8 +88,8 @@ class GreedyScalper(Trader):
                     break
                 price = latest_trade['price'] / 2
                 await self.cancel_all_orders(ticker['base'], ticker['quote'])
-                await self.limit_buy(ticker['base'], ticker['quote'], price, qty=self.qty_per_order)
-                await self.limit_sell(ticker['base'], ticker['quote'], price * 2, qty=self.qty_per_order)
+                await self.limit_buy(ticker['base'], ticker['quote'], price, qty=self.qty_per_order, fee=0.01)
+                await self.limit_sell(ticker['base'], ticker['quote'], price * 2, qty=self.qty_per_order, fee=0.01)
         return True
 
 class NaiveMarketMaker(Trader):
@@ -109,6 +113,6 @@ class NaiveMarketMaker(Trader):
                 break
             price = latest_trade['price']
             await self.cancel_all_orders(ticker['base'], ticker['quote'])
-            buy_order = await self.limit_buy(ticker['base'], ticker['quote'], price * Decimal(1-self.spread_pct/2), qty=self.qty_per_order)
-            sell_order = await self.limit_sell(ticker['base'], ticker['quote'], price * Decimal(1+self.spread_pct/2), qty=self.qty_per_order)
+            buy_order = await self.limit_buy(ticker['base'], ticker['quote'], price * Decimal(1-self.spread_pct/2), qty=self.qty_per_order, fee=0.01)
+            sell_order = await self.limit_sell(ticker['base'], ticker['quote'], price * Decimal(1+self.spread_pct/2), qty=self.qty_per_order, fee=0.01)
         return True

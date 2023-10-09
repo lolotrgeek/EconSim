@@ -319,11 +319,23 @@ class GetPositionSimpleTest(unittest.IsolatedAsyncioTestCase):
         self.requests[0].debug = True
         self.trader = Trader(self.trader_name, exchange_requests=self.requests[0], crypto_requests=self.requests[1])
         await self.trader.register()
+        
 
     async def test_get_position_simple(self):
-        position = await self.trader.get_simple_position("USD")
+        mock_transactions = [
+            {'agent': 'market_takerbe3933e1', 'base': 'ETH', 'dt': '1700-01-01 13:22:00', 'fee': '0.002', 'id': 'd3922a1b-7283-4a3a-bf2b-05a60411eeec', 'price': '101.00', 'qty': '1', 'quote': 'USD', 'quote_flow': '-101.00', 'type': 'buy'}, 
+            {'agent': 'market_takerbe3933e1', 'base': 'ETH', 'dt': '1700-01-01 14:06:00', 'fee': '0.002', 'id': '82f923b5-ae34-49f8-95ba-4e98600ccb25', 'price': '101.00', 'qty': '1', 'quote': 'USD', 'quote_flow': '-101.00', 'type': 'buy'},
+            {'agent': 'market_takerbe3933e1', 'base': 'BTC', 'dt': '1700-01-01 14:36:00', 'fee': '0.002', 'id': 'b7f19582-ac00-454e-9e50-6b5cd028a0cb', 'price': '101.00', 'qty': '1', 'quote': 'USD', 'quote_flow': '-101.00', 'type': 'buy'},
+            {'agent': 'market_takerbe3933e1', 'base': 'ETH', 'dt': '1700-01-01 16:02:00', 'fee': '0.002', 'id': 'c2813369-b920-4d72-b765-0a35782d0469', 'price': '101.00', 'qty': '1', 'quote': 'USD', 'quote_flow': '-101.00', 'type': 'buy'}
+        ]
+        agent_transactions  = (await self.mock_requester.responder.exchange.get_agent(self.trader.name))['_transactions']
+        for t in mock_transactions:
+            agent_transactions.append(t)
+        
+        position = await self.trader.get_simple_position("ETH")
         print(position)
         self.assertIsInstance(position, int)
+        self.assertEqual(position, 3)
 
 class GetPositionTest(unittest.IsolatedAsyncioTestCase):
     async def asyncSetUp(self) -> None:
