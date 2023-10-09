@@ -13,6 +13,7 @@ from source.utils._utils import format_dataframe_rows_to_dict
 from source.Archive import Archive
 from uuid import uuid4 as UUID
 from datetime import timedelta
+from source.utils.logger import Logger
 
 class Exchange():
     def __init__(self, datetime= None):
@@ -32,6 +33,7 @@ class Exchange():
         self.trade_log_limit = 100000
         self.max_asks = 100000
         self.max_bids = 100000
+        self.logger = Logger('Exchange', 0)
 
     async def __str__(self):
         return ', '.join(ob for ob in self.books)
