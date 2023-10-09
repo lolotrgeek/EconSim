@@ -19,7 +19,7 @@ const endpoints = {
 
 app.get('/', (req, res) => {
     const title = '<p>This is the Companies API. It is used to get information from the Companies.</p>'
-    endpoints_html = `<p>Available endpoints:</p> ${Object.values(endpoints).map(endpoint => `<p><a href="${URL}${endpoint}">${endpoint}</a></p>`).join('')}`
+    const endpoints_html = `<p>Available endpoints:</p> ${Object.values(endpoints).map(endpoint => `<p><a href="${URL}${endpoint}">${endpoint}</a></p>`).join('')}`
     res.send(title + endpoints_html)
 })
 

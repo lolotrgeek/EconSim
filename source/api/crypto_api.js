@@ -12,7 +12,7 @@ const endpoints = {
 
 app.get('/', (req, res) => {
     const title = '<p>This is the Crypto API. It is used to get information from the Crypto.</p>'
-    endpoints_html = `<p>Available endpoints:</p> ${Object.values(endpoints).map(endpoint => `<p><a href="${URL}${endpoint}">${endpoint}</a></p>`).join('')}`
+    const endpoints_html = `<p>Available endpoints:</p> ${Object.values(endpoints).map(endpoint => `<p><a href="${URL}${endpoint}">${endpoint}</a></p>`).join('')}`
     res.send(title + endpoints_html)
 })
 
