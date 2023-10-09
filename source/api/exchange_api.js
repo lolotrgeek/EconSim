@@ -68,31 +68,6 @@ app.get('/api/v1/candles', async (req, res) => {
     res.json(get_candles_requests[ticker].latest_result)
 })
 
-// const create_assets_requests = new Requester('5570')
-// app.post('/api/v1/create_asset', async (req, res) => {
-//     const data = req.body
-//     const ticker = data.ticker
-//     const seed_price = data.seed_price || 100
-//     const seed_qty = data.seed_qty || 1000
-//     const seed_bid = data.seed_bid || 0.99
-//     const seed_ask = data.seed_ask || 1.01
-
-//     if (!ticker) {
-//         res.status(400).json({ message: 'Ticker not found.' })
-//         return
-//     }
-
-//     await create_assets_requests.request('create_asset', {
-//         ticker: ticker,
-//         qty: seed_qty,
-//         seed_price: seed_price,
-//         seed_bid: seed_bid,
-//         seed_ask: seed_ask,
-//     })
-
-//     res.json(create_assets_requests.latest_result)
-// })
-
 const order_book_requesters = {}
 app.get('/api/v1/get_order_book', async (req, res) => {
     const ticker = req.query.ticker
