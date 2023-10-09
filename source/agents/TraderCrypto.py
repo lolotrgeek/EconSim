@@ -136,11 +136,12 @@ class CryptoTrader(Trader):
         returns: {assets: {ticker, amount}}"""
         return await self.exchange_requests.get_assets(self.name)
     
-    async def register(self) -> dict:
+    async def register(self, logger=False) -> dict:
         agent = await self.exchange_requests.register_agent(self.name, {"USD": self.aum})
         if 'registered_agent' in agent:
             self.name = agent['registered_agent']
-            self.logger = Logger(agent['registered_agent'], 0)
+            if logger == True:
+                self.logger = Logger(agent['registered_agent'], 0)
             return agent
         else:
             return 'UnRegistered Agent'
