@@ -121,7 +121,7 @@ class Government(Agent):
             current_date (datetime): the current date.
         """
         # attempt to collect back taxes once per month
-        if self.current_date.month != self.taxes_last_collected['date'].month and self.current_date.day >= 15:
+        if self.current_date.month != self.taxes_last_collected['date'].month and self.current_date.day == 1 and self.current_date.hour == 12 and self.current_date.minute == 0 and self.current_date.second == 0:
             self.logger.info(f"Collecting back taxes on {self.current_date}")
             await self.collect_back_taxes()
 
