@@ -6,6 +6,7 @@ sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 from source.Instruments.Tax import Tax
 from source.utils._utils import string_to_time
 from source.Archive import Archive
+from source.utils.logger import Logger
 
 class Government(Agent):
     def __init__(self, initial_balance=10000000, requester=None):
@@ -16,10 +17,13 @@ class Government(Agent):
         self.tax_records = []
         self.taxes = Tax()
         self.tax_records_archive = Archive('tax_records')
+        self.logger = Logger('Government')
 
     async def collect_taxes(self) -> None:
         self.taxes_last_collected['amount'] = 0
+        self.logger.info("Getting Taxable Events")
         taxable_events = await self.requests.get_taxable_events()
+        self.logger.info(f"Found Taxable Events {len(taxable_events)}")
         for event in taxable_events:
             long_term_capital_gains = 0
             short_term_capital_gains = 0
@@ -37,7 +41,9 @@ class Government(Agent):
             self.taxes_last_collected['amount'] += long_term_tax['amount'] + short_term_tax['amount'] + local_tax['amount']
             tax_record = {"date": self.current_date, "agent": event['agent'], "long_term": long_term_tax['amount'], "short_term": short_term_tax['amount'], "local": local_tax['amount']}
             self.tax_records.append(tax_record)
+            self.logger.info(f"Collecting Taxes from {event['agent']} for {long_term_tax['amount'] + short_term_tax['amount']}")
             await self.requests.remove_cash(event['agent'], long_term_tax['amount'] + short_term_tax['amount'], 'taxes')
+        self.logger.info("Successfully Collected Taxes")
             
 
     async def set_reserve_requirement(self, reserve_requirement) -> None:
@@ -95,10 +101,10 @@ class Government(Agent):
             current_date (datetime): the current date.
         """
         
-        # if the date is april 15th, collect tax bills
-        if self.current_date.month == 4 and self.current_date.day == 15:
+        # check if taxes have been collected this year
+        if self.current_date.year != self.taxes_last_collected['date'].year and self.current_date.month >= 4 and self.current_date.day >= 15:
+            self.logger.info(f"Collecting taxes on {self.current_date}")
             await self.archive_tax_records()
             self.taxes_last_collected['date'] = self.current_date
             await self.collect_taxes()
             
-        return None
