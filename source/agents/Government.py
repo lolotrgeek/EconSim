@@ -16,6 +16,7 @@ class Government(Agent):
         self.max_tax_records = 100000 #NOTE: this needs to be at least larger than the amount of agents in the simulation
         self.tax_records = []
         self.taxes = Tax()
+        self.back_taxes = [] #NOTE: taxes owed by agents that have not been paid yet
         self.tax_records_archive = Archive('tax_records')
         self.logger = Logger('Government')
 
@@ -23,6 +24,9 @@ class Government(Agent):
         self.taxes_last_collected['amount'] = 0
         self.logger.info("Getting Taxable Events")
         taxable_events = await self.requests.get_taxable_events()
+        if 'error' in taxable_events:
+            self.logger.error(taxable_events['error'])
+            return
         self.logger.info(f"Found Taxable Events {len(taxable_events)}")
         for event in taxable_events:
             long_term_capital_gains = 0
@@ -39,10 +43,15 @@ class Government(Agent):
             long_term_tax = await self.taxes.calculate_tax(long_term_capital_gains, 'long_term', debug=False)
             local_tax = await self.taxes.calculate_tax(long_term_capital_gains + short_term_capital_gains, 'state', debug=False)
             self.taxes_last_collected['amount'] += long_term_tax['amount'] + short_term_tax['amount'] + local_tax['amount']
-            tax_record = {"date": self.current_date, "agent": event['agent'], "long_term": long_term_tax['amount'], "short_term": short_term_tax['amount'], "local": local_tax['amount']}
-            self.tax_records.append(tax_record)
             self.logger.info(f"Collecting Taxes from {event['agent']} for {long_term_tax['amount'] + short_term_tax['amount']}")
-            await self.requests.remove_cash(event['agent'], long_term_tax['amount'] + short_term_tax['amount'], 'taxes')
+            tax_record = {"date": self.current_date, "agent": event['agent'], "long_term": long_term_tax['amount'], "short_term": short_term_tax['amount'], "local": local_tax['amount']}
+            remove = await self.requests.remove_cash(event['agent'], long_term_tax['amount'] + short_term_tax['amount'], 'taxes')
+            if 'error' in remove:
+                self.back_taxes.append(tax_record)
+                self.logger.error(remove['error'], event['agent'])
+                continue
+            else:
+                self.tax_records.append(tax_record)
         self.logger.info("Successfully Collected Taxes")
             
 
