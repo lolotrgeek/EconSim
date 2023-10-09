@@ -1,0 +1,43 @@
+.agents-content {
+    width: 80%;
+    display: flex;
+    flex-direction: column;
+    align-items: left;
+    justify-content: left;
+  }
+  
+  .agents-chart {
+    padding: 0 20px;
+    width: 100%;
+    height: 600px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+  
+  .agents-positions {
+    padding: 0 20px;
+    width: 100%;
+    height: 400px;
+    display: flex;
+    flex-direction: row;
+  }
+  
+  .agents-container {
+    width: 100%;
+    display: flex;
+  }
+  
+  .asset-bars {
+    display: flex;
+    justify-items: space-between;
+    flex-wrap: wrap;
+  }
+  
+  .agents-page {
+    width: 100%;
+    display: flex;
+    flex-direction: column;
+    justify-content: left;
+  }
+  
