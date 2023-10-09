@@ -1,5 +1,7 @@
 import React, { useState, useEffect } from 'react'
 import { useLocation } from 'react-router-dom'
+import {parse} from '../utils'
+
 
 const fetcher = async (query, tries = 0, maxTries = 5) => {
   try {
@@ -9,14 +11,6 @@ const fetcher = async (query, tries = 0, maxTries = 5) => {
       return await fetcher(query, tries + 1, maxTries)
     }
     return { "error": "Could not parse query" }
-  }
-}
-
-const parser = data => {
-  try {
-    return JSON.parse(data)
-  } catch (error) {
-    return { "error": "Could not parse data" }
   }
 }
 function Financials() {
@@ -38,7 +32,7 @@ function Financials() {
           fetcher(async () => {
             const response = await fetch(url + 'get_income_statement?company=' + company)
             const data = await response.json()
-            const parsedData = parser(data)
+            const parsedData = parse(data)
             setIncomeStatement(parsedData)
           })
         }
@@ -48,7 +42,7 @@ function Financials() {
             const response = await fetch(url + 'get_balance_sheet?company=' + company)
             const data = await response.json()
 
-            const parsedData = parser(data)
+            const parsedData = parse(data)
             setBalanceSheet(parsedData)
           })
         }
@@ -58,7 +52,7 @@ function Financials() {
             const response = await fetch(url + 'get_cash_flow?company=' + company)
             const data = await response.json()
 
-            const parsedData = parser(data)
+            const parsedData = parse(data)
             setCashFlow(parsedData)
           })
         }
