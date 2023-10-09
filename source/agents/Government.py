@@ -103,12 +103,28 @@ class Government(Agent):
         self.tax_records_archive.put(str(self.current_date.year), self.tax_records)
         self.tax_records = []
 
+
+    async def collect_back_taxes(self):
+        for back_tax in self.back_taxes:
+            remove = await self.requests.remove_cash(back_tax['agent'], back_tax['long_term'] + back_tax['short_term'], 'taxes')
+            if 'error' in remove:
+                self.logger.error(remove['error'], back_tax['agent'])
+                continue
+            else:
+                self.tax_records.append(back_tax)
+                self.back_taxes.remove(back_tax)    
+
     async def next(self) -> None:
         """The government's next action.
 
         Args:
             current_date (datetime): the current date.
         """
+        # attempt to collect back taxes once per month
+        if self.current_date.month != self.taxes_last_collected['date'].month and self.current_date.day >= 15:
+            self.logger.info(f"Collecting back taxes on {self.current_date}")
+            await self.collect_back_taxes()
+
         
         # check if taxes have been collected this year
         if self.current_date.year != self.taxes_last_collected['date'].year and self.current_date.month >= 4 and self.current_date.day >= 15:
