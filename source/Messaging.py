@@ -3,7 +3,7 @@ import json
 import zmq
 import zmq.asyncio
 import asyncio
-from .utils._utils import dumps
+from .utils.logger import Logger
 from decimal import Decimal
 asyncio.set_event_loop_policy(asyncio.WindowsSelectorEventLoopPolicy())
 
@@ -21,6 +21,7 @@ class Requester:
         self.max_retries = max_retries
         self.request_timeout = 2500  # ms
         self.context = zmq.asyncio.Context()
+        self.logger = Logger('Requester')
 
     async def connect(self) -> None:
         self.socket = self.context.socket(zmq.REQ)
@@ -37,11 +38,11 @@ class Requester:
                 response = json.loads(response)
             return response
         except zmq.ZMQError as e:
-            print("[ZMQ Requester Error]", e, "Request:", msg)
+            self.logger.error("[ZMQ Requester Error]", e, "Request:", msg)
             return {'error': repr(e)}
         except Exception as e:
-            print("[Requester Error]", e, "Request:", msg)
-            print(traceback.format_exc())
+            self.logger.error("[Requester Error]", e, "Request:", msg)
+            self.logger.error(traceback.format_exc())
             return {'error': repr(e)}
 
     async def request_lazy(self, msg) -> str:
@@ -57,14 +58,14 @@ class Requester:
                         reply = json.loads(reply)
                     return reply
                 else:
-                    print("[Requester Warning] No response from server, retrying...")
+                    self.logger.error("[Requester Warning] No response from server, retrying...")
                     retries_left -= 1
                     self.socket.setsockopt(zmq.LINGER, 0)
                     await self.socket.close()
                     if retries_left == 0:
                         return {'error': '[Requester Error] Maximum retries reached, no response from server.'}
                     
-                    print("[Requester Warning] Reconnecting and resending request...")
+                    self.logger.error("[Requester Warning] Reconnecting and resending request...")
                     self.socket = self.context.socket(zmq.REQ)
                     self.socket.connect(f'tcp://127.0.0.1:{self.channel}')
                     self.poller = zmq.asyncio.Poller()
@@ -72,13 +73,13 @@ class Requester:
                     await self.socket.send_json(msg)
                     continue
         except zmq.ZMQError as e:
-            print("[ZMQ Requester Error]", e, "Request:", msg)
-            print(traceback.format_exc())
+            self.logger.error("[ZMQ Requester Error]", e, "Request:", msg)
+            self.logger.error(traceback.format_exc())
             return {'error': repr(e)}
 
         except Exception as e:
-            print("[Requester Error]", e, "Request:", msg)
-            print(traceback.format_exc())
+            self.logger.error("[Requester Error]", e, "Request:", msg)
+            self.logger.error(traceback.format_exc())
             return {'error': repr(e)}
 
     async def close(self):
@@ -89,6 +90,7 @@ class Responder:
     def __init__(self, channel='5556'):
         self.channel = channel
         self.listen_timeout = 500  # ms
+        self.logger = Logger('Responder')
 
     async def connect(self) -> None:
         self.context = zmq.asyncio.Context()
@@ -106,12 +108,12 @@ class Responder:
             await self.socket.send_json(json.dumps(response, cls=DecimalEncoder))
             return response
         except zmq.ZMQError as e:
-            print("[ZMQ Response Error]", e, "Request:", msg)
-            print(traceback.format_exc())
+            self.logger.error("[ZMQ Response Error]", e, "Request:", msg)
+            self.logger.error(traceback.format_exc())
             return json.dumps({'error': repr(e)})
         except Exception as e:
-            print("[Response Error]", e, "Request:", msg)
-            print(traceback.format_exc())
+            self.logger.error("[Response Error]", e, "Request:", msg)
+            self.logger.error(traceback.format_exc())
             await self.socket.send_json({'error': repr(e)})
             return json.dumps({'error': repr(e)})
         
@@ -126,12 +128,12 @@ class Responder:
                 await self.socket.send_json(response)
                 return response
         except zmq.ZMQError as e:
-            print("[ZMQ Response Error]", e)
-            print(traceback.format_exc())
+            self.logger.error("[ZMQ Response Error]", e)
+            self.logger.error(traceback.format_exc())
             return json.dumps({'error': repr(e)})
         except Exception as e:
-            print("[Response Error]", e)
-            print(traceback.format_exc())
+            self.logger.error("[Response Error]", e)
+            self.logger.error(traceback.format_exc())
             await self.socket.send_json({'error': repr(e)})
             return json.dumps({'error': repr(e)})
 
@@ -139,6 +141,7 @@ class Broker:
     def __init__(self, request_side='5556', response_side='5557'):
         self.request_side = request_side
         self.response_side = response_side
+        self.logger = Logger('Broker')
 
     async def start(self) -> None:
         self.context = zmq.Context()
@@ -153,10 +156,11 @@ class Broker:
         try:
             zmq.proxy(self.requests_socket, self.responses_socket, self.mon_socket)
         except Exception as e:
-            print("[Broker Error]", e)
+            self.logger.error("[Broker Error]", e)
 
 class Pusher():
     def __init__(self, channel='5558', bind=True):
+        self.logger = Logger('Pusher')
         self.context = zmq.asyncio.Context()
         self.zmq_socket = self.context.socket(zmq.PUSH)
         self.address = f"tcp://127.0.0.1:{channel}"
@@ -182,13 +186,14 @@ class Puller():
         if latest_only:
             self.socket.setsockopt(zmq.CONFLATE, 1)
         self.socket.connect(self.address)
+        self.logger = Logger('Puller')
 
     def pull(self) -> str:
         try:
             msg = self.socket.recv_json()
             return msg
         except Exception as e:
-            print(e)
+            self.logger.error(e)
             return None
         
     def request(self, topic, args=None) -> str:
@@ -207,6 +212,7 @@ class Router():
         self.consumer_socket.bind(f"tcp://127.0.0.1:{consumer}")
         self.poller = zmq.Poller()
         self.poller.register(self.producer_socket, zmq.POLLIN)
+        self.logger = Logger('Router')
 
     def route(self, cb=None) -> None:
         last_msg = {}
@@ -217,10 +223,10 @@ class Router():
                     msg = self.producer_socket.recv_json(zmq.DONTWAIT)
                     if msg is not None and msg != last_msg and msg != {}:
                         last_msg = msg
-                # print("last", last_msg)
+                # self.logger.error("last", last_msg)
                 self.consumer_socket.send_json(last_msg)
             except Exception as e:
-                print(e)
+                self.logger.error(e)
                 continue  
     
 class Publisher():
@@ -229,6 +235,7 @@ class Publisher():
         self.socket = self.context.socket(zmq.PUB)
         self.address = f"tcp://127.0.0.1:{channel}"
         self.socket.bind(self.address)
+        self.logger = Logger('Publisher')
 
     def publish(self, topic, message) -> bool:
         try:
@@ -236,7 +243,7 @@ class Publisher():
             self.socket.send(payload)
             return True
         except Exception as e:
-            print(e)
+            self.logger.error(e)
             return None
         
 class Subscriber():
@@ -248,6 +255,7 @@ class Subscriber():
         if latest_only:
             self.socket.setsockopt(zmq.CONFLATE, 1)
         self.socket.connect(self.address)
+        self.logger = Logger('Subscriber')
 
     def subscribe(self, topic) -> bool:
         try:
@@ -256,5 +264,5 @@ class Subscriber():
             msg = raw_msg.split(b"--> ")[1]
             return str(msg, 'utf-8')
         except Exception as e:
-            print(e)
+            self.logger.error(e)
             return None
