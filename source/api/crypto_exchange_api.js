@@ -2,24 +2,51 @@ import express from 'express'
 import Requester from './Requester.js'
 const app = express()
 
+const PORT = 5004
+const URL = 'http://localhost:'+PORT
+
+const endpoints = {
+    sim_time: '/api/v1/sim_time',
+    get_tickers: '/api/v1/get_tickers',
+    get_agents: '/api/v1/get_agents',
+    get_pending_transactions: '/api/v1/get_pending_transactions',
+    get_positions: '/api/v1/get_positions',
+    candles: '/api/v1/candles',
+    get_order_book: '/api/v1/get_order_book',
+    get_latest_trade: '/api/v1/get_latest_trade',
+    get_trades: '/api/v1/get_trades',
+    get_quotes: '/api/v1/get_quotes',
+    get_best_bid: '/api/v1/get_quotes',
+    get_best_ask: '/api/v1/get_best_ask',
+    get_midprice: '/api/v1/get_midprice',
+    limit_buy: '/api/v1/limit_buy',
+    limit_sell: '/api/v1/limit_sell',
+    cancel_order: '/api/v1/cancel_order',
+    cancel_all_orders: '/api/v1/cancel_all_orders',
+    market_buy: '/api/v1/market_buy',
+    market_sell: '/api/v1/market_sell',
+}
+
 app.get('/', (req, res) => {
-    res.send('This is the Crypto exchange api.')
+    const title = '<p>This is the Crypto Exchange API. It is used to get information from the Crypto Exchange.</p>'
+    endpoints_html = `<p>Available endpoints:</p> ${Object.values(endpoints).map(endpoint => `<p><a href="${URL}${endpoint}">${endpoint}</a></p>`).join('')}`
+    res.send(title + endpoints_html)
 })
 
 const sim_time_requests = new Requester('5575')
-app.get('/api/v1/sim_time', async (req, res) => {
+app.get(endpoints.sim_time, async (req, res) => {
     await sim_time_requests.request('sim_time', {})
     res.json(sim_time_requests.latest_result)
 })
 
 const get_tickers_requests = new Requester('5575')
-app.get('/api/v1/get_tickers', async (req, res) => {
+app.get(endpoints.get_tickers, async (req, res) => {
     await get_tickers_requests.request('get_tickers', {})
     res.json(get_tickers_requests.latest_result)
 })
 
 const get_agents_requests = new Requester('5575')
-app.get('/api/v1/get_agents', async (req, res) => {
+app.get(endpoints.get_agents, async (req, res) => {
     await get_agents_requests.request('get_agents_simple', {})
     const agents = get_agents_requests.latest_result
     if (agents === null) {
@@ -30,14 +57,14 @@ app.get('/api/v1/get_agents', async (req, res) => {
 })
 
 const get_pending_transactions_requests = new Requester('5575')
-app.get('/api/v1/get_pending_transactions', async (req, res) => {
+app.get(endpoints.get_pending_transactions, async (req, res) => {
     const limit = parseInt(req.query.limit) || 100
     await get_pending_transactions_requests.request('get_pending_transactions', { limit: limit, })
     res.json(get_pending_transactions_requests.latest_result)
 })
 
 const get_positions_requests = {}
-app.get('/api/v1/get_positions', async (req, res) => {
+app.get(endpoints.get_positions, async (req, res) => {
     const agent = req.query.agent
     const page_size = parseInt(req.query.page_size) || 10
     const page = parseInt(req.query.page) || 1
@@ -54,7 +81,7 @@ app.get('/api/v1/get_positions', async (req, res) => {
 })
 
 const get_candles_requests = {}
-app.get('/api/v1/candles', async (req, res) => {
+app.get(endpoints.candles, async (req, res) => {
     const ticker = req.query.ticker
     const interval = req.query.interval || '15T'
     const limit = parseInt(req.query.limit) || 20
@@ -75,7 +102,7 @@ app.get('/api/v1/candles', async (req, res) => {
 })
 
 const order_book_requesters = {}
-app.get('/api/v1/get_order_book', async (req, res) => {
+app.get(endpoints.get_order_book, async (req, res) => {
     const ticker = req.query.ticker
     const limit = parseInt(req.query.limit) || 20
 
@@ -88,7 +115,7 @@ app.get('/api/v1/get_order_book', async (req, res) => {
 })
 
 const get_latest_trade_requesters = {}
-app.get('/api/v1/get_latest_trade', async (req, res) => {
+app.get(endpoints.get_latest_trade, async (req, res) => {
     const base = req.query.base
     const quote = req.query.quote
     const ticker = base+quote
@@ -99,7 +126,7 @@ app.get('/api/v1/get_latest_trade', async (req, res) => {
 })
 
 const get_trades_requests = {}
-app.get('/api/v1/get_trades', async (req, res) => {
+app.get(endpoints.get_trades, async (req, res) => {
     const base = req.query.base
     const quote = req.query.quote
     const ticker = base+quote
@@ -117,7 +144,7 @@ app.get('/api/v1/get_trades', async (req, res) => {
 })
 
 const get_quotes_requests = {}
-app.get('/api/v1/get_quotes', async (req, res) => {
+app.get(endpoints.get_quotes, async (req, res) => {
     const ticker = req.query.ticker
     if (!ticker) { res.status(400).json({ message: 'Ticker not found.' }); return}
     if (!get_quotes_requests[ticker]) get_quotes_requests[ticker] = new Requester('5575')
@@ -130,7 +157,7 @@ app.get('/api/v1/get_quotes', async (req, res) => {
 })
 
 const get_best_bid_requests = {}
-app.get('/api/v1/get_best_bid', async (req, res) => {
+app.get(endpoints.get_best_bid, async (req, res) => {
     const ticker = req.query.ticker
 
     if (!ticker) {
@@ -148,7 +175,7 @@ app.get('/api/v1/get_best_bid', async (req, res) => {
 })
 
 const get_best_ask_requests = {}
-app.get('/api/v1/get_best_ask', async (req, res) => {
+app.get(endpoints.get_best_ask, async (req, res) => {
     const ticker = req.query.ticker
 
     if (!ticker) {
@@ -166,7 +193,7 @@ app.get('/api/v1/get_best_ask', async (req, res) => {
 })
 
 const get_midprice_requests = {}
-app.get('/api/v1/get_midprice', async (req, res) => {
+app.get(endpoints.get_midprice, async (req, res) => {
     const ticker = req.query.ticker
 
     if (!ticker) {
@@ -184,7 +211,7 @@ app.get('/api/v1/get_midprice', async (req, res) => {
 })
 
 const limit_buy_requests = {}
-app.post('/api/v1/limit_buy', async (req, res) => {
+app.post(endpoints.limit_buy, async (req, res) => {
     const data = req.body
     const base = req.query.base
     const quote = req.query.quote
@@ -206,7 +233,7 @@ app.post('/api/v1/limit_buy', async (req, res) => {
 })
 
 const limit_sell_requests = {}
-app.post('/api/v1/limit_sell', async (req, res) => {
+app.post(endpoints.limit_sell, async (req, res) => {
     const data = req.body
     const base = req.query.base
     const quote = req.query.quote
@@ -228,7 +255,7 @@ app.post('/api/v1/limit_sell', async (req, res) => {
 })
 
 const cancel_order_requests = {}
-app.post('/api/v1/cancel_order', async (req, res) => {
+app.post(endpoints.cancel_order, async (req, res) => {
     const data = req.body
     const base = data.base
     const quote = data.quote
@@ -248,7 +275,7 @@ app.post('/api/v1/cancel_order', async (req, res) => {
 })
 
 const cancel_all_orders_requests = {}
-app.post('/api/v1/cancel_all_orders', async (req, res) => {
+app.post(endpoints.cancel_all_orders, async (req, res) => {
     const data = req.body
     const agent = data.agent
     const base = data.base
@@ -265,7 +292,7 @@ app.post('/api/v1/cancel_all_orders', async (req, res) => {
 })
 
 const market_buy_requests = {}
-app.post('/api/v1/market_buy', async (req, res) => {
+app.post(endpoints.market_buy, async (req, res) => {
     const data = req.body
     const base = data.base
     const quote = data.quote
@@ -292,7 +319,7 @@ app.post('/api/v1/market_buy', async (req, res) => {
 })
 
 const market_sell_requests = {}
-app.post('/api/v1/market_sell', async (req, res) => {
+app.post(endpoints.market_sell, async (req, res) => {
     const data = req.body
     const base = data.base
     const quote = data.quote
@@ -317,6 +344,6 @@ app.post('/api/v1/market_sell', async (req, res) => {
     res.json(market_sell_requests[creator].latest_result)
 })
 
-app.listen(5004, () => {
-    console.log('Crypto Exchange API started on http://localhost:5004')
+app.listen(PORT, () => {
+    console.log('Crypto Exchange API started on http://localhost:'+PORT)
 })
