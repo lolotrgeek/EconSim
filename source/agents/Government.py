@@ -52,6 +52,7 @@ class Government(Agent):
                 continue
             else:
                 self.tax_records.append(tax_record)
+                self.cash += long_term_tax['amount'] + short_term_tax['amount']
         self.logger.info("Successfully Collected Taxes")
             
 
@@ -112,7 +113,9 @@ class Government(Agent):
                 continue
             else:
                 self.tax_records.append(back_tax)
-                self.back_taxes.remove(back_tax)    
+                self.cash += back_tax['long_term'] + back_tax['short_term']   
+                self.back_taxes.remove(back_tax)
+                 
 
     async def next(self) -> None:
         """The government's next action.
