@@ -17,7 +17,7 @@ async def run_government() -> None:
     try:
         channels = Channels()
         pusher = Pusher(channels.government_channel)
-        requester = Requester(channel=channels.exchange_channel)
+        requester = Requester(channel=channels.crypto_exchange_channel)
         time_puller = Subscriber(channels.time_channel)
         await requester.connect()
         government = Government(requester=Requests(requester))
