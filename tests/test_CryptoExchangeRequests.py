@@ -363,7 +363,10 @@ class GetAgentSimpleTest(unittest.IsolatedAsyncioTestCase):
     
     async def test_get_agent_simple(self):
         result = await self.requests.make_request('get_agents_simple', {'name': 'init_seed_BTCUSD'}, self.mock_requester)
-        self.assertCountEqual(result, [{'agent': 'init_seed_BTCUSD', 'assets': {'BTC': '2.000000000', 'USD': '149851.499999999'}}, {'agent': self.mock_requester.responder.agent, 'assets': {'USD': '99848.9999'}}])
+        self.assertCountEqual(result, [
+            {'agent': 'init_seed_BTCUSD', 'assets': {'BTC': '2.000000000', 'USD': '149851.499999999'}, 'frozen_assets': {'BTC': '998.000100000', 'USD': '148.500100001'}}, 
+            {'agent': self.mock_requester.responder.agent, 'assets': {'USD': '99848.9999'}, 'frozen_assets': {'USD': '151.0001'}}
+        ])
 
 class getTaxableEventsTest(unittest.IsolatedAsyncioTestCase):
     async def asyncSetUp(self) -> None:

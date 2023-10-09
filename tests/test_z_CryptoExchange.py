@@ -1272,10 +1272,10 @@ class getAgentsSimpleTest(unittest.IsolatedAsyncioTestCase):
         result = await self.exchange.get_agents_simple()
         print(result)
         self.assertCountEqual(result, [
-            {'agent': 'init_seed_BTCUSD', 'assets': {'BTC': Decimal('2.000000000'), 'USD': Decimal('149851.499999999')}},
-            {'agent': self.agent1, 'assets': {'BTC': Decimal('10000'), 'USD': Decimal('10000.00')}},
-            {'agent': self.agent2, 'assets': {'BTC': Decimal('10000'), 'USD': Decimal('10000.00')}},
-            {'agent': self.agent3, 'assets': {'BTC': Decimal('10000'), 'USD': Decimal('10000.00')}}
+            {'agent': 'init_seed_BTCUSD', 'assets': {'BTC': Decimal('2.000000000'), 'USD': Decimal('149851.499999999')}, 'frozen_assets': {'BTC': Decimal('998.000100000'), 'USD': Decimal('148.500100001')}},
+            {'agent': self.agent1, 'assets': {'BTC': Decimal('10000'), 'USD': Decimal('10000.00')}, 'frozen_assets': {'USD': Decimal('0.00')}},
+            {'agent': self.agent2, 'assets': {'BTC': Decimal('10000'), 'USD': Decimal('10000.00')}, 'frozen_assets': {'USD': Decimal('0.00')}},
+            {'agent': self.agent3, 'assets': {'BTC': Decimal('10000'), 'USD': Decimal('10000.00')}, 'frozen_assets': {'USD': Decimal('0.00')}}
         ])
 
 class GetPriceBarsTestCase(unittest.IsolatedAsyncioTestCase):
