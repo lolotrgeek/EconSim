@@ -3,7 +3,10 @@ from time import sleep
 from signal import SIGTERM
 import sys
 import os
-parent_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+parent_dir = os.path.dirname(os.path.dirname(os.path.abspath(__name__)))
+
+
+
 files = [
     parent_dir+'\\EconSim\\run_crypto_exchange.py',
     parent_dir+'\\EconSim\\run_crypto.py',
@@ -20,6 +23,13 @@ api = [
 
 if __name__ == '__main__':
     try:
+        # Clear log files
+        # logs_dir = parent_dir+'\\EconSim\\logs'
+        # for file in os.listdir(logs_dir):
+        #     if file.endswith(".log"):
+        #         os.remove(os.path.join(logs_dir, file))
+
+        #Start processes
         processes = []
         for file in files:
             process = subprocess.Popen(['python', file])
