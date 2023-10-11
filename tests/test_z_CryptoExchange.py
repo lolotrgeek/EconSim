@@ -243,7 +243,7 @@ class LimitOrderMatchingTestCase(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(new_order.qty, 4)
         self.assertEqual(new_order.creator, self.match_buyer)
         self.assertEqual(agent['assets'], {"BTC": Decimal('10004'), "USD": Decimal('9418.839')})
-        self.assertEqual(agent_seller['assets'], {"BTC": Decimal('9994.122'), "USD": Decimal('10728.5')})
+        self.assertEqual(agent_seller['assets'], {"BTC": Decimal('9994.993'), "USD": Decimal('10728.5')})
         self.assertEqual(agent['frozen_assets'], {'USD': 0})
         self.assertEqual(agent_seller['frozen_assets'], {'BTC': 0,})  
 
@@ -397,7 +397,7 @@ class MarketSellTestCase(unittest.IsolatedAsyncioTestCase):
         ])
         
         self.assertEqual(agent['assets'], {"BTC": Decimal('499996.974'), "USD": Decimal('438.5')})
-        self.assertEqual(buyer_agent['assets'], {"BTC": Decimal('2'), "USD": Decimal('499564.987')})
+        self.assertEqual(buyer_agent['assets'], {"BTC": Decimal('2'), "USD": Decimal('499564.989958620690')})
         self.assertEqual(len(self.exchange.books["BTCUSD"].bids), 1)
         self.assertEqual(self.exchange.books["BTCUSD"].bids[0].qty, 1)
         

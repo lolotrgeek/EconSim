@@ -166,7 +166,7 @@ class LimitSellTest(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(order['qty'], '1')
         self.assertEqual(order['creator'], 'init_seed_BTCUSD')
         self.assertEqual(order['network_fee'], '0.001')
-        self.assertEqual(order['exchange_fee'], '0.1515')
+        self.assertEqual(order['exchange_fee'], '0.001')
         self.assertEqual(order['status'], 'open')
 
 class CancelOrderTest(unittest.IsolatedAsyncioTestCase):
