@@ -739,7 +739,7 @@ class CryptoExchange(Exchange):
                         self.logger.info('full exit', exit_transaction['qty'], position['qty'])
                         position['exits'].append(exit)
                         return {'exit_position': exit}
-                    else:
+                    elif enter['qty'] > 0:
                         # partial exit
                         exit_transaction['qty'] -= Decimal(str(enter['qty']))
                         exit['qty'] = Decimal(str(enter['qty']))
@@ -747,6 +747,7 @@ class CryptoExchange(Exchange):
                         position['qty'] -= Decimal(str(enter['qty']))
                         self.logger.info('partial exit', exit_transaction['qty'], position['qty'])
                         position['exits'].append(exit)
+                    
         return {'exit_position': 'no position to exit'}                            
 
     async def update_assets(self, asset, amount, agent_idx) -> None:
