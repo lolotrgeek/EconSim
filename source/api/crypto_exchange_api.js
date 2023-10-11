@@ -9,6 +9,7 @@ const endpoints = {
     sim_time: '/api/v1/sim_time',
     get_tickers: '/api/v1/get_tickers',
     get_agents: '/api/v1/get_agents',
+    get_agent: '/api/v1/get_agent',
     get_pending_transactions: '/api/v1/get_pending_transactions',
     get_positions: '/api/v1/get_positions',
     candles: '/api/v1/candles',
@@ -56,11 +57,21 @@ app.get(endpoints.get_agents, async (req, res) => {
     }
 })
 
+
 const get_pending_transactions_requests = new Requester('5575')
 app.get(endpoints.get_pending_transactions, async (req, res) => {
     const limit = parseInt(req.query.limit) || 100
     await get_pending_transactions_requests.request('get_pending_transactions', { limit: limit, })
     res.json(get_pending_transactions_requests.latest_result)
+})
+
+const get_agent_requests = {}
+app.get(endpoints.get_agent, async (req, res) => {
+    const agent = req.query.agent
+    if (!agent) { res.status(400).json({ message: 'Agent not found.' }); return }
+    if (!get_agent_requests[agent]) get_agent_requests[agent] = new Requester('5575')
+    await get_agent_requests[agent].request('get_agent', { agent: agent, })
+    res.json(get_agent_requests[agent].latest_result)
 })
 
 const get_positions_requests = {}
