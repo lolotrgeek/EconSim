@@ -310,6 +310,8 @@ class CryptoExchange(Exchange):
         self.logger.info(self.agents[agent_idx]['name'], 'frozen remaining', asset, self.agents[agent_idx]['frozen_assets'][asset])
 
     async def limit_buy(self, base: str, quote:str, price: float, qty: int, creator: str, fee=0.0, tif='GTC', position_id=UUID()) -> CryptoLimitOrder:
+        if(qty <= 0):
+            return CryptoLimitOrder(base+quote, 0, 0, creator, OrderSide.BUY, self.datetime, status='error', accounting='qty_must_be_greater_than_zero')
         if len(self.books[base+quote].bids) >= self.max_bids:
             return CryptoLimitOrder(base+quote, 0, 0, creator, OrderSide.BUY, self.datetime, status='error', accounting='max_bid_depth_reached')
         if len(self.pending_transactions) >= self.max_pending_transactions:
@@ -375,6 +377,8 @@ class CryptoExchange(Exchange):
             return CryptoLimitOrder(ticker, 0, 0, creator, OrderSide.BUY, self.datetime, status='error', accounting='insufficient_funds')
         
     async def limit_sell(self, base: str, quote:str, price: float, qty: int, creator: str, fee=0.0, tif='GTC', accounting='FIFO') -> CryptoLimitOrder:
+        if(qty <= 0):
+            return CryptoLimitOrder(base+quote, 0, 0, creator, OrderSide.SELL, self.datetime, status='error', accounting='qty_must_be_greater_than_zero')
         if len(self.books[base+quote].asks) >= self.max_asks:
             return CryptoLimitOrder(base+quote, 0, 0, creator, OrderSide.SELL, self.datetime, status='error', accounting='max_ask_depth_reached')
         if len(self.pending_transactions) >= self.max_pending_transactions:
@@ -478,6 +482,8 @@ class CryptoExchange(Exchange):
         return {'cancelled_orders': canceled}
 
     async def market_buy(self, base: str, quote:str, qty: int, buyer: str, fee=0.0) -> dict:
+        if qty <= 0:
+            return {"market_buy": "qty_must_be_greater_than_zero", "buyer": buyer}
         if len(self.pending_transactions) >= self.max_pending_transactions:
             return {"market_buy": "max_pending_transactions_reached", "buyer": buyer}
         qty = Decimal(str(qty))
@@ -529,6 +535,8 @@ class CryptoExchange(Exchange):
             return {"market_buy": "insufficient funds", "buyer": buyer}
 
     async def market_sell(self, base: str, quote:str, qty: int, seller: str, fee=0.0, accounting='FIFO') -> dict:
+        if qty <= 0:
+            return {"market_sell": "qty_must_be_greater_than_zero", "seller": seller}
         if len(self.pending_transactions) >= self.max_pending_transactions:
             return {"market_sell": "max_pending_transactions_reached", "seller": seller}
         qty = Decimal(str(qty))
