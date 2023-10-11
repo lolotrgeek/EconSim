@@ -180,6 +180,8 @@ class Exchange():
         
         '''
         trades = self.trade_log
+        if len(trades) == 0:
+            return []
         trades = sorted(trades, key=lambda x: x.dt)
         start_time = trades[0].dt
         end_time = trades[-1].dt
@@ -457,6 +459,7 @@ class Exchange():
         self.datetime = dt
 
     async def get_transactions(self, agent) -> dict:
+        #TODO: paginate this
         return {'transactions':(await self.get_agent(agent))['_transactions']}
 
     async def register_agent(self, name, initial_cash) -> dict:
