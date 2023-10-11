@@ -7,6 +7,7 @@ from source.Instruments.Tax import Tax
 from source.utils._utils import string_to_time
 from source.Archive import Archive
 from source.utils.logger import Logger
+from decimal import Decimal
 
 class Government(Agent):
     def __init__(self, initial_balance=10000000, requester=None):
@@ -34,11 +35,11 @@ class Government(Agent):
             for taxable_event in event['taxable_events']:
                 if string_to_time(taxable_event['exit_date']).year != self.current_date.year:
                     continue
-                if taxable_event['pnl'] > 0:
+                if Decimal(taxable_event['pnl']) > 0:
                     if string_to_time(taxable_event['exit_date']) - string_to_time(taxable_event['enter_date']) >= timedelta(days=365):
-                        long_term_capital_gains += taxable_event['pnl']
+                        long_term_capital_gains += Decimal(taxable_event['pnl'])
                     else:
-                        short_term_capital_gains += taxable_event['pnl']
+                        short_term_capital_gains += Decimal(taxable_event['pnl'])
             short_term_tax = await self.taxes.calculate_tax(short_term_capital_gains, 'ordinary', debug=False)
             long_term_tax = await self.taxes.calculate_tax(long_term_capital_gains, 'long_term', debug=False)
             local_tax = await self.taxes.calculate_tax(long_term_capital_gains + short_term_capital_gains, 'state', debug=False)
@@ -106,6 +107,9 @@ class Government(Agent):
 
 
     async def collect_back_taxes(self):
+        if len(self.back_taxes) == 0:
+            return
+        self.logger.info(f"Collecting back taxes on {self.current_date}")
         for back_tax in self.back_taxes:
             remove = await self.requests.remove_cash(back_tax['agent'], back_tax['long_term'] + back_tax['short_term'], 'taxes')
             if 'error' in remove:
@@ -125,7 +129,6 @@ class Government(Agent):
         """
         # attempt to collect back taxes once per month
         if self.current_date.month != self.taxes_last_collected['date'].month and self.current_date.day == 1 and self.current_date.hour == 12 and self.current_date.minute == 0 and self.current_date.second == 0:
-            self.logger.info(f"Collecting back taxes on {self.current_date}")
             await self.collect_back_taxes()
 
         
