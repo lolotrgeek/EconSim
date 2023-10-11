@@ -1,4 +1,5 @@
 import logging 
+from rich import print
 
 class Logger():
     def __init__(self, name, level=logging.INFO):
@@ -33,3 +34,19 @@ class Logger():
         if args:
             message += ' ' + ' '.join(str(arg) for arg in args)
         return message
+    
+class Null_Logger():
+    def __init__(self, debug_print=False):
+        self.print = debug_print
+
+    def info(self, message, *args):
+        if self.print: print(message, *args)
+        else: pass
+
+    def debug(self, message, *args):
+        if self.print: print(message, *args)
+        else: pass
+
+    def error(self, message, *args):
+        if self.print: print(message, *args)
+        else: pass
