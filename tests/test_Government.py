@@ -9,6 +9,7 @@ from source.agents.Government import Government
 from source.exchange.ExchangeRequests import ExchangeRequests
 from source.company.PublicCompanyRequests import PublicCompanyRequests
 from .MockRequester import MockRequester
+from decimal import Decimal
 
 class AsyncMock(MagicMock):
     async def __call__(self, *args, **kwargs):
@@ -22,10 +23,10 @@ class TestCollectTaxes(unittest.IsolatedAsyncioTestCase):
         self.govnerment.current_date = self.mock_requester.responder.time
         await self.mock_requester.responder.init()
         self.mock_requester.responder.exchange.agents[1]['taxable_events'] = [
-            {'exit_date': '2023-01-01 00:00:00', 'enter_date': '2023-01-01 00:00:00', 'pnl': 500},  # Short-term gain
-            {'exit_date': '2023-01-01 00:00:00', 'enter_date': '2021-01-01 00:00:00', 'pnl': 85000},  # Long-term gain
-            {'exit_date': '2023-01-01 00:00:00', 'enter_date': '2023-01-01 00:00:00', 'pnl': -200},   # Loss (ignored)
-            {'exit_date': '2022-01-01 00:00:00', 'enter_date': '2022-01-01 00:00:00', 'pnl': 300} #  wrong year (ignored)
+            {'exit_date': '2023-01-01 00:00:00', 'enter_date': '2023-01-01 00:00:00', 'pnl': Decimal('500')},  # Short-term gain
+            {'exit_date': '2023-01-01 00:00:00', 'enter_date': '2021-01-01 00:00:00', 'pnl': Decimal('85000')},  # Long-term gain
+            {'exit_date': '2023-01-01 00:00:00', 'enter_date': '2023-01-01 00:00:00', 'pnl': Decimal('-200')},   # Loss (ignored)
+            {'exit_date': '2022-01-01 00:00:00', 'enter_date': '2022-01-01 00:00:00', 'pnl': Decimal('300')} #  wrong year (ignored)
         ] 
 
     async def test_collect_taxes(self):
@@ -33,10 +34,10 @@ class TestCollectTaxes(unittest.IsolatedAsyncioTestCase):
         await self.govnerment.collect_taxes()
         print(self.govnerment.tax_records[0])
 
-        self.assertEqual(self.govnerment.tax_records[0]['long_term'], 247.5)
+        self.assertEqual(self.govnerment.tax_records[0]['long_term'], Decimal('247.5'))
         self.assertEqual(self.govnerment.tax_records[0]['short_term'], 50)
-        self.assertEqual(self.govnerment.tax_records[0]['local'], 4346.155)        
-        self.assertEqual(self.govnerment.taxes_last_collected['amount'], 4643.655)
+        self.assertEqual(self.govnerment.tax_records[0]['local'], Decimal('4346.155'))        
+        self.assertEqual(self.govnerment.taxes_last_collected['amount'], Decimal('4643.655'))
 
     async def test_archive_tax_records(self):
         pre_archive_records = self.govnerment.tax_records

@@ -40,6 +40,7 @@ class Government(Agent):
                         long_term_capital_gains += Decimal(taxable_event['pnl'])
                     else:
                         short_term_capital_gains += Decimal(taxable_event['pnl'])
+            print(long_term_capital_gains, short_term_capital_gains)
             short_term_tax = await self.taxes.calculate_tax(short_term_capital_gains, 'ordinary', debug=False)
             long_term_tax = await self.taxes.calculate_tax(long_term_capital_gains, 'long_term', debug=False)
             local_tax = await self.taxes.calculate_tax(long_term_capital_gains + short_term_capital_gains, 'state', debug=False)
