@@ -5,7 +5,7 @@ import sys
 import os
 parent_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 sys.path.append(parent_dir)
-from source.utils.logger import Logger
+from source.utils.logger import Logger, Null_Logger
 
 
 class Trader(Agent):
@@ -15,7 +15,7 @@ class Trader(Agent):
         self.assets = {}
         self.tickers = []
         self.aum = aum
-        self.logger = None #NOTE: this gets added when the agent is registered
+        self.logger = Null_Logger() #NOTE: updates to Logger if added during registration
 
     def __repr__(self):
         return f'<Trader: {self.name}>'
@@ -23,11 +23,11 @@ class Trader(Agent):
     def __str__(self):
         return f'<Trader: {self.name}>'
 
-    async def get_tickers(self) -> dict:
+    async def get_tickers(self) -> list:
         """returns a list of all tickers in the market
 
         returns:
-            dict: a list of all tickers in the market
+            list: a list of all tickers in the market
         """
         return await self.exchange_requests.get_tickers()
 
