@@ -35,7 +35,7 @@ class CryptoExchange(Exchange):
         self.pending_transactions = []
         self.max_pending_transactions = 1_000_000
         self.max_pairs = 10000
-        self.logger = Logger('CryptoExchange', level=0) 
+        self.logger = Logger('CryptoExchange') 
         
     async def next(self):
         for transaction in self.pending_transactions: 
@@ -903,11 +903,12 @@ class CryptoExchange(Exchange):
         else:
             agent_idx = await self.get_agent_index(agent)
         if agent_idx is not None:
-            side = {'id': str(UUID()), 'agent':agent,'quote_flow':0, 'price': 0, 'base':asset, 'quote':self.default_quote_currency['symbol'], 'qty': -amount, 'fee':0, 'dt': self.datetime, 'type': 'sell'}
-            exit = await self.exit_position(side, asset, -amount, agent_idx)
+            qty = Decimal(amount)
+            side = {'id': str(UUID()), 'agent':agent,'quote_flow':0, 'price': 0, 'base':asset, 'quote':self.default_quote_currency['symbol'], 'qty': -qty, 'fee':0, 'dt': self.datetime, 'type': 'sell'}
+            exit = await self.exit_position(side, asset, -qty, agent_idx)
             if 'error' in exit:
                 return exit
-            await self.update_assets(asset, -amount, agent_idx)
+            await self.update_assets(asset, -qty, agent_idx)
             return {asset: self.agents[agent_idx]['assets'][asset]}
         else:
             return {'error': 'agent not found'}
