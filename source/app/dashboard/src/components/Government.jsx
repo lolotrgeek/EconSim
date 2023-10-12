@@ -1,36 +1,72 @@
 import React, { useState, useEffect } from 'react'
+import { parse } from '../utils'
 
 const Government = () => {
   const [taxData, setTaxData] = useState([])
   const [cashData, setCashData] = useState([])
+  const [backTaxes, setBackTaxes] = useState([])
 
   useEffect(() => {
-    // Fetch tax data
-    fetch('http://localhost:5001/api/v1/get_last_collected_taxes')
-      .then(response => response.json())
-      .then(data => setTaxData(data))
-      .catch(error => console.error('Error fetching tax data:', error))
+    const fetchData = async () => {
+      try {
+        const taxResponse = await fetch('http://localhost:5001/api/v1/get_taxes_collected')
+        const taxDataJson = await taxResponse.json()
+        const parsedTaxData = parse(taxDataJson)
+        // reduce the parsed data to accumulate the total of short-term and long-term taxes collected
+        const reducedTaxData = parsedTaxData.reduce((acc, cur) => {
+          acc.long_term += cur.long_term
+          acc.short_term += cur.short_term
+          return acc
+        }, { long_term: 0, short_term: 0 })
+        reducedTaxData.year = parsedTaxData[0].tax_year
+        setTaxData(reducedTaxData)
 
-    // Fetch cash data
-    fetch('http://localhost:5001/api/v1/get_cash')
-      .then(response => response.json())
-      .then(data => setCashData(data))
-      .catch(error => console.error('Error fetching cash data:', error))
+        const cashResponse = await fetch('http://localhost:5001/api/v1/get_cash')
+        const cashData = await cashResponse.json()
+        setCashData(cashData)
+
+        const backTaxesResponse = await fetch('http://localhost:5001/api/v1/get_back_taxes')
+        const backTaxesData = await backTaxesResponse.json()
+        setBackTaxes(backTaxesData)
+      } catch (error) {
+        console.error('Error fetching data:', error)
+      }
+    }
+
+    const interval = setInterval(() => {
+      fetchData()
+    }, 1000)
+
+    return () => clearInterval(interval)
   }, [])
 
   return (
     <div style={{ display: 'flex' }}>
       <div style={{ flex: 1, marginRight: '20px' }}>
-        <h2>Last Collected Taxes</h2>
-        <ul>
-          {taxData}
-        </ul>
-      </div>
-      <div style={{ flex: 1 }}>
-        <h2>Cash Data</h2>
-        <ul>
-          {cashData}
-        </ul>
+        <div style={{ flex: 1 }}>
+          <h2>Cash Data</h2>
+          <ul>
+            {cashData}
+          </ul>
+        </div>
+        <div style={{ flex: 1, display: 'flex', flexDirection: 'column' }}>
+          <div style={{ flex: 1, display: 'flex', flexDirection: 'column' }}>
+            <h2>Tax Records</h2>
+            {taxData?
+              <div>
+                <div>Year: {taxData.year}</div>
+                <div>Long-term: {taxData.long_term}</div>
+                <div>Short-term: {taxData.short_term}</div>
+              </div>
+              : <div>No tax records</div>}
+          </div>
+          <div style={{ display: 'flex' }}>
+            <h2>Back Taxes</h2>
+            <ul>
+              {backTaxes}
+            </ul>
+          </div>
+        </div>
       </div>
     </div>
   )
