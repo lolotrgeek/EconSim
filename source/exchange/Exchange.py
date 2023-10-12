@@ -33,7 +33,7 @@ class Exchange():
         self.trade_log_limit = 100000
         self.max_asks = 100000
         self.max_bids = 100000
-        self.logger = Logger('Exchange', 0)
+        self.logger = Logger('Exchange')
 
     async def __str__(self):
         return ', '.join(ob for ob in self.books)

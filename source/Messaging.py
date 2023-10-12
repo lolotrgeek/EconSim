@@ -7,8 +7,6 @@ from .utils.logger import Logger
 from decimal import Decimal
 asyncio.set_event_loop_policy(asyncio.WindowsSelectorEventLoopPolicy())
 
-# logging.basicConfig(format="%(levelname)s: %(message)s", level=logging.WARN)
-
 class DecimalEncoder(json.JSONEncoder):
     def default(self, o):
         if isinstance(o, Decimal):

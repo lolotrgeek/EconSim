@@ -16,7 +16,6 @@ class CryptoTrader(Trader):
         self.assets = {}
         self.tickers = []
         self.aum = aum
-        self.logger = None #NOTE: this gets added when the agent is registered
 
     def __repr__(self):
         return f'<CryptoTrader: {self.name}>'
@@ -133,7 +132,8 @@ class CryptoTrader(Trader):
     
     async def get_assets(self) -> dict:
         """
-        returns: {assets: {ticker, amount}}"""
+        returns: `{assets: {symbol: amount, ...}, frozen_assets: {symbol: amount, ...}}`
+        """
         return await self.exchange_requests.get_assets(self.name)
     
     async def register(self, logger=False) -> dict:

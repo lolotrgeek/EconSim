@@ -18,9 +18,7 @@ const AgentPositions = () => {
         const fetchAgentPositions = async () => {
             try {
                 const response = await fetch('http://127.0.0.1:5004/api/v1/get_positions?agent=' + agent)
-                if (!response.ok) {
-                    throw new Error('Failed to fetch agent positions')
-                }
+                if (!response.ok) throw new Error('Failed to fetch agent positions')
                 const data = await response.json()
                 const parsed_positions = parse(data)
                 if (typeof parsed_positions == 'object' && Array.isArray(parsed_positions.positions)) setAgentPositions(parsed_positions.positions)
@@ -62,7 +60,6 @@ const AgentPositions = () => {
                                 {position.enters.map((enter, index) => (
                                     <div key={index} className="enter-exit-value"> 
                                         <div>{enter.dt}</div>
-                                        <div>enter/remaining</div>
                                         <div>{enter.qty}/{enter.initial_qty} </div>
                                         
                                     </div>
