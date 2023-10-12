@@ -5,6 +5,7 @@ import os
 parent_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 sys.path.append(parent_dir)
 from source.Instruments.Tax import Tax 
+from decimal import Decimal
 
 class TestTax(unittest.IsolatedAsyncioTestCase):
     def setUp(self):
@@ -13,17 +14,17 @@ class TestTax(unittest.IsolatedAsyncioTestCase):
     def test_calculate_tax_ordinary(self):
         income = 40000
         result = asyncio.run(self.tax_calculator.calculate_tax(income, 'ordinary', debug=False))
-        self.assertEqual(result['amount'], 4360.0)  # Expected tax amount
+        self.assertEqual(result['amount'], Decimal('4360.0'))  # Expected tax amount
 
     def test_calculate_tax_long_term(self):
         income = 1000000
         result = asyncio.run(self.tax_calculator.calculate_tax(income, 'long_term', debug=False))
-        self.assertEqual(result['amount'], 161637.55000000002)  # Expected tax amount
+        self.assertEqual(result['amount'], Decimal('161637.55'))  # Expected tax amount
 
     def test_calculate_tax_state(self):
         income = 5000
         result = asyncio.run(self.tax_calculator.calculate_tax(income, 'state', debug=False))
-        self.assertEqual(result['amount'], 117.335)  # Expected tax amount
+        self.assertEqual(result['amount'], Decimal('117.335'))  # Expected tax amount
 
     def test_calculate_tax_zero_income(self):
         income = 0
