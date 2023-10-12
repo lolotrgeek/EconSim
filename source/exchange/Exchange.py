@@ -22,7 +22,7 @@ class Exchange():
         self.books = {}
         self.trade_log: List[Trade] = [] #TODO: this is going to get to big to hold in memory, need a DB
         self.datetime = datetime
-        self.default_quote_currency = {'name': 'US Dollar', 'symbol': 'USD', 'id': str(UUID())}
+        self.default_currency = {'name': 'US Dollar', 'symbol': 'USD', 'id': str(UUID())}
         self.fees = Fees()
         self.agents_archive = Archive('agents')
         self.assets_archive = Archive('assets')
@@ -73,7 +73,7 @@ class Exchange():
             return {"error" :f'asset {ticker} already exists'}
         self.assets[ticker] = {'type':asset_type}
         self.books[ticker] = OrderBook(ticker)
-        cash_position =  {"id":self.default_quote_currency['id'],"ticker": "CASH", "price": 1,"qty": market_qty * seed_price, "dt": self.datetime, "enters":[], "exits": [], }
+        cash_position =  {"id":self.default_currency['id'],"ticker": "CASH", "price": 1,"qty": market_qty * seed_price, "dt": self.datetime, "enters":[], "exits": [], }
         self.agents.append({'name':'init_seed_'+ticker,'cash':market_qty * seed_price,'_transactions':[], "taxable_events": [], 'positions': [cash_position],  'assets': {ticker: market_qty}})
         await self._process_trade(ticker, market_qty, seed_price, 'init_seed_'+ticker, 'init_seed_'+ticker, position_id='init_seed_'+ticker)
         await self.limit_buy(ticker, seed_price * seed_bid, 1, 'init_seed_'+ticker)
@@ -471,7 +471,7 @@ class Exchange():
             'name':registered_name,
             'cash':initial_cash,
             '_transactions':[], 
-            'positions': [ {"id":self.default_quote_currency['id'],"ticker": "CASH", "price": 1,"qty": initial_cash, "dt": self.datetime, "enters":[], "exits": []}], 
+            'positions': [ {"id":self.default_currency['id'],"ticker": "CASH", "price": 1,"qty": initial_cash, "dt": self.datetime, "enters":[], "exits": []}], 
             'assets': {},
             "taxable_events": []
         })
@@ -629,7 +629,7 @@ class Exchange():
             agent_idx = await self.get_agent_index(agent)
         if agent_idx is not None:
             side = {'id': str(UUID()), 'agent':agent,'cash_flow':amount, 'price': 1, 'ticker':'CASH', 'qty': amount, 'fee':0, 'dt': self.datetime, 'type': note}
-            await self.enter_position(side, agent_idx, self.default_quote_currency['id'])
+            await self.enter_position(side, agent_idx, self.default_currency['id'])
             self.agents[agent_idx]['cash'] += amount
             if taxable == True:
                 taxable_event = {"type": note, 'exit_id': side['id'], 'enter_id':side['id'], 'enter_date': self.datetime, 'exit_date': self.datetime, 'pnl': amount}

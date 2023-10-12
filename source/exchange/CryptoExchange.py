@@ -97,7 +97,7 @@ class CryptoExchange(Exchange):
 
             `seed_ask` (float, optional): Limit price of an initial sell order, expressed as percentage of the seed_price. async defaults to 1.01.
         """
-        if symbol == self.default_quote_currency['symbol']:
+        if symbol == self.default_currency['symbol']:
             return {'error': 'cannot create default_quote_currency'}
         if len(self.assets) >= self.max_assets:
             return {'error': 'cannot create, max_assets_reached'}        
@@ -106,7 +106,7 @@ class CryptoExchange(Exchange):
         if symbol in self.assets:
             return {"error" :f'asset {symbol} already exists'}
         if len(pairs) == 0:
-            default_quote = {'asset': self.default_quote_currency['symbol'],'market_qty':1000 ,'seed_price':100 ,'seed_bid':.99, 'seed_ask':1.01}
+            default_quote = {'asset': self.default_currency['symbol'],'market_qty':1000 ,'seed_price':100 ,'seed_bid':.99, 'seed_ask':1.01}
             pairs.append(default_quote)
 
         for pair in pairs:
@@ -352,7 +352,8 @@ class CryptoExchange(Exchange):
                     self.books[ticker].asks[0].qty -= Decimal(str(trade_qty))
                     self.books[ticker].asks = [ask for ask in self.books[ticker].asks if ask.qty > 0]
                     deductions = (trade_qty*price) - (trade_qty*best_ask.price)
-                    await self.unfreeze_assets(creator, quote, deductions)
+                    if deductions > 0:
+                        await self.unfreeze_assets(creator, quote, deductions)
                 else:
                     break
             queue = len(self.books[ticker].bids)
@@ -361,7 +362,7 @@ class CryptoExchange(Exchange):
                     queue = idx
                     break
             if unfilled_qty > 0:
-                maker_fee = self.fees.maker_fee(unfilled_qty)
+                maker_fee = self.fees.maker_fee(unfilled_qty*price)
                 self.logger.info('adjusted maker fee:', maker_fee, 'potential fees:', potential_fees)
                 # if maker_fee < potential_fees:
                 #     await self.unfreeze_assets(creator, quote, potential_fees - maker_fee)
@@ -607,7 +608,7 @@ class CryptoExchange(Exchange):
         registered_name = name + str(UUID())[0:8]
         positions = []
         wallets = {
-            self.default_quote_currency['symbol']: (await self.generate_address())
+            self.default_currency['symbol']: (await self.generate_address())
         }
         for asset in initial_assets:
             side = {
@@ -615,14 +616,14 @@ class CryptoExchange(Exchange):
                 'quote_flow': 0, 
                 'price': 0, 
                 'base': asset, 
-                'quote': self.default_quote_currency['symbol'],
+                'quote': self.default_currency['symbol'],
                 'initial_qty': 0, 
                 'qty': Decimal(str(initial_assets[asset])), 
                 'dt': self.datetime, 
                 'type': 'buy'
             }
             basis ={
-                'basis_initial_unit': self.default_quote_currency['symbol'],
+                'basis_initial_unit': self.default_currency['symbol'],
                 'basis_per_unit': 0,
                 'basis_txn_id': 'seed',
                 'basis_date': self.datetime
@@ -713,7 +714,7 @@ class CryptoExchange(Exchange):
                         'dt': exit_transaction['dt'],
                         'enter_id': enter['id'],
                     }
-                    if asset == self.default_quote_currency['symbol']:
+                    if asset == self.default_currency['symbol']:
                         # if this is exiting a quote currency, we calculate it's basis...
                         exit['basis'] = {
                             'basis_initial_unit': side['quote'],
@@ -802,7 +803,7 @@ class CryptoExchange(Exchange):
                 enter = await self.enter_position(side, side['quote'], side['quote_flow'], agent_idx, None, basis=exit['exit_position']['basis'])
                 self.logger.info(f" enter basis: {enter['enter_position']['basis']}, asset {enter['enter_position']['asset']} qty {enter['enter_position']['qty']} ")
 
-                if side['quote'] == self.default_quote_currency['symbol']:
+                if side['quote'] == self.default_currency['symbol']:
                     #NOTE: basis represents the initial default quote currency amount (quote_flow) traded for the first enter in the chain
                     # consider the following trade chain:
                     # USD (exit, basis) -> BTC (enter, consume basis) -> BTC (exit, retain basis) -> ETH (enter, passed basis)
@@ -827,7 +828,7 @@ class CryptoExchange(Exchange):
         total = 0
         for agent in self.agents:
             if 'init_seed' not in agent['name']:
-                total += agent['assets'][self.default_quote_currency['symbol']]
+                total += agent['assets'][self.default_currency['symbol']]
         return total
 
     async def agents_assets(self) -> list:
@@ -858,7 +859,7 @@ class CryptoExchange(Exchange):
             return False
 
     async def agent_has_cash(self, agent, amount, qty) -> bool:
-        return await self.agent_has_assets(agent, self.default_quote_currency['symbol'], amount * qty)
+        return await self.agent_has_assets(agent, self.default_currency['symbol'], amount * qty)
 
     async def agents_cash(self) -> list:
         """
@@ -867,12 +868,12 @@ class CryptoExchange(Exchange):
         info = []
         for agent in self.agents:
             if agent['name'] != 'init_seed':
-                info.append({agent['name']: {'cash':agent['assets'][self.default_quote_currency['symbol']]}})
+                info.append({agent['name']: {'cash':agent['assets'][self.default_currency['symbol']]}})
         return info
 
     async def get_cash(self, agent_name) -> dict:
         agent_info = await self.get_agent(agent_name)
-        return {'cash':agent_info['assets'][self.default_quote_currency['symbol']]}
+        return {'cash':agent_info['assets'][self.default_currency['symbol']]}
 
     async def get_assets(self, agent) -> dict:
         agent_info = await self.get_agent(agent)
@@ -884,9 +885,9 @@ class CryptoExchange(Exchange):
         else:
             agent_idx = await self.get_agent_index(agent)
         if agent_idx is not None:
-            side = {'id': str(UUID()), 'agent':agent, 'quote_flow':0, 'price': 0, 'base': asset, 'quote': self.default_quote_currency['symbol'], 'qty': amount, 'fee':0, 'dt': self.datetime, 'type': note}
+            side = {'id': str(UUID()), 'agent':agent, 'quote_flow':0, 'price': 0, 'base': asset, 'quote': self.default_currency['symbol'], 'qty': amount, 'fee':0, 'dt': self.datetime, 'type': note}
             basis ={
-                'basis_initial_unit': self.default_quote_currency['symbol'],
+                'basis_initial_unit': self.default_currency['symbol'],
                 'basis_per_unit': 0,
                 'basis_txn_id': 'seed',
                 'basis_date': self.datetime
@@ -904,7 +905,7 @@ class CryptoExchange(Exchange):
             agent_idx = await self.get_agent_index(agent)
         if agent_idx is not None:
             qty = Decimal(amount)
-            side = {'id': str(UUID()), 'agent':agent,'quote_flow':0, 'price': 0, 'base':asset, 'quote':self.default_quote_currency['symbol'], 'qty': -qty, 'fee':0, 'dt': self.datetime, 'type': 'sell'}
+            side = {'id': str(UUID()), 'agent':agent,'quote_flow':0, 'price': 0, 'base':asset, 'quote':self.default_currency['symbol'], 'qty': -qty, 'fee':0, 'dt': self.datetime, 'type': 'sell'}
             exit = await self.exit_position(side, asset, -qty, agent_idx)
             if 'error' in exit:
                 return exit
@@ -914,10 +915,10 @@ class CryptoExchange(Exchange):
             return {'error': 'agent not found'}
 
     async def add_cash(self, agent, amount, note='', taxable=False) -> dict:
-        return await self.add_asset(agent, self.default_quote_currency['symbol'], amount, note)          
+        return await self.add_asset(agent, self.default_currency['symbol'], amount, note)          
     
     async def remove_cash(self, agent, amount, note='') -> dict:
-        return await self.remove_asset(agent, self.default_quote_currency['symbol'], amount, note)
+        return await self.remove_asset(agent, self.default_currency['symbol'], amount, note)
 
     async def calculate_market_cap(self,base,quote) -> float:
         """
