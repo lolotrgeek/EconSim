@@ -1,7 +1,7 @@
 from random import randint
 import traceback
 from source.Messaging import Requester
-from source.agents.TradersCrypto import NaiveMarketMaker, RandomMarketTaker, LowBidder
+from source.agents.TradersCrypto import NaiveMarketMaker, SimpleMarketTaker, LowBidder
 from rich import print
 import asyncio
 from source.exchange.CryptoExchangeRequests import CryptoExchangeRequests
@@ -21,11 +21,11 @@ async def run_trader() -> None:
         exchange_requests = CryptoExchangeRequests(requester=exchange_requester)
         crypto_requests = CryptoCurrencyRequests(requester=crypto_requester)
         if picker == 0:
-            trader =  NaiveMarketMaker(name='market_maker', aum=1_000, spread_pct=0.005, qty_per_order=4, requests=(exchange_requests, crypto_requests))
+            trader =  NaiveMarketMaker(name='market_maker', aum=1_000_000, spread_pct=0.005, qty_per_order=100, requests=(exchange_requests, crypto_requests))
         elif picker == 1:
-            trader = RandomMarketTaker(name='market_taker', aum=1_000, prob_buy=.2, prob_sell=.2, qty_per_order=1 , requests=(exchange_requests, crypto_requests))
+            trader = SimpleMarketTaker(name='market_taker', aum=1_000, requests=(exchange_requests, crypto_requests))
         elif picker == 2:
-            trader = LowBidder(name='low_bidder', aum=1_000, qty_per_order=1, requests=(exchange_requests, crypto_requests)) 
+            trader = SimpleMarketTaker(name='market_taker', aum=10_000, requests=(exchange_requests, crypto_requests))
 
         registered = await trader.register()
         if registered is None:
