@@ -67,11 +67,11 @@ app.get(endpoints.get_pending_transactions, async (req, res) => {
 
 const get_agent_requests = {}
 app.get(endpoints.get_agent, async (req, res) => {
-    const agent = req.query.agent
-    if (!agent) { res.status(400).json({ message: 'Agent not found.' }); return }
-    if (!get_agent_requests[agent]) get_agent_requests[agent] = new Requester('5575')
-    await get_agent_requests[agent].request('get_agent', { agent: agent, })
-    res.json(get_agent_requests[agent].latest_result)
+    const name = req.query.name
+    if (!name) { res.status(400).json({ message: 'Agent not found.' }); return }
+    if (!get_agent_requests[name]) get_agent_requests[name] = new Requester('5575')
+    await get_agent_requests[name].request('get_agent', { name})
+    res.json(get_agent_requests[name].latest_result)
 })
 
 const get_positions_requests = {}
