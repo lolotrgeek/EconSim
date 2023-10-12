@@ -10,6 +10,7 @@ from source.exchange.ExchangeRequests import ExchangeRequests
 from source.company.PublicCompanyRequests import PublicCompanyRequests
 from .MockRequester import MockRequester
 from decimal import Decimal
+from .MockTaxes import mock_taxes
 
 class AsyncMock(MagicMock):
     async def __call__(self, *args, **kwargs):
@@ -38,6 +39,13 @@ class TestCollectTaxes(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(self.govnerment.tax_records[0]['short_term'], 50)
         self.assertEqual(self.govnerment.tax_records[0]['local'], Decimal('4346.155'))        
         self.assertEqual(self.govnerment.taxes_last_collected['amount'], Decimal('4643.655'))
+
+    async def test_collect_many_tax_events(self):
+        self.mock_requester.responder.exchange.agents[1]['taxable_events'] = mock_taxes        
+        await self.govnerment.collect_taxes()
+        self.assertEqual(self.govnerment.tax_records[0]['long_term'], 0)
+        self.assertEqual(self.govnerment.tax_records[0]['short_term'], Decimal('227.156206356947892'))
+        self.assertEqual(self.govnerment.tax_records[0]['local'], Decimal('38.3240515892369730'))
 
     async def test_archive_tax_records(self):
         pre_archive_records = self.govnerment.tax_records

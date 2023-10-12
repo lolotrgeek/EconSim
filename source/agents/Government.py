@@ -40,14 +40,13 @@ class Government(Agent):
                         long_term_capital_gains += Decimal(taxable_event['pnl'])
                     else:
                         short_term_capital_gains += Decimal(taxable_event['pnl'])
-            print(long_term_capital_gains, short_term_capital_gains)
             short_term_tax = await self.taxes.calculate_tax(short_term_capital_gains, 'ordinary', debug=False)
             long_term_tax = await self.taxes.calculate_tax(long_term_capital_gains, 'long_term', debug=False)
             local_tax = await self.taxes.calculate_tax(long_term_capital_gains + short_term_capital_gains, 'state', debug=False)
             self.taxes_last_collected['amount'] += long_term_tax['amount'] + short_term_tax['amount'] + local_tax['amount']
-            self.logger.info(f"Collecting Taxes from {event['agent']} for {long_term_tax['amount'] + short_term_tax['amount']}")
-            tax_record = {"date": self.current_date, "agent": event['agent'], "long_term": long_term_tax['amount'], "short_term": short_term_tax['amount'], "local": local_tax['amount']}
-            remove = await self.requests.remove_cash(event['agent'], long_term_tax['amount'] + short_term_tax['amount'], 'taxes')
+            self.logger.info(f"Collecting Taxes from {event['agent']} for {long_term_tax['amount'] + short_term_tax['amount'] + local_tax['amount']}")
+            tax_record = {"date": self.current_date, "agent": event['agent'], "long_term": long_term_tax['amount'], "short_term": short_term_tax['amount']}
+            remove = await self.requests.remove_cash(event['agent'], str(long_term_tax['amount'] + short_term_tax['amount']), 'taxes')
             if 'error' in remove:
                 self.back_taxes.append(tax_record)
                 self.logger.error(remove['error'], event['agent'])
