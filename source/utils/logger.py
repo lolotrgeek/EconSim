@@ -2,7 +2,7 @@ import logging
 from rich import print
 
 class Logger():
-    def __init__(self, name, level=logging.INFO):
+    def __init__(self, name, level=logging.INFO, debug_print=False):
         """
         Create a logger object with a name and a level
         args:
@@ -12,10 +12,11 @@ class Logger():
         self.logger = logging.getLogger(name)
         self.logger.setLevel(level)
         self.formatter = logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s')
-        self.ch = logging.StreamHandler()
-        self.ch.setLevel(level)
-        self.ch.setFormatter(self.formatter)
-        self.logger.addHandler(self.ch)
+        if debug_print:
+            self.ch = logging.StreamHandler()
+            self.ch.setLevel(level)
+            self.ch.setFormatter(self.formatter)
+            self.logger.addHandler(self.ch)
         self.fh = logging.FileHandler('logs/' + name + '.log')
         self.fh.setLevel(level)
         self.fh.setFormatter(self.formatter)
