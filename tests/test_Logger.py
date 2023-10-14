@@ -8,7 +8,7 @@ from source.utils.logger import Logger
 
 class LoggerTest(unittest.TestCase):
     def test_logger(self):
-        logger = Logger('test_logger', level=3)
+        logger = Logger('test_logger', level=3, debug_print=True)
         logger.info('info')
         logger.debug('debug')
         logger.error('error')
