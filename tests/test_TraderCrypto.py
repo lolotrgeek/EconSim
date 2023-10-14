@@ -122,7 +122,7 @@ class LimitBuyTest(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(order['ticker'], "BTCUSD")
         self.assertEqual(order['price'], '100')
         self.assertEqual(order['qty'], '1')
-        self.assertEqual(order['exchange_fee'], '0.001')
+        self.assertEqual(order['exchange_fee'], '0.100')
         self.assertEqual(order['type'], 'limit_buy')
         self.assertEqual(order['dt'], '2023-01-01 00:00:00')
 
