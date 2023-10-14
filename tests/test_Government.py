@@ -4,6 +4,7 @@ import sys
 import os
 parent_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 sys.path.append(parent_dir)
+from datetime import datetime
 from unittest.mock import MagicMock
 from source.agents.Government import Government
 from source.exchange.ExchangeRequests import ExchangeRequests
@@ -50,6 +51,7 @@ class TestCollectTaxes(unittest.IsolatedAsyncioTestCase):
     async def test_archive_tax_records(self):
         pre_archive_records = self.govnerment.tax_records
         await self.govnerment.collect_taxes()
+        self.govnerment.current_date = datetime(2024, 1, 1)
         await self.govnerment.archive_tax_records()
         self.assertEqual(self.govnerment.tax_records_archive.get('2023'), pre_archive_records)
         os.remove('archive/tax_records.bak')
