@@ -61,7 +61,7 @@ class Exchange():
 
         Args:
             ticker (str): the ticker of the new asset
-            asset_type (str, optional): the type of asset, default: 'stock', 'crypto', 'currency', 'bond', 'cash'
+            asset_type (str, optional): the type of asset, default: 'stock', 'cash', 'fund' 
             marekt_qty (int, optional): the total amount of the asset in circulation. async defaults to 1000.
             seed_price (int, optional): Price of an initial trade that is created for ease of use. async defaults to 100.
             seed_bid (float, optional): Limit price of an initial buy order, expressed as percentage of the seed_price. async defaults to .99.
