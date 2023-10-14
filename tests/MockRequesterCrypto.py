@@ -6,7 +6,7 @@ from source.crypto.CryptoCurrencyRequests import CryptoCurrencyRequests as Reque
 from source.crypto.CryptoCurrency import CryptoCurrency
 from source.utils._utils import dumps
 from datetime import datetime, timedelta
-
+from source.utils.logger import Null_Logger
 
 class MockRequesterCrypto():
     """
@@ -69,6 +69,7 @@ class MockResponderCryptoExchange():
         self.mock_requester = MockRequesterCrypto()
         self.requests = Requests(self.mock_requester)
         self.exchange = Exchange(datetime=datetime(2023, 1, 1), requester=self.requests)
+        self.exchange.logger =Null_Logger()
         self.agent = None
         self.mock_order = None
 
