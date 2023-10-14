@@ -45,7 +45,7 @@ class Government(Agent):
             local_tax = await self.taxes.calculate_tax(long_term_capital_gains + short_term_capital_gains, 'state', debug=False)
             self.taxes_last_collected['amount'] += long_term_tax['amount'] + short_term_tax['amount'] + local_tax['amount']
             self.logger.info(f"Collecting Taxes from {event['agent']} for {long_term_tax['amount'] + short_term_tax['amount'] + local_tax['amount']}")
-            tax_record = {"date_collected": self.current_date, "tax_year": self.current_date.year -1, "agent": event['agent'], "long_term": long_term_tax['amount'], "short_term": short_term_tax['amount']}
+            tax_record = {"date_collected": self.current_date, "tax_year": self.current_date.year -1, "agent": event['agent'], "long_term": long_term_tax['amount'], "short_term": short_term_tax['amount'], "local": local_tax['amount']}
             remove = await self.requests.remove_cash(event['agent'], str(long_term_tax['amount'] + short_term_tax['amount']), 'taxes')
             if 'error' in remove:
                 self.back_taxes.append(tax_record)
@@ -102,6 +102,9 @@ class Government(Agent):
         pass
 
     async def archive_tax_records(self):
+        """
+        Archives the tax records for the previous year.
+        """
         self.tax_records_archive.put(str(self.current_date.year-1), self.tax_records)
         self.tax_records = []
 
