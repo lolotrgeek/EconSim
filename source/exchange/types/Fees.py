@@ -9,12 +9,12 @@ class Fees():
         self.total_fee_revenue = 0  # Total fee revenue collected by the exchange
         self.fees_collected = {}
 
-    def taker_fee(self, volume) -> float:
+    def taker_fee(self, volume) -> Decimal:
         if self.waive_fees:
             return 0
         return volume * self.taker_fee_rate
     
-    def maker_fee(self, volume) -> float:
+    def maker_fee(self, volume) -> Decimal:
         if self.waive_fees:
             return 0
         return volume * self.maker_fee_rate
