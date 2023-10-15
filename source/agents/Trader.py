@@ -172,11 +172,12 @@ class Trader(Agent):
         returns: {assets: {ticker, amount}}"""
         return await self.exchange_requests.get_assets(self.name)
     
-    async def register(self) -> dict:
+    async def register(self, logger=False) -> dict:
         agent = await self.exchange_requests.register_agent(self.name, self.initial_cash)
         if 'registered_agent' in agent:
             self.name = agent['registered_agent']
-            self.logger = Logger(agent['registered_agent'], 0)
+            if logger:
+                self.logger = Logger(agent['registered_agent'])
             return agent
         else:
             return None
