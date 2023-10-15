@@ -150,11 +150,11 @@ class CryptoExchange(Exchange):
     async def _process_trade(self, base, quote, qty, price, buyer, seller, accounting='FIFO', exchange_fee={'quote':0.0, 'base':0.0}, network_fee={'quote':0.0, 'base':0.0}, position_id=None):
         try:
             if position_id != buyer:
-                if not await self.agent_has_assets_frozen(buyer, quote, (price*qty)+network_fee['quote']):
-                    self.logger.info(f'{buyer} does not have assets')
+                if not await self.agent_has_assets_frozen(buyer, quote, (price*qty)+network_fee['quote']+exchange_fee['quote']):
+                    self.logger.error(f'{buyer} does not have assets')
                     return {'error': 'insufficient funds', 'buyer': buyer}
-                if not await self.agent_has_assets_frozen(seller, base, qty+network_fee['base']):
-                    self.logger.info(seller, ' does not have assets')
+                if not await self.agent_has_assets_frozen(seller, base, qty+network_fee['base']+exchange_fee['base']):
+                    self.logger.error(seller, ' does not have assets')
                     return {'error': 'insufficient funds', 'seller': seller}
 
             seller_wallet = (await self.get_agent(seller))['wallets'][base]
@@ -170,14 +170,13 @@ class CryptoExchange(Exchange):
             await self.pay_network_fees(seller, base, network_fee['base'])
 
             txn_time = self.datetime
-
-
             transaction = [
                 {'id': str(UUID()), 'agent':buyer,'quote_flow':-qty*price, 'price': price, 'base': base, 'quote': quote, 'qty': qty, 'fee':exchange_fee['quote'], 'dt': txn_time, 'type': 'buy'},
                 {'id': str(UUID()), 'agent':seller,'quote_flow':qty*price, 'price': price, 'base': base, 'quote': quote, 'qty': -qty, 'fee':exchange_fee['base'], 'dt': txn_time, 'type': 'sell'}
             ]
 
             self.pending_transactions.append({'base_txn': pending_base_transaction, 'quote_txn': pending_quote_transaction, 'exchange_txn': transaction, 'accounting': accounting, 'position_id': position_id})
+            self.logger.info('processing trade', transaction)
             return transaction 
         except Exception as e:
             return {'error': 'transaction failed'}   
@@ -273,14 +272,13 @@ class CryptoExchange(Exchange):
             return [{'error': 'no trades found'}]
 
     async def freeze_assets(self, agent, asset, qty) -> None:
-        self.logger.info('freezing assets', agent, asset, qty)
         agent_idx = await self.get_agent_index(agent)
         #NOTE if we want to freeze potential exchange fees we need to add an id to frozen assets, pass id to _process_trade, then use id to debt back any remaining frozen assets in update_agents
         if asset not in self.agents[agent_idx]['assets']:
-            self.logger.info('no asset available', asset, qty, agent)
+            self.logger.error('no asset available', asset, qty, agent)
             return {'error': 'no asset available'}
         if self.agents[agent_idx]['assets'][asset] < Decimal(str(abs(qty))):
-            self.logger.info('insufficient funds', asset, qty, agent)
+            self.logger.error('insufficient funds', asset, qty, agent)
             return {'error': 'insufficient funds'}
         self.agents[agent_idx]['assets'][asset] -= Decimal(str(abs(qty)))
         
@@ -288,7 +286,6 @@ class CryptoExchange(Exchange):
             self.agents[agent_idx]['frozen_assets'][asset] = Decimal(str(abs(qty)))
         else:
             self.agents[agent_idx]['frozen_assets'][asset] += Decimal(str(abs(qty)))
-        self.logger.info('frozen_assets', self.agents[agent_idx]['frozen_assets'])
 
     async def unfreeze_assets(self, agent, asset, qty) -> None:
         agent_idx = await self.get_agent_index(agent)
@@ -296,12 +293,9 @@ class CryptoExchange(Exchange):
         if self.agents[agent_idx]['frozen_assets'][asset] < Decimal(str(abs(qty))):
             self.agents[agent_idx]['assets'][asset] += self.agents[agent_idx]['frozen_assets'][asset]
             self.agents[agent_idx]['frozen_assets'][asset] = Decimal('0.0')
-            self.logger.info('unfrozen_assets', self.agents[agent_idx]['frozen_assets'][asset])
             return
-
         self.agents[agent_idx]['assets'][asset] += Decimal(str(abs(qty)))
         self.agents[agent_idx]['frozen_assets'][asset] -= Decimal(str(abs(qty)))
-        self.logger.info('unfrozen_assets',Decimal(str(abs(qty))))
 
     async def pay_network_fees(self, agent, asset, qty) -> None:
         self.logger.info('paying network fees', agent, asset, qty)
@@ -309,9 +303,7 @@ class CryptoExchange(Exchange):
         self.agents[agent_idx]['frozen_assets'][asset] -= Decimal(str(abs(qty)))
         self.logger.info(self.agents[agent_idx]['name'], 'frozen remaining', asset, self.agents[agent_idx]['frozen_assets'][asset])
 
-    async def limit_buy(self, base: str, quote:str, price: float, qty: int, creator: str, fee=0.0, tif='GTC', position_id=UUID()) -> CryptoLimitOrder:
-        if price <= 0:
-            return CryptoLimitOrder(base+quote, 0, 0, creator, OrderSide.BUY, self.datetime, status='error', accounting='price_must_be_greater_than_zero')        
+    async def limit_buy(self, base: str, quote:str, price: float, qty: int, creator: str, fee=0.0, tif='GTC', position_id=UUID()) -> CryptoLimitOrder:        
         if len(self.books[base+quote].bids) >= self.max_bids:
             return CryptoLimitOrder(base+quote, 0, 0, creator, OrderSide.BUY, self.datetime, status='error', accounting='max_bid_depth_reached')
         if len(self.pending_transactions) >= self.max_pending_transactions:
@@ -320,8 +312,12 @@ class CryptoExchange(Exchange):
         qty = Decimal(str(qty))
         price = Decimal(str(price))
         fee = Decimal(str(fee))
+        if price <= 0:
+            return CryptoLimitOrder(base+quote, 0, 0, creator, OrderSide.BUY, self.datetime, status='error', accounting='price_must_be_greater_than_zero')        
         if(qty <= 0):
-            return CryptoLimitOrder(base+quote, 0, 0, creator, OrderSide.BUY, self.datetime, status='error', accounting='qty_must_be_greater_than_zero')        
+            return CryptoLimitOrder(base+quote, 0, 0, creator, OrderSide.BUY, self.datetime, status='error', accounting='qty_must_be_greater_than_zero')
+        if fee <= 0:
+            return CryptoLimitOrder(base+quote, 0, 0, creator, OrderSide.BUY, self.datetime, status='error', accounting='fee_must_be_greater_than_zero')        
         potential_fees = self.fees.taker_fee(qty*price)
         has_asset = await self.agent_has_assets(creator, quote, (qty * price)+fee+potential_fees)      
         ticker = base+quote
@@ -382,8 +378,6 @@ class CryptoExchange(Exchange):
             return CryptoLimitOrder(ticker, 0, 0, creator, OrderSide.BUY, self.datetime, status='error', accounting='insufficient_funds')
         
     async def limit_sell(self, base: str, quote:str, price: float, qty: int, creator: str, fee=0.0, tif='GTC', accounting='FIFO') -> CryptoLimitOrder:
-        if price <= 0:
-            return CryptoLimitOrder(base+quote, 0, 0, creator, OrderSide.SELL, self.datetime, status='error', accounting='price_must_be_greater_than_zero')
         if len(self.books[base+quote].asks) >= self.max_asks:
             return CryptoLimitOrder(base+quote, 0, 0, creator, OrderSide.SELL, self.datetime, status='error', accounting='max_ask_depth_reached')
         if len(self.pending_transactions) >= self.max_pending_transactions:
@@ -392,8 +386,12 @@ class CryptoExchange(Exchange):
         qty = Decimal(str(qty))
         price = Decimal(str(price))
         fee = Decimal(str(fee))
+        if price <= 0:
+            return CryptoLimitOrder(base+quote, 0, 0, creator, OrderSide.SELL, self.datetime, status='error', accounting='price_must_be_greater_than_zero')        
         if(qty <= 0):
-            return CryptoLimitOrder(base+quote, 0, 0, creator, OrderSide.SELL, self.datetime, status='error', accounting='qty_must_be_greater_than_zero')        
+            return CryptoLimitOrder(base+quote, 0, 0, creator, OrderSide.SELL, self.datetime, status='error', accounting='qty_must_be_greater_than_zero')
+        if fee <= 0:
+            return CryptoLimitOrder(base+quote, 0, 0, creator, OrderSide.SELL, self.datetime, status='error', accounting='fee_must_be_greater_than_zero')
         ticker = base+quote
         potential_fees = self.fees.taker_fee(qty)
         has_assets = await self.agent_has_assets(creator, base, qty+fee)
@@ -495,6 +493,8 @@ class CryptoExchange(Exchange):
             return {"market_buy": "max_pending_transactions_reached", "buyer": buyer}
         qty = Decimal(str(qty))
         fee = Decimal(str(fee))
+        if fee <= 0:
+            return {"market_buy": "fee_must_be_greater_than_zero", "buyer": buyer}
         if qty <= 0:
             return {"market_buy": "qty_must_be_greater_than_zero", "buyer": buyer}
         ticker = base+quote
@@ -505,7 +505,11 @@ class CryptoExchange(Exchange):
             if ask.creator == buyer:
                 continue
             trade_qty = Decimal(str(min(ask.qty, unfilled_qty)))
+            if ask.qty <=0:
+                self.logger.debug('ask qty: ', '{0:.18f}'.format(ask.qty), ask.creator, ask.ticker, ask.price, ask.status, ask.accounting)
+                continue
             seller_network_fee = (ask.network_fee / ask.qty) * trade_qty
+            
             taker_fee = self.fees.taker_fee(trade_qty)
             partial_fee = fee_per_unit * trade_qty
             has_assets = await self.agent_has_assets(buyer, quote, (trade_qty*ask.price)+taker_fee)
@@ -537,6 +541,8 @@ class CryptoExchange(Exchange):
             return {"market_sell": "max_pending_transactions_reached", "seller": seller}
         qty = Decimal(str(qty))
         fee = Decimal(str(fee)) 
+        if fee <= 0:
+            return {"market_sell": "fee_must_be_greater_than_zero", "seller": seller}
         if qty <= 0:
             return {"market_sell": "qty_must_be_greater_than_zero", "seller": seller}               
         ticker = base+quote

@@ -42,7 +42,8 @@ const AgentPositions = () => {
                     <div>ASSET/QTY</div>
                 </div>
                 <div className="position-item positions-header-item">
-                    <div>ENTERS</div>
+                    <div>ENTERS </div>
+                    <div>(unfilled / initial)</div>
                 </div>
                 <div className="position-item positions-header-item">
                     <div>EXITS</div>

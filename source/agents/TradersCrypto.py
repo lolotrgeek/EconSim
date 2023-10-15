@@ -48,6 +48,7 @@ class SimpleMarketTaker(Trader):
         Trader.__init__(self, name, aum, exchange_requests=requests[0], crypto_requests=requests[1])
         self.fee_reserve = 10 # the amount of cash to reserve for fees
         self.asset_reserve = Decimal(0.5)
+        self.logger.print = True
 
     async def next(self) -> bool:
         self.tickers = await self.get_tickers()
@@ -59,9 +60,11 @@ class SimpleMarketTaker(Trader):
 
         if float(self.assets['USD']) > self.fee_reserve:
             latest_trade = await self.get_latest_trade(ticker['base'], ticker['quote'])
+            if latest_trade is None or 'price' not in latest_trade or latest_trade['price'] <= 0:
+                return False
             qty = (Decimal(self.assets['USD']) - self.fee_reserve) / latest_trade['price']
             order = await self.market_buy(ticker['base'], 'USD', qty, 0.01)
-            # self.logger.info(f"Market Taker {self.name} bought {qty} {ticker['base']} at {latest_trade['price']}")
+            self.logger.info(f"Market Taker {self.name} bought {qty} {ticker['base']} at {latest_trade['price']}")
         
         elif ticker['base'] in self.assets and Decimal(self.assets[ticker['base']]) > self.asset_reserve:
             qty = Decimal(self.assets[ticker['base']]) - self.asset_reserve
