@@ -157,6 +157,13 @@ class LimitBuyTestCase(unittest.IsolatedAsyncioTestCase):
         self.seller = (await self.exchange.register_agent("seller1", initial_assets={"BTC": 10000, "USD" : 10000}))['registered_agent']
         self.match_buyer = (await self.exchange.register_agent("match_buyer", initial_assets={"BTC": 10000, "USD" : 10000}))['registered_agent']
     
+    async def test_limit_buy_zero_price(self):
+        result = await self.exchange.limit_buy('BTC', 'USD', 0, 100, self.buyer, fee=0)
+        self.assertEqual(result.creator, self.buyer)
+        self.assertEqual(result.accounting, 'price_must_be_greater_than_zero')
+        self.assertEqual(result.status, 'error')
+        self.assertEqual(len(self.exchange.books['BTCUSD'].bids), 1)
+
     async def test_limit_buy_zero_qty(self):
         result = await self.exchange.limit_buy('BTC', 'USD', 148, 0, self.buyer, fee=0)
         self.assertEqual(result.creator, self.buyer)
@@ -195,6 +202,13 @@ class LimitSellTestCase(unittest.IsolatedAsyncioTestCase):
         self.insufficient_seller = (await self.exchange.register_agent("insufficient_seller", initial_assets={"USD" : 10000}))['registered_agent']
         self.agent = (await self.exchange.register_agent("seller1", initial_assets={"BTC": 10000, "USD" : 10000}))['registered_agent']
         self.buyer = (await self.exchange.register_agent("buyer1", initial_assets={"BTC": 10000, "USD" : 10000}))['registered_agent']
+
+    async def test_limit_sell_zero_price(self):
+        result = await self.exchange.limit_sell('BTC', 'USD', 0, 100, self.agent, fee=0)
+        self.assertEqual(result.creator, self.agent)
+        self.assertEqual(result.accounting, 'price_must_be_greater_than_zero')
+        self.assertEqual(result.status, 'error')
+        self.assertEqual(len(self.exchange.books['BTCUSD'].asks), 1)
 
     async def test_limit_sell_zero_qty(self):
         result = await self.exchange.limit_sell('BTC', 'USD', 148, 0, self.agent, fee=0)
