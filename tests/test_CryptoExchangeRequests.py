@@ -30,7 +30,7 @@ class CreateAssetTest(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(book['bids'][0]['ticker'], 'ETHUSD')
         self.assertEqual(type(book['asks'][0]['id']), str)
         self.assertEqual(book['asks'][0]['price'], Decimal('101.00') )
-        self.assertEqual(book['asks'][0]['qty'], Decimal('49899.999999999'))
+        self.assertEqual(book['asks'][0]['qty'], Decimal('50000'))
         self.assertEqual(book['asks'][0]['ticker'], 'ETHUSD')
 
 class GetOrderBookTest(unittest.IsolatedAsyncioTestCase):
@@ -94,7 +94,7 @@ class GetQuotesTest(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(quotes["ticker"], "BTCUSD")
         self.assertEqual(quotes["bid_qty"], 1)
         self.assertEqual(quotes["bid_p"], 151)
-        self.assertEqual(quotes["ask_qty"], Decimal('997.999999999'))
+        self.assertEqual(quotes["ask_qty"], 1000)
         self.assertEqual(quotes["ask_p"], 151.5)
 
 class GetBestBidTest(unittest.IsolatedAsyncioTestCase):
@@ -121,7 +121,7 @@ class GetBestAskTest(unittest.IsolatedAsyncioTestCase):
         best_ask = response
         self.assertEqual(best_ask['ticker'], 'BTCUSD')
         self.assertEqual(best_ask['price'], '151.50')
-        self.assertEqual(best_ask['qty'], '997.999999999')
+        self.assertEqual(best_ask['qty'], '1000')
 
 class GetMidPriceTest(unittest.IsolatedAsyncioTestCase):
     async def asyncSetUp(self):
@@ -158,13 +158,13 @@ class LimitSellTest(unittest.IsolatedAsyncioTestCase):
         self.requests = Requests(self.mock_requester)
 
     async def test_limit_sell(self):
-        response = await self.requests.make_request('limit_sell', {'base': "BTC", 'quote': "USD", 'price': 151.5, 'qty': 1, 'creator': 'init_seed_BTCUSD', 'fee': 0.001}, self.mock_requester)
+        response = await self.requests.make_request('limit_sell', {'base': "BTC", 'quote': "USD", 'price': 151.5, 'qty': 1, 'creator': self.mock_requester.responder.agent, 'fee': 0.001}, self.mock_requester)
         order = response
         print(response)
         self.assertEqual(order['ticker'], "BTCUSD")
         self.assertEqual(order['price'], '151.5')
         self.assertEqual(order['qty'], '1')
-        self.assertEqual(order['creator'], 'init_seed_BTCUSD')
+        self.assertEqual(order['creator'], self.mock_requester.responder.agent)
         self.assertEqual(order['network_fee'], '0.001')
         self.assertEqual(order['exchange_fee'], '0.001')
         self.assertEqual(order['status'], 'open')
@@ -228,8 +228,12 @@ class GetAssetsTest(unittest.IsolatedAsyncioTestCase):
         self.requests = Requests(self.mock_requester)
 
     async def test_get_assets(self):
-        response = await self.requests.make_request('assets', {'agent': 'init_seed_BTCUSD'}, self.mock_requester)
-        self.assertEqual(response, {'assets': {'BTC': Decimal('1.002000000001'), 'USD': Decimal('149851.351499999')}, 'frozen_assets': {'BTC': Decimal('998.998099999999'),'USD': Decimal('148.648600001')}})
+        response = await self.requests.make_request('assets', {'agent': self.mock_requester.responder.agent}, self.mock_requester)
+        self.assertEqual(response['assets']['BTC'], Decimal('2'))
+        self.assertEqual(response['assets']['USD'], Decimal('99848.8489'))
+        self.assertEqual(response['frozen_assets']['USD'][0]['frozen_qty'], 151)
+        self.assertEqual(response['frozen_assets']['USD'][0]['frozen_exchange_fee'], Decimal('0.151'))
+        self.assertEqual(response['frozen_assets']['USD'][0]['frozen_network_fee'], Decimal('0.0001'))
 
 class RegisterAgentTest(unittest.IsolatedAsyncioTestCase):
     async def asyncSetUp(self):
@@ -251,7 +255,10 @@ class MarketBuyTest(unittest.IsolatedAsyncioTestCase):
     async def test_market_buy(self):
         response = await self.requests.make_request('market_buy', {'base': "BTC", 'quote': "USD", 'qty': 1, 'buyer': self.mock_requester.responder.agent, 'fee': 0.001}, self.mock_requester)
         print(response)
-        self.assertEqual(response, {'market_buy': 'BTCUSD', 'buyer': self.mock_requester.responder.agent, 'qty': Decimal('1'), 'fills': [{'qty': Decimal('1'), 'price': Decimal('151.50'), 'fee': Decimal('0.002')}]})
+        self.assertEqual(response['market_buy'] , 'BTCUSD')
+        self.assertEqual(response['buyer'], self.mock_requester.responder.agent)
+        self.assertEqual(response['qty'], Decimal('1'))
+        self.assertEqual(response['fills'], [{'qty': Decimal('1'), 'price': Decimal('151.50'), 'fee': Decimal('0.002')}])
 
 class MarketSellTest(unittest.IsolatedAsyncioTestCase):
     async def asyncSetUp(self) -> None:
@@ -260,9 +267,12 @@ class MarketSellTest(unittest.IsolatedAsyncioTestCase):
         self.requests = Requests(self.mock_requester)
 
     async def test_market_sell(self):
-        response = await self.requests.make_request('market_sell', {'base': "BTC", 'quote': "USD", 'qty': 1, 'seller': 'init_seed_BTCUSD', 'fee': 0.001}, self.mock_requester)
+        response = await self.requests.make_request('market_sell', {'base': "BTC", 'quote': "USD", 'qty': 1, 'seller': self.mock_requester.responder.agent, 'fee': 0.001}, self.mock_requester)
         print(response)
-        self.assertEqual(response, {'market_sell': 'BTCUSD', 'seller': 'init_seed_BTCUSD', 'qty': Decimal('1'), 'fills': [{'qty': Decimal('1'), 'price': Decimal('151'), 'fee': Decimal('0.002')}]})
+        self.assertEqual(response['market_sell'] , 'BTCUSD')
+        self.assertEqual(response['seller'], self.mock_requester.responder.agent)
+        self.assertEqual(response['qty'], Decimal('1'))
+        self.assertEqual(response['fills'], [{'qty': Decimal('1'), 'price': Decimal('148.5'), 'fee': Decimal('0.002')}])
 
 class GetAgentTest(unittest.IsolatedAsyncioTestCase):
     async def asyncSetUp(self):
@@ -274,13 +284,24 @@ class GetAgentTest(unittest.IsolatedAsyncioTestCase):
         response = await self.requests.make_request('get_agent', {'name': self.mock_requester.responder.agent}, self.mock_requester)
         self.assertEqual(response['name'], self.mock_requester.responder.agent)
         self.assertEqual(response['_transactions'], [])
-        self.assertEqual(len(response['positions']), 1)
-        self.assertEqual(response['positions'][0]['qty'], '100000')
-        self.assertEqual(len (response['positions'][0]['enters']), 1)
-        self.assertEqual(response['positions'][0]['exits'], [])
+        self.assertEqual(len(response['positions']), 2)
         self.assertEqual(response['positions'][0]['dt'], '2023-01-01 00:00:00')
-        self.assertEqual(response['assets'], {'USD' : '99848.8489'})
-        self.assertEqual(response['frozen_assets'], {'USD': '151.1511'})
+        self.assertEqual(response['positions'][0]['asset'], 'BTC')
+        self.assertEqual(response['positions'][0]['qty'], '2')
+        self.assertEqual(response['positions'][0]['enters'][0]['asset'], 'BTC' )
+        self.assertEqual(response['positions'][0]['enters'][0]['qty'], '2')
+        self.assertEqual(response['positions'][0]['enters'][0]['initial_qty'], '2')
+        self.assertEqual(response['positions'][0]['enters'][0]['dt'], '2023-01-01 00:00:00')
+        self.assertEqual(response['positions'][1]['asset'], 'USD')
+        self.assertEqual(response['positions'][1]['qty'], '100000')
+        self.assertEqual(response['positions'][1]['enters'][0]['asset'], 'USD' )
+        self.assertEqual(response['positions'][1]['enters'][0]['qty'], '100000')
+        self.assertEqual(response['positions'][1]['enters'][0]['initial_qty'], '100000')
+        self.assertEqual(response['positions'][1]['enters'][0]['dt'], '2023-01-01 00:00:00')
+        self.assertEqual(response['positions'][1]['exits'], [])
+        self.assertEqual(response['frozen_assets']['USD'][0]['frozen_qty'], '151')
+        self.assertEqual(response['frozen_assets']['USD'][0]['frozen_exchange_fee'], '0.151')
+        self.assertEqual(response['frozen_assets']['USD'][0]['frozen_network_fee'], '0.0001')
         self.assertEqual(response['_transactions'], [])
 
 class GetAgentsTest(unittest.IsolatedAsyncioTestCase):
@@ -294,7 +315,7 @@ class GetAgentsTest(unittest.IsolatedAsyncioTestCase):
         print(response)
         self.assertEqual(response[0]['name'], 'init_seed_BTCUSD')
         self.assertEqual(len(response[0]['_transactions']), 0)
-        self.assertEqual(response[1]['assets'], {'USD': '99848.8489'})
+        self.assertEqual(response[1]['assets'], {'BTC': '2', 'USD': '99848.8489'})
 
 class AddCashTest(unittest.IsolatedAsyncioTestCase):
     async def asyncSetUp(self) -> None:
@@ -327,7 +348,7 @@ class GetAgentsHoldingTest(unittest.IsolatedAsyncioTestCase):
         for agent in self.mock_requester.responder.exchange.agents: 
             print("-----------------------")
             print(agent['name'], agent['assets'])
-        self.assertEqual(response, ['init_seed_BTCUSD'])
+        self.assertEqual(response, ['init_seed_BTCUSD', self.mock_requester.responder.agent])
 
 class GetAgentsPositionsTest(unittest.IsolatedAsyncioTestCase):
     async def asyncSetUp(self) -> None:
@@ -348,12 +369,17 @@ class GetAgentsPositionsTest(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(result[0]['positions'][0]['enters'], [])
         self.assertEqual(result[0]['positions'][0]['exits'], [])
         self.assertEqual(result[1]['agent'], self.mock_requester.responder.agent)
-        self.assertEqual(result[1]['positions'][0]['asset'], 'USD')
-        self.assertEqual(result[1]['positions'][0]['enters'][0]['initial_qty'], '100000')
-        self.assertEqual(result[1]['positions'][0]['enters'][0]['qty'], '100000')
+        self.assertEqual(result[1]['positions'][0]['asset'], 'BTC')
+        self.assertEqual(result[1]['positions'][0]['qty'], '2')
+        self.assertEqual(result[1]['positions'][0]['enters'][0]['asset'], 'BTC' )
+        self.assertEqual(result[1]['positions'][0]['enters'][0]['qty'], '2')
+        self.assertEqual(result[1]['positions'][0]['enters'][0]['initial_qty'], '2')
         self.assertEqual(result[1]['positions'][0]['enters'][0]['dt'], '2023-01-01 00:00:00')
-        self.assertEqual(result[1]['positions'][0]['exits'], [])
-        self.assertEqual(result[0]['positions'][0]['dt'], '2023-01-01 00:00:00')
+        self.assertEqual(result[1]['positions'][1]['asset'], 'USD')
+        self.assertEqual(result[1]['positions'][1]['enters'][0]['initial_qty'], '100000')
+        self.assertEqual(result[1]['positions'][1]['enters'][0]['qty'], '100000')
+        self.assertEqual(result[1]['positions'][1]['enters'][0]['dt'], '2023-01-01 00:00:00')
+        self.assertEqual(result[1]['positions'][1]['exits'], [])
 
 class GetAgentSimpleTest(unittest.IsolatedAsyncioTestCase):
     async def asyncSetUp(self) -> None:
@@ -363,11 +389,18 @@ class GetAgentSimpleTest(unittest.IsolatedAsyncioTestCase):
     
     async def test_get_agent_simple(self):
         result = await self.requests.make_request('get_agents_simple', {'name': 'init_seed_BTCUSD'}, self.mock_requester)
-        self.assertCountEqual(result, [
-            {'agent': 'init_seed_BTCUSD', 'assets': {'BTC': '1.002000000001', 'USD': '149851.351499999'}, 'frozen_assets': {'BTC': '998.998099999999', 'USD': '148.648600001'}}, 
-            {'agent': self.mock_requester.responder.agent,  'assets': {'USD': '99848.8489'}, 'frozen_assets': {'USD': '151.1511'}}
-        ])
-
+        self.assertEqual(result[0]['agent'], 'init_seed_BTCUSD')
+        self.assertEqual(result[0]['assets'], {})
+        self.assertEqual(len(result[0]['frozen_assets']['BTC']), 1)
+        self.assertEqual(result[0]['frozen_assets']['BTC'][0]['frozen_qty'], '1000')
+        self.assertEqual(result[0]['frozen_assets']['BTC'][0]['frozen_exchange_fee'], '0.0')
+        self.assertEqual(result[0]['frozen_assets']['BTC'][0]['frozen_network_fee'], '1')
+        self.assertEqual(result[1]['agent'], self.mock_requester.responder.agent)
+        self.assertEqual(result[1]['assets'], {'BTC': '2', 'USD': '99848.8489'})
+        self.assertEqual(len(result[1]['frozen_assets']['USD']), 1)
+        self.assertEqual(result[1]['frozen_assets']['USD'][0]['frozen_qty'], '151')
+        self.assertEqual(result[1]['frozen_assets']['USD'][0]['frozen_exchange_fee'], '0.151')
+        self.assertEqual(result[1]['frozen_assets']['USD'][0]['frozen_network_fee'], '0.0001')
 class getTaxableEventsTest(unittest.IsolatedAsyncioTestCase):
     async def asyncSetUp(self) -> None:
         self.mock_requester = MockRequester()
@@ -389,14 +422,20 @@ class GetPositionsTest(unittest.IsolatedAsyncioTestCase):
         result = await self.requests.make_request('get_positions', {'agent': self.mock_requester.responder.agent, 'page_size': 10, 'page': 1}, self.mock_requester)
         self.assertEqual(result['agent'], self.mock_requester.responder.agent)
         self.assertEqual(result['positions'][0]['dt'], '2023-01-01 00:00:00')
-        self.assertEqual(result['positions'][0]['asset'], 'USD')
-        self.assertEqual(result['positions'][0]['qty'], '100000')
-        self.assertEqual(result['positions'][0]['enters'][0]['asset'], 'USD' )
-        self.assertEqual(result['positions'][0]['enters'][0]['qty'], '100000')
-        self.assertEqual(result['positions'][0]['enters'][0]['initial_qty'], '100000')
+        self.assertEqual(result['positions'][0]['asset'], 'BTC')
+        self.assertEqual(result['positions'][0]['qty'], '2')
+        self.assertEqual(result['positions'][0]['enters'][0]['asset'], 'BTC' )
+        self.assertEqual(result['positions'][0]['enters'][0]['qty'], '2')
+        self.assertEqual(result['positions'][0]['enters'][0]['initial_qty'], '2')
         self.assertEqual(result['positions'][0]['enters'][0]['dt'], '2023-01-01 00:00:00')
-        self.assertEqual(result['positions'][0]['exits'], [])
-        self.assertEqual(result['total_positions'] , 1)
+        self.assertEqual(result['positions'][1]['asset'], 'USD')
+        self.assertEqual(result['positions'][1]['qty'], '100000')
+        self.assertEqual(result['positions'][1]['enters'][0]['asset'], 'USD' )
+        self.assertEqual(result['positions'][1]['enters'][0]['qty'], '100000')
+        self.assertEqual(result['positions'][1]['enters'][0]['initial_qty'], '100000')
+        self.assertEqual(result['positions'][1]['enters'][0]['dt'], '2023-01-01 00:00:00')
+        self.assertEqual(result['positions'][1]['exits'], [])
+        self.assertEqual(result['total_positions'] , 2)
         self.assertEqual(result['page'], 1)
         self.assertEqual(result['total_pages'], 1)
         self.assertEqual(result['next_page'], None)

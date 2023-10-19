@@ -22,11 +22,14 @@ class Logger():
         self.fh.setFormatter(self.formatter)
         self.logger.addHandler(self.fh)
         
+    def debug(self, message, *args):
+        self.logger.debug(self._format_message(message, *args))
+
     def info(self, message, *args):
         self.logger.info(self._format_message(message, *args))
 
-    def debug(self, message, *args):
-        self.logger.debug(self._format_message(message, *args))
+    def warning(self, message, *args):
+        self.logger.warning(self._format_message(message, *args))
 
     def error(self, message, *args):
         self.logger.error(self._format_message(message, *args))
@@ -40,11 +43,15 @@ class Null_Logger():
     def __init__(self, debug_print=False):
         self.print = debug_print
 
+    def debug(self, message, *args):
+        if self.print: print(message, *args)
+        else: pass
+
     def info(self, message, *args):
         if self.print: print(message, *args)
         else: pass
 
-    def debug(self, message, *args):
+    def warning(self, message, *args):
         if self.print: print(message, *args)
         else: pass
 

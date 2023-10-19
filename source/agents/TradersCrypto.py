@@ -48,7 +48,6 @@ class SimpleMarketTaker(Trader):
         Trader.__init__(self, name, aum, exchange_requests=requests[0], crypto_requests=requests[1])
         self.fee_reserve = 10 # the amount of cash to reserve for fees
         self.asset_reserve = Decimal(0.5)
-        self.logger.print = True
 
     async def next(self) -> bool:
         self.tickers = await self.get_tickers()

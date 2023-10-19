@@ -129,7 +129,7 @@ class LimitBuyTest(unittest.IsolatedAsyncioTestCase):
     async def test_limit_buy_insufficient_funds(self):
         self.trader.cash = 0
         order = await self.trader.limit_buy("BTC", "USD", 100000, 1, 0.01)
-        self.assertEqual(order['limit_buy'], 'insufficient_funds')
+        self.assertEqual(order['limit_buy'], 'insufficient_assets')
 
 class LimitSellTest(unittest.IsolatedAsyncioTestCase):
     async def asyncSetUp(self) -> None:
@@ -268,30 +268,26 @@ class MarketBuyTest(unittest.IsolatedAsyncioTestCase):
         self.trader_name = "TestTrader"
         self.mock_requester = MockRequester()
         self.requests = (ExchangeRequests(self.mock_requester), CryptoCurrencyRequests(self.mock_requester))
-        
-        
+                
         await self.mock_requester.init()
         self.trader = Trader(self.trader_name,  exchange_requests=self.requests[0], crypto_requests=self.requests[1])
         await self.trader.register()
 
-
     async def test_market_buy(self):
-        self.assertEqual(await self.trader.market_buy("BTC", "USD", 1), await self.requests[0].market_buy("BTC", "USD", 1, self.trader.name))
+        self.assertEqual((await self.trader.market_buy("BTC", "USD", 1, 0.01))['buyer'], (await self.requests[0].market_buy("BTC", "USD", 1, self.trader.name, 0.01))['buyer'])
 
 class MarketSellTest(unittest.IsolatedAsyncioTestCase):
     async def asyncSetUp(self) -> None:
         self.trader_name = "TestTrader"
         self.mock_requester = MockRequester()
         self.requests = (ExchangeRequests(self.mock_requester), CryptoCurrencyRequests(self.mock_requester))
-        
-        
+                
         await self.mock_requester.init()
         self.trader = Trader(self.trader_name,  exchange_requests=self.requests[0], crypto_requests=self.requests[1])
         await self.trader.register()
 
-
     async def test_market_sell(self):
-        self.assertEqual(await self.trader.market_sell("BTC", "USD", 1, 0.01), await self.requests[0].market_sell("BTC", "USD", 1, self.trader.name, 0.01))
+        self.assertEqual((await self.trader.market_sell("BTC", "USD", 1, 0.01))['seller'], (await self.requests[0].market_sell("BTC", "USD", 1, self.trader.name, 0.01))['seller'])
 
 class GetCashTest(unittest.IsolatedAsyncioTestCase):
     async def asyncSetUp(self) -> None:

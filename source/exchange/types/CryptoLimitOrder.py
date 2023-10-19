@@ -16,12 +16,12 @@ class CryptoLimitOrder():
         self.qty: Decimal = qty
         self.creator: str = creator
         self.dt: datetime = dt if dt else datetime.now()
-        self.exchange_fee = exchange_fee #NOTE: the fee is assessed in base currency for sell, quote currency for buy to match the network fee
-        self.network_fee = network_fee # base currency for sell, quote currency for buy
-        self.position_id = position_id
-        self.accounting = accounting
-        self.fills = fills
-        self.status = status # open, filled, cancelled, error, partial, unconfirmed
+        self.exchange_fee: Decimal = exchange_fee #NOTE: the fee is assessed in base currency for sell, quote currency for buy to match the network fee
+        self.network_fee: Decimal = network_fee # base currency for sell, quote currency for buy
+        self.position_id: str = position_id
+        self.accounting :str = accounting
+        self.fills: list = fills
+        self.status:str = status # open, filled, cancelled, error, partial, unconfirmed
 
     def to_dict(self) -> dict:
         if self.status == 'error' and self.type == OrderSide.BUY: 
