@@ -18,6 +18,7 @@ class CryptoLimitOrder():
         self.dt: datetime = dt if dt else datetime.now()
         self.exchange_fee: Decimal = exchange_fee #NOTE: the fee is assessed in base currency for sell, quote currency for buy to match the network fee
         self.network_fee: Decimal = network_fee # base currency for sell, quote currency for buy
+        self.network_fee_per_qty: Decimal = network_fee / qty if qty > 0 else 0
         self.position_id: str = position_id
         self.accounting :str = accounting
         self.fills: list = fills
