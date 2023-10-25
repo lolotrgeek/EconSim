@@ -16,7 +16,7 @@ async def generate_cryptos(names, requester, time) -> dict:
     for name in names:
         crypto = CryptoCurrency(name, time, requester=requester)
         cryptos[crypto.symbol] = crypto
-        await crypto.issue_coins([{'asset': 'USD' ,'market_qty':1000 ,'seed_price':100 ,'seed_bid':.99, 'seed_ask':1.01}], 1_000_000_000)
+        await crypto.issue_coins([{'asset': 'USD' ,'market_qty':1000 ,'seed_price':100 ,'seed_bid':'.99', 'seed_ask':'1.01'}], 1_000_000_000)
     return cryptos
 
 async def run_crypto() -> None:

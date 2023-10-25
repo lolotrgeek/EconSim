@@ -4,6 +4,8 @@ from flask import Flask, request, jsonify
 import json
 import time
 
+#TODO: if want to keep in python, make this async and have one Requester per route
+
 class Requester:
     def __init__(self, channel='5570'):
         self.channel = channel
