@@ -564,7 +564,7 @@ class CryptoExchange(Exchange):
             seller_network_fee = prec(ask.network_fee_per_qty * trade_qty)
             taker_fee = prec(self.fees.taker_fee(trade_qty))
             partial_network_fee = prec(network_fee_per_unit * trade_qty)
-            print(f" partial network fee {partial_network_fee} {network_fee_per_unit} {trade_qty}")
+            self.logger.info(f" partial network fee {partial_network_fee} {network_fee_per_unit} {trade_qty}")
             order_total = prec((trade_qty*ask.price)+taker_fee)
             has_assets = await self.agent_has_assets(buyer, quote, order_total)
             if has_assets == False: 
