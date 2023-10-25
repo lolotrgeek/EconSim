@@ -10,7 +10,7 @@ asyncio.set_event_loop_policy(asyncio.WindowsSelectorEventLoopPolicy())
 class DecimalEncoder(json.JSONEncoder):
     def default(self, o):
         if isinstance(o, Decimal):
-            return str(o)
+            return str('{:.18f}'.format(o))
         return super().default(o)
 
 class Requester:
