@@ -9,4 +9,5 @@ for proc in psutil.process_iter():
             print("Killing process: ", proc.name())
             proc.kill()
     except (psutil.NoSuchProcess, psutil.AccessDenied, psutil.ZombieProcess):
+        print("Error: ", proc.name(), " was not killed")
         pass

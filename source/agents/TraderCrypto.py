@@ -39,7 +39,7 @@ class CryptoTrader(Trader):
     async def get_trades(self, base:str, quote:str, limit=20) -> List[dict]:
         return await self.exchange_requests.get_trades(base, quote, limit=limit)
 
-    async def market_buy(self, base:str, quote:str, qty:int, fee=0.0) -> Union[dict,None]:
+    async def market_buy(self, base:str, quote:str, qty:int, fee='0.0') -> Union[dict,None]:
         """Places a market buy order. The order executes automatically at the best sell price if ask quotes are available.
 
         Args:
@@ -50,7 +50,7 @@ class CryptoTrader(Trader):
         order = await self.exchange_requests.market_buy(base, quote, qty, self.name, fee)
         return order
 
-    async def market_sell(self, base:str, quote:str, qty:int, fee=0.0) -> Union[dict,None]:
+    async def market_sell(self, base:str, quote:str, qty:int, fee='0.0') -> Union[dict,None]:
         """Places a market sell order. The order executes automatically at the best buy price if bid quotes are available.
 
         Args:
@@ -61,7 +61,7 @@ class CryptoTrader(Trader):
         order = await self.exchange_requests.market_sell(base, quote, qty, self.name, fee)
         return order
 
-    async def limit_buy(self, base:str, quote:str, price:float, qty:int, fee=0.0) -> Union[dict,None]:
+    async def limit_buy(self, base:str, quote:str, price:float, qty:int, fee='0.0') -> Union[dict,None]:
         """Creates a limit buy order for a given asset and quantity at a certain price.
 
         Args:
@@ -75,7 +75,7 @@ class CryptoTrader(Trader):
         order = await self.exchange_requests.limit_buy(base, quote,price,qty,self.name, fee)
         return order
 
-    async def limit_sell(self, base:str, quote:str, price:float, qty:int, fee=0.0) -> Union[dict,None]:
+    async def limit_sell(self, base:str, quote:str, price:float, qty:int, fee='0.0') -> Union[dict,None]:
         """Creates a limit sell order for a given asset and quantity at a certain price.
 
         Args:
@@ -134,7 +134,10 @@ class CryptoTrader(Trader):
         """
         returns: `{assets: {symbol: amount, ...}, frozen_assets: {symbol: amount, ...}}`
         """
-        return await self.exchange_requests.get_assets(self.name)
+        assets = await self.exchange_requests.get_assets(self.name)
+        for asset in assets['assets']:
+            assets['assets'][asset] = Decimal(assets['assets'][asset])
+        return assets
     
     async def register(self, logger=False) -> dict:
         agent = await self.exchange_requests.register_agent(self.name, {"USD": self.aum})

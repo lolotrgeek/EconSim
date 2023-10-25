@@ -117,18 +117,18 @@ class LimitBuyTest(unittest.IsolatedAsyncioTestCase):
         await self.trader.register()
 
     async def test_limit_buy(self):
-        order = await self.trader.limit_buy("BTC", "USD", 100, 1, 0.01)
+        order = await self.trader.limit_buy("BTC", "USD", 100, 1, '0.01')
         self.assertEqual(order['creator'], self.trader.name)
         self.assertEqual(order['ticker'], "BTCUSD")
-        self.assertEqual(order['price'], '100')
-        self.assertEqual(order['qty'], '1')
-        self.assertEqual(order['exchange_fee'], '0.100')
+        self.assertEqual(order['price'], '100.000000000000000000')
+        self.assertEqual(order['qty'], '1.000000000000000000')
+        self.assertEqual(order['exchange_fee'], '0.100000000000000000')
         self.assertEqual(order['type'], 'limit_buy')
         self.assertEqual(order['dt'], '2023-01-01 00:00:00')
 
     async def test_limit_buy_insufficient_funds(self):
         self.trader.cash = 0
-        order = await self.trader.limit_buy("BTC", "USD", 100000, 1, 0.01)
+        order = await self.trader.limit_buy("BTC", "USD", 100000, 1, '0.01')
         self.assertEqual(order['limit_buy'], 'insufficient_assets')
 
 class LimitSellTest(unittest.IsolatedAsyncioTestCase):
@@ -147,19 +147,19 @@ class LimitSellTest(unittest.IsolatedAsyncioTestCase):
         self.trader.name = self.trader_registered
 
     async def test_limit_sell(self):
-        order = await self.trader.limit_sell("BTC", "USD", 100, 1, .01)
+        order = await self.trader.limit_sell("BTC", "USD", 100, 1, '.01')
 
         self.assertEqual(order['creator'], self.trader_registered)
         self.assertEqual(order['ticker'], "BTCUSD")
-        self.assertEqual(order['price'], '100')
-        self.assertEqual(order['qty'], '1')
-        self.assertEqual(order['exchange_fee'], '0.002')
-        self.assertEqual(order['network_fee'], '0.01')
+        self.assertEqual(order['price'], '100.000000000000000000')
+        self.assertEqual(order['qty'], '1.000000000000000000')
+        self.assertEqual(order['exchange_fee'], '0.002000000000000000')
+        self.assertEqual(order['network_fee'], '0.010000000000000000')
         self.assertEqual(order['type'], 'limit_sell')
         self.assertEqual(order['dt'], '2023-01-01 00:00:00')
     
     async def test_limit_sell_no_position(self):
-        order = await self.trader.limit_sell("BTC", "USD", 100, 3, 0.01)
+        order = await self.trader.limit_sell("BTC", "USD", 100, 3, '0.01')
         self.assertEqual(order['limit_sell'], 'insufficient_assets')
 
 class CancelOrderTest(unittest.IsolatedAsyncioTestCase):
@@ -175,7 +175,7 @@ class CancelOrderTest(unittest.IsolatedAsyncioTestCase):
         await self.trader.register()
 
     async def test_cancel_order(self):
-        order = await self.trader.limit_buy("BTC", "USD", 100, 1, 0.01)
+        order = await self.trader.limit_buy("BTC", "USD", 100, 1, '0.01')
         cancelled = await self.trader.cancel_order('BTC', 'USD', order['id'])
         print(cancelled)
         self.assertEqual(type (cancelled['cancelled_order']), dict)
@@ -212,7 +212,7 @@ class GetPriceBarsTest(unittest.IsolatedAsyncioTestCase):
 
     
     async def test_get_price_bars(self):
-        await self.trader.limit_buy("BTC", "USD", 100, 1, 0.01)
+        await self.trader.limit_buy("BTC", "USD", 100, 1, '0.01')
         self.assertEqual(await self.trader.get_price_bars("BTCUSD", self.interval, self.limit), await self.requests[0].get_price_bars("BTCUSD", self.interval, self.limit))
 
 class GetOrderBookTest(unittest.IsolatedAsyncioTestCase):
@@ -274,7 +274,7 @@ class MarketBuyTest(unittest.IsolatedAsyncioTestCase):
         await self.trader.register()
 
     async def test_market_buy(self):
-        self.assertEqual((await self.trader.market_buy("BTC", "USD", 1, 0.01))['buyer'], (await self.requests[0].market_buy("BTC", "USD", 1, self.trader.name, 0.01))['buyer'])
+        self.assertEqual((await self.trader.market_buy("BTC", "USD", 1, '0.01'))['buyer'], (await self.requests[0].market_buy("BTC", "USD", 1, self.trader.name, '0.01'))['buyer'])
 
 class MarketSellTest(unittest.IsolatedAsyncioTestCase):
     async def asyncSetUp(self) -> None:
@@ -287,7 +287,7 @@ class MarketSellTest(unittest.IsolatedAsyncioTestCase):
         await self.trader.register()
 
     async def test_market_sell(self):
-        self.assertEqual((await self.trader.market_sell("BTC", "USD", 1, 0.01))['seller'], (await self.requests[0].market_sell("BTC", "USD", 1, self.trader.name, 0.01))['seller'])
+        self.assertEqual((await self.trader.market_sell("BTC", "USD", 1, '0.01'))['seller'], (await self.requests[0].market_sell("BTC", "USD", 1, self.trader.name, '0.01'))['seller'])
 
 class GetCashTest(unittest.IsolatedAsyncioTestCase):
     async def asyncSetUp(self) -> None:
@@ -349,7 +349,7 @@ class GetPositionTest(unittest.IsolatedAsyncioTestCase):
         print(position)
         self.assertIsInstance(position, dict)
         self.assertEqual(position['asset'], "USD")
-        self.assertEqual(position['qty'], '10000')
+        self.assertEqual(position['qty'], '10000.000000000000000000')
         self.assertEqual(len(position['enters']), 1)
         self.assertEqual(len(position['exits']), 0)
 

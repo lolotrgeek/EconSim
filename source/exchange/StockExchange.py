@@ -3,7 +3,7 @@ parent_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 sys.path.append(parent_dir)
 from uuid import uuid4 as UUID
 import random, string, time
-from decimal import Decimal, getcontext
+from decimal import Decimal
 from source.Archive import Archive
 from .Exchange import Exchange
 from .types.OrderBook import OrderBook
@@ -19,7 +19,6 @@ from source.utils.logger import Logger
 class StockExchange(Exchange):
     def __init__(self, datetime= None, archiver=None):
         super().__init__(datetime=datetime)
-        getcontext().prec = 2
         self.archiver = archiver
         self.agents_archive = Archive('stock_agents')
         self.assets_archive = Archive('stock_assets')

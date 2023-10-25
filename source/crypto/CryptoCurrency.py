@@ -1,6 +1,8 @@
-
+import sys, os
+sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 from .Blockchain import Blockchain
-import random, string, math
+from decimal import Decimal
+from source.utils._utils import prec
 
 class CryptoCurrency():
     def __init__(self, name:str, startdate, max_supply=0, requester=None) -> None:
@@ -34,19 +36,19 @@ class CryptoCurrency():
     async def validate_address(self, address:str) -> bool:
         return type(address) == str and address.isalnum() and len(address) >= 26 and len(address) <= 35
 
-    async def issue_coins(self, pairs:list, amount:float) -> None:
+    async def issue_coins(self, pairs:list, amount:Decimal) -> None:
         self.supply += amount
         return await self.requests.create_asset(self.symbol, pairs)
 
     async def halving(self):
         # reduce the block reward on a halving schedule, asymptotically approaching the max supply
         self.last_halving_block = len(self.blockchain.chain)
-        self.block_reward = self.block_reward / 2
+        self.block_reward = prec(str(self.block_reward / 2))
 
     async def next(self, currentdate) -> None:
         self.currentdate = currentdate
         self.blockchain.datetime = currentdate
         transactions = await self.blockchain.process_transactions()
-        self.supply += transactions['confirmed'] * self.block_reward
+        self.supply += prec(transactions['confirmed'] * self.block_reward)
         if self.max_supply > 0 and len(self.blockchain.chain) - self.last_halving_block >= self.halving_period:
             await self.halving()

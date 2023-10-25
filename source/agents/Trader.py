@@ -5,8 +5,9 @@ import sys
 import os
 parent_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 sys.path.append(parent_dir)
+from source.utils._utils import string_to_time
 from source.utils.logger import Logger, Null_Logger
-
+from datetime import datetime
 
 class Trader(Agent):
     def __init__(self, name:str, aum:int=10_000, requests=None):
@@ -22,6 +23,10 @@ class Trader(Agent):
 
     def __str__(self):
         return f'<Trader: {self.name}>'
+
+    async def get_sim_time(self) -> str:
+        time = await self.exchange_requests.get_sim_time()
+        return string_to_time(time)
 
     async def get_tickers(self) -> list:
         """returns a list of all tickers in the market

@@ -1,5 +1,6 @@
 import logging 
 from rich import print
+from datetime import datetime
 
 class Logger():
     def __init__(self, name, level=logging.INFO, debug_print=False):
@@ -21,6 +22,7 @@ class Logger():
         self.fh.setLevel(level)
         self.fh.setFormatter(self.formatter)
         self.logger.addHandler(self.fh)
+        self.logger.error("Logger Initialized "+str(datetime.now()))
         
     def debug(self, message, *args):
         self.logger.debug(self._format_message(message, *args))

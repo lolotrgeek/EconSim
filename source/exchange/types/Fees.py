@@ -1,8 +1,7 @@
-from decimal import Decimal, getcontext
+from decimal import Decimal
 
 class Fees():
     def __init__(self):
-        getcontext().prec = 18
         self.waive_fees = True
         self.maker_fee_rate = Decimal('0.001')  # Maker fee rate as a decimal (e.g., 0.001 = 0.1%)
         self.taker_fee_rate = Decimal('0.002')  # Taker fee rate as a decimal (e.g., 0.002 = 0.2%)

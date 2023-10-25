@@ -74,9 +74,9 @@ class MockResponderCryptoExchange():
         self.mock_order = None
 
     async def init(self):
-        await self.exchange.create_asset("BTC", pairs = [{'asset': "USD" ,'market_qty':1000 ,'seed_price':150 ,'seed_bid':.99, 'seed_ask':1.01}])
+        await self.exchange.create_asset("BTC", pairs = [{'asset': "USD" ,'market_qty':1000 ,'seed_price':150 ,'seed_bid':'.99', 'seed_ask':'1.01'}])
         self.agent = (await self.exchange.register_agent("buyer1", {"BTC":2, "USD": 100000}))['registered_agent']
-        self.mock_order = await self.exchange.limit_buy("BTC", "USD", price=151, qty=1, fee=0.0001, creator=self.agent)        
+        self.mock_order = await self.exchange.limit_buy("BTC", "USD", price=151, qty=1, fee='0.0001', creator=self.agent)        
 
     async def next(self):
         self.time = self.time + timedelta(days=1)

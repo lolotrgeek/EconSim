@@ -50,10 +50,10 @@ class TestCryptoRequests(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(txn_id['id'], id)
 
     async def test_add_transaction(self):
-        txn = await self.requests.add_transaction('USD', 0.1, 1000, 'sender', 'recipient')
+        txn = await self.requests.add_transaction('USD', '0.1', 1000, 'sender', 'recipient')
         self.assertEqual(txn['asset'], 'USD')
-        self.assertEqual(txn['fee'], 0.1)
-        self.assertEqual(txn['amount'], 1000)
+        self.assertEqual(txn['fee'], '0.100000000000000000')
+        self.assertEqual(txn['amount'], '1000.000000000000000000')
         self.assertEqual(txn['sender'], 'sender')
         self.assertEqual(txn['recipient'], 'recipient')
         self.assertEqual(txn['confirmed'], False)

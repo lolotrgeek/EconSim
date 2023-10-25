@@ -1,6 +1,8 @@
 import sys, os
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+from decimal import Decimal
 from .MemPool import MemPool, MempoolTransaction
+from source.utils._utils import prec
 from source.Archive import Archive
 import random
 import pandas as pd
@@ -30,15 +32,17 @@ class Blockchain():
         self.chain.append(block)
         return block
     
-    async def add_transaction(self, asset:str, fee:float, amount:float, sender:str, recipient:str) -> MempoolTransaction:
-        if(fee <= 0.0): return MempoolTransaction(asset, 0, 0, "error", "refusing transaction: no fee", dt=self.datetime)
+    async def add_transaction(self, asset:str, fee:Decimal, amount:Decimal, sender:str, recipient:str) -> MempoolTransaction:
+        fee = prec(fee)
+        amount = prec(amount)
+        if(fee <= 0): return MempoolTransaction(asset, 0, 0, "error", "refusing transaction: no fee", dt=self.datetime)
         self.total_transactions += 1
         mempool_transaction = MempoolTransaction(asset, fee, amount, sender, recipient, dt=self.datetime)
         self.mempool.transactions.append(mempool_transaction)
         return mempool_transaction
     
-    async def confirmation_odds(self, index, num_unconfirmed, fee) -> float:
-        return 1.0 - (index / num_unconfirmed)       
+    async def confirmation_odds(self, index, num_unconfirmed) -> float:
+        return 1 - (index / num_unconfirmed)
 
     async def process_transactions(self) -> None:
         unconfirmed_transactions = await self.mempool.get_pending_transactions()
@@ -48,7 +52,7 @@ class Blockchain():
         for index, transaction in enumerate(unconfirmed_transactions):
             # create a probablity distribution for confirmation based on the length of the mempool
             # increase confirmation odds for transactions with higher fees
-            confirmation_odds = await self.confirmation_odds(index, num_unconfirmed, transaction.fee)
+            confirmation_odds = await self.confirmation_odds(index, num_unconfirmed)
             if random.random() < confirmation_odds:
                 confirmed += 1
                 transaction.confirmed = True

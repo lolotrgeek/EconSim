@@ -6,13 +6,11 @@ from decimal import Decimal
 from .OrderSide import OrderSide
 from source.utils._utils import get_random_string
 
-class CryptoLimitOrder():
+class CryptoOrder():
 
     def __init__(self, ticker, price, qty, creator, side, dt=None, exchange_fee=0.0, network_fee=0.0, status='open', accounting='FIFO', position_id=None, fills =[]):
         self.id = get_random_string()
         self.ticker: str = ticker
-        self.base: str = ""
-        self.quote: str = ""
         self.price: Decimal = price
         self.type: OrderSide = side
         self.qty: Decimal = qty
@@ -21,9 +19,6 @@ class CryptoLimitOrder():
         self.exchange_fee: Decimal = exchange_fee #NOTE: the fee is assessed in base currency for sell, quote currency for buy to match the network fee
         self.network_fee: Decimal = network_fee # base currency for sell, quote currency for buy
         self.network_fee_per_qty: Decimal = network_fee / qty if qty > 0 else 0
-        self.remaining_network_fee = self.network_fee
-        self.exchange_fees_due = 0
-        self.unfilled_qty = qty
         self.position_id: str = position_id
         self.accounting :str = accounting
         self.fills: list = fills
@@ -51,8 +46,6 @@ class CryptoLimitOrder():
         return {
             'id': self.id,
             'ticker': self.ticker,
-            'base' : self.base,
-            'quote': self.quote,
             'price': self.price,
             'qty': self.qty,
             'creator': self.creator,
@@ -60,10 +53,6 @@ class CryptoLimitOrder():
             'dt': self.dt,
             'exchange_fee': self.exchange_fee,
             'network_fee': self.network_fee,
-            'network_fee_per_qty': self.network_fee_per_qty,
-            'remaining_network_fee': self.remaining_network_fee,
-            'exchange_fees_due': self.exchange_fees_due,
-            'unfilled_qty': self.unfilled_qty,
             'accounting': self.accounting,
             'position_id': self.position_id,
             'fills': self.fills,
@@ -71,7 +60,7 @@ class CryptoLimitOrder():
         }    
 
     def __repr__(self) -> str:
-        return f'<CryptoLimitOrder: {self.ticker} {self.type} {self.qty}@{self.price}>'
+        return f'<CryptoOrder: {self.ticker} {self.type} {self.qty}@{self.price}>'
 
     def __str__(self) -> str:
-        return f'<CryptoLimitOrder: {self.ticker} {self.type} {self.qty}@{self.price}>'
+        return f'<CryptoOrder: {self.ticker} {self.type} {self.qty}@{self.price}>'

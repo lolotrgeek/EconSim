@@ -53,7 +53,14 @@ const Agents = () => {
                     <div className='asset-bars'>
                         {agent.agent && agent.frozen_assets && agent.assets ?
                         Object.keys({...agent.assets, ...agent.frozen_assets}).map((asset, index) => (
-                            <AgentAssetBars key={index} asset={asset} frozen={agent.frozen_assets} available={agent.assets} />
+                            <AgentAssetBars 
+                            key={index} 
+                            asset={asset} 
+                            frozen={Object.entries(agent.frozen_assets).map(([ticker, pairs]) => [
+                                ticker,
+                                pairs.reduce((total, { frozen_qty, frozen_exchange_fee, frozen_network_fee }) => total + frozen_qty + frozen_exchange_fee + frozen_network_fee, 0)
+                              ])} 
+                            available={agent.assets} />
                         )) :
                          <p>loading...</p>}
                     </div>               

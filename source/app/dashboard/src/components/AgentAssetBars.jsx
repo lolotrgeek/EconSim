@@ -9,6 +9,7 @@ const AgentAssetBars = ({ frozen, available, asset }) => {
     const chart = echarts.init(chartRef.current);
 
     const options = {
+      animation: false,
       tooltip: {
         trigger: 'axis',
         axisPointer: {

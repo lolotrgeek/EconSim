@@ -1,10 +1,11 @@
 import unittest
 from datetime import datetime, timedelta
+from decimal import Decimal
 import sys
 import os
 parent_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 sys.path.append(parent_dir)
-from source.utils._utils import dumps, get_pandas_time, get_timedelta, get_datetime_range, get_random_string, format_dataframe_rows_to_dict
+from source.utils._utils import dumps, get_pandas_time, get_timedelta, get_datetime_range, get_random_string, format_dataframe_rows_to_dict, prec
 
 class TestUtilsTest(unittest.TestCase):
     def test_dumps(self):
@@ -51,6 +52,18 @@ class TestUtilsTest(unittest.TestCase):
             {'col1': 3, 'col2': 'c'},
         ]
         self.assertEqual(format_dataframe_rows_to_dict(df), expected_output)
+
+    def test_prec(self):
+        self.assertEqual( prec('0.1234567890123456789') , Decimal('0.123456789012345679'))
+        self.assertEqual( prec(Decimal('0.1234567890123456789')) , Decimal('0.123456789012345679'))
+        self.assertEqual( len(str(prec('0.1234567890123456789')).split('.')[1]), 18)
+        self.assertEqual( prec('10000.1234567890123456789'), Decimal('10000.123456789012345679'))
+        self.assertEqual( prec('10000.1234567890123456789') , Decimal('10000.123456789012345679'))
+        self.assertEqual( len(str(prec('10000.1234567890123456789')).split('.')[1]), 18)
+        max = '999999999999999999.999999999999999999'
+        self.assertEqual(prec(max), Decimal(max))
+        self.assertEqual( len(str(prec(max)).split('.')[1]), 18)
+        self.assertEqual( len(str(prec(max)).split('.')[0]), 18)
 
 if __name__ == '__main__':
     unittest.main()

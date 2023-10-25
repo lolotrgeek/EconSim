@@ -6,7 +6,7 @@ sys.path.append(parent_dir)
 import unittest
 from datetime import datetime
 import random
-import pandas as pd
+from decimal import Decimal
 from source.crypto.Blockchain import Blockchain, MempoolTransaction
 
 class BlockchainTests(unittest.IsolatedAsyncioTestCase):
@@ -16,8 +16,8 @@ class BlockchainTests(unittest.IsolatedAsyncioTestCase):
 
     async def test_new_block(self):
         transactions = [
-            MempoolTransaction('BTC', 0.001, 1.0, 'sender1', 'recipient1', datetime(2022, 1, 1)),
-            MempoolTransaction('ETH', 0.002, 2.0, 'sender2', 'recipient2', datetime(2022, 1, 1))
+            MempoolTransaction('BTC', '0.001', '1.0', 'sender1', 'recipient1', datetime(2022, 1, 1)),
+            MempoolTransaction('ETH', '0.002', '2.0', 'sender2', 'recipient2', datetime(2022, 1, 1))
         ]
         previous_hash = 'previous_hash'
         block = await self.blockchain.new_block(transactions, previous_hash)
@@ -30,8 +30,8 @@ class BlockchainTests(unittest.IsolatedAsyncioTestCase):
 
     async def test_add_transaction(self):
         asset = 'BTC'
-        fee = 0.001
-        amount = 1.0
+        fee = Decimal('0.001000000000000000')
+        amount = Decimal('1.000000000000000000')
         sender = 'sender1'
         recipient = 'recipient1'
         self.blockchain.datetime=datetime(2022, 1, 3)
@@ -49,11 +49,11 @@ class BlockchainTests(unittest.IsolatedAsyncioTestCase):
 
     async def test_process_transactions(self):
         self.blockchain.datetime = datetime(2022, 1, 3)
-        await self.blockchain.add_transaction('BTC', 0.001, 1.0, 'sender1', 'recipient1')
+        await self.blockchain.add_transaction('BTC', '0.001', '1.0', 'sender1', 'recipient1')
         self.blockchain.datetime = datetime(2022, 1, 5)
-        await self.blockchain.add_transaction('ETH', 0.002, 2.0, 'sender2', 'recipient2')
+        await self.blockchain.add_transaction('ETH', '0.002', '2.0', 'sender2', 'recipient2')
         self.blockchain.datetime = datetime(2022, 1, 6)
-        await self.blockchain.add_transaction('LTC', 0.003, 3.0, 'sender3', 'recipient3')
+        await self.blockchain.add_transaction('LTC', '0.003', '3.0', 'sender3', 'recipient3')
         pending_transactions = await self.blockchain.mempool.get_pending_transactions()
         pending_transactions.sort( key=lambda x: x.fee, reverse=True)
         
@@ -62,23 +62,23 @@ class BlockchainTests(unittest.IsolatedAsyncioTestCase):
         random.seed(42)  # Set seed for predictable random number generation
         processed = await self.blockchain.process_transactions()
         self.assertEqual(len(pending_transactions), len(self.blockchain.chain)-length_before + 1)
-        self.assertEqual(pending_transactions[0].fee, 0.003)
-        self.assertEqual(pending_transactions[1].fee, 0.002)
-        self.assertEqual(pending_transactions[2].fee, 0.001)
+        self.assertEqual(pending_transactions[0].fee, Decimal('0.003'))
+        self.assertEqual(pending_transactions[1].fee, Decimal('0.002'))
+        self.assertEqual(pending_transactions[2].fee, Decimal('0.001'))
         self.assertEqual(processed['confirmed'], 2)
         self.assertEqual(processed['unconfirmed'], 1)
 
     async def test_confirmation_odds(self):
-        odds = await self.blockchain.confirmation_odds(0, 10, 1)
-        lower_odds = await self.blockchain.confirmation_odds(1, 10, .5)
-        lowest_odds = await self.blockchain.confirmation_odds(2, 10, .001)
+        odds = await self.blockchain.confirmation_odds(0, 10)
+        lower_odds = await self.blockchain.confirmation_odds(1, 10)
+        lowest_odds = await self.blockchain.confirmation_odds(2, 10)
         self.assertGreater(odds, lower_odds)
         self.assertGreater(lower_odds, lowest_odds)
 
     async def test_prune(self):
         self.blockchain.max_transactions = 20
         for i in range(20):
-            self.blockchain.chain.append(MempoolTransaction('BTC', 0.001, 1.0, 'sender1', 'recipient1', datetime(2022, 1, i+1)))
+            self.blockchain.chain.append(MempoolTransaction('BTC', '0.001', 1.0, 'sender1', 'recipient1', datetime(2022, 1, i+1)))
 
         self.assertEqual(len(self.blockchain.chain), 21)
 
@@ -92,9 +92,9 @@ class BlockchainTests(unittest.IsolatedAsyncioTestCase):
         os.remove("archive/testchain.dir")
 
     async def test_get_transactions(self):
-        transaction1 = MempoolTransaction('BTC', 0.001, 1.0, 'sender1', 'recipient1', datetime(2022, 1, 6))
-        transaction2 = MempoolTransaction('ETH', 0.002, 2.0, 'sender2', 'recipient2', datetime(2022, 1, 6))
-        transaction3 = MempoolTransaction('LTC', 0.003, 3.0, 'sender3', 'recipient3', datetime(2022, 1, 6))
+        transaction1 = MempoolTransaction('BTC', '0.001', '1.0', 'sender1', 'recipient1', datetime(2022, 1, 6))
+        transaction2 = MempoolTransaction('ETH', '0.002', '2.0', 'sender2', 'recipient2', datetime(2022, 1, 6))
+        transaction3 = MempoolTransaction('LTC', '0.003', '3.0', 'sender3', 'recipient3', datetime(2022, 1, 6))
         self.blockchain.chain = [transaction1, transaction2, transaction3]
         transactions = await self.blockchain.get_transactions()
         self.assertEqual(len(transactions), 3)
@@ -103,9 +103,9 @@ class BlockchainTests(unittest.IsolatedAsyncioTestCase):
         self.assertIn(transaction3.to_dict(), transactions)
 
     async def test_get_transaction(self):
-        transaction1 = MempoolTransaction('BTC', 0.001, 1.0, 'sender1', 'recipient1', datetime(2022, 1, 8))
-        transaction2 = MempoolTransaction('ETH', 0.002, 2.0, 'sender2', 'recipient2', datetime(2022, 1, 8))
-        transaction3 = MempoolTransaction('LTC', 0.003, 3.0, 'sender3', 'recipient3', datetime(2022, 1, 8))
+        transaction1 = MempoolTransaction('BTC', '0.001', '1.0', 'sender1', 'recipient1', datetime(2022, 1, 8))
+        transaction2 = MempoolTransaction('ETH', '0.002', '2.0', 'sender2', 'recipient2', datetime(2022, 1, 8))
+        transaction3 = MempoolTransaction('LTC', '0.003', '3.0', 'sender3', 'recipient3', datetime(2022, 1, 8))
         self.blockchain.chain = [transaction1, transaction2, transaction3]
         transaction = await self.blockchain.get_transaction(transaction2.id)
         self.assertEqual(transaction, transaction2.to_dict())
@@ -116,8 +116,8 @@ class BlockchainTests(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(len(self.blockchain.chain), 1)
 
         transactions = [
-            MempoolTransaction('BTC', 0.001, 1.0, 'sender1', 'recipient1'),
-            MempoolTransaction('ETH', 0.002, 2.0, 'sender2', 'recipient2')
+            MempoolTransaction('BTC', '0.001', '1.0', 'sender1', 'recipient1'),
+            MempoolTransaction('ETH', '0.002', '2.0', 'sender2', 'recipient2')
         ]
         previous_hash = 'previous_hash'
         self.blockchain.datetime = datetime(2022, 1, 8)

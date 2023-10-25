@@ -1,6 +1,11 @@
 from datetime import timedelta, datetime
 import random, string
 import json
+from decimal import *
+
+context = getcontext()
+context.prec = 36
+context.rounding = ROUND_UP
 
 def dumps(data):
     return json.dumps(data, indent=4, sort_keys=True, default=str)
@@ -29,6 +34,25 @@ def get_datetime_range(start_date, end_date,time_unit='day') -> list:
         start_date += delta
     return date_range
 
+def split_float(num) -> tuple:
+    if isinstance(num, float) or isinstance(num, str) or isinstance(num, int) or isinstance(num, Decimal):
+        try:
+            return format(num, '.33f').split('.')
+        except:
+            return (num,0)
+    else:
+        return(0,0)
+        # raise TypeError('num must be a float, int, string, or Decimal')
+
+def prec(num, places=18) -> Decimal:
+    """
+    Set the precision of a Decimal `num` to a number of `places`.
+    """
+    if type(num) is float:
+        raise TypeError('num cannot accept floats, it must be a int, string, or Decimal')
+    if type(num) is int:
+        num = str(num)
+    return Decimal(num).quantize(Decimal(10) ** -places)
 
 def get_random_string(length=9) -> str:
     x = ''.join(random.choice(string.ascii_uppercase + string.ascii_lowercase + string.digits) for _ in range(length))

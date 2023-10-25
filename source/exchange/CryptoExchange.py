@@ -3,7 +3,6 @@ parent_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 sys.path.append(parent_dir)
 from uuid import uuid4 as UUID
 import random, string, time
-from decimal import Decimal, getcontext
 from source.Archive import Archive
 from .Exchange import Exchange
 from .types.CryptoOrderBook import CryptoOrderBook
@@ -12,7 +11,7 @@ from .types.CryptoLimitOrder import CryptoLimitOrder
 from .types.OrderSide import OrderSide
 from .types.Fees import Fees
 from source.utils.logger import Logger
-from source.utils._utils import get_random_string
+from source.utils._utils import get_random_string, prec
 
 #NOTE: symbols are the letters that represent a given asset, e.g. BTC, ETH, etc.
 #NOTE: tickers are the combination of the symbol and the quote currency, e.g. BTC/USD, ETH/USD, etc.
@@ -20,7 +19,6 @@ from source.utils._utils import get_random_string
 class CryptoExchange(Exchange):
     def __init__(self, datetime= None, requester=None, archiver=None):
         super().__init__(datetime=datetime)
-        getcontext().prec = 18 #NOTE: this is the precision of the decimal module, it is set to 18 to match the precision of the blockchain
         self.archiver = archiver
         self.requester = requester
         self.pairs = []
@@ -36,7 +34,7 @@ class CryptoExchange(Exchange):
         self.pending_transactions = []
         self.max_pending_transactions = 1_000_000
         self.max_pairs = 10000
-        self.logger = Logger('CryptoExchange', 30) 
+        self.logger = Logger('CryptoExchange', 30)
         
     async def next(self):
         for transaction in self.pending_transactions: 
@@ -63,19 +61,19 @@ class CryptoExchange(Exchange):
         self.pairs.append({'base': asset, 'quote': pair['asset']})
         ticker = asset+pair['asset']
 
-        seed_price = Decimal(str(pair['seed_price']))
-        seed_bid = Decimal(str(pair['seed_bid']))
-        seed_ask = Decimal(str(pair['seed_ask']))
+        seed_price = prec(pair['seed_price'])
+        seed_bid = prec(pair['seed_bid'])
+        seed_ask = prec(pair['seed_ask'])
 
         trade = CryptoTrade(asset, pair['asset'], pair['market_qty'], seed_price, 'init_seed_'+ticker, 'init_seed_'+ticker, self.datetime, network_fee={'base': 0, 'quote': 0}, exchange_fee={'base': 0, 'quote': 0})
         self.trade_log.append(trade)
         
-        buy = CryptoLimitOrder(ticker, seed_price * seed_bid, 1, 'init_seed_'+ticker, OrderSide.BUY, self.datetime, exchange_fee=0, network_fee=Decimal('0.01'))
+        buy = CryptoLimitOrder(ticker, prec(seed_price * seed_bid), 1, 'init_seed_'+ticker, OrderSide.BUY, self.datetime, exchange_fee=0, network_fee=prec('0.01'))
         buy.id = 'init_seed_'+ticker
         self.books[ticker].bids.insert(0, buy)
   
-        qty = Decimal(str(pair['market_qty']))
-        sell = CryptoLimitOrder(ticker, seed_price * seed_ask, qty, 'init_seed_'+ticker, OrderSide.SELL, self.datetime, exchange_fee=0, network_fee=Decimal('1'))
+        qty = prec(pair['market_qty'])
+        sell = CryptoLimitOrder(ticker, prec(seed_price * seed_ask), qty, 'init_seed_'+ticker, OrderSide.SELL, self.datetime, exchange_fee=0, network_fee=prec('1'))
         sell.id = 'init_seed_'+ticker
         self.books[ticker].asks.insert(0, sell)
         
@@ -112,19 +110,20 @@ class CryptoExchange(Exchange):
         if symbol in self.assets:
             return {"error" :f'asset {symbol} already exists'}
         if len(pairs) == 0:
-            default_quote = {'asset': self.default_currency['symbol'],'market_qty':1000 ,'seed_price':100 ,'seed_bid':.99, 'seed_ask':1.01}
+            default_quote = {'asset': self.default_currency['symbol'],'market_qty':1000 ,'seed_price':100 ,'seed_bid':'.99', 'seed_ask':'1.01'}
             pairs.append(default_quote)
 
         for pair in pairs:
             ticker = symbol+pair['asset']
             self.books[ticker] = CryptoOrderBook(ticker)
-            
-            pair['seed_price'] = Decimal(str(pair['seed_price']))
-            pair['seed_bid'] = Decimal(str(pair['seed_bid']))
-            pair['seed_ask'] = Decimal(str(pair['seed_ask']))
-            pair['market_qty'] = Decimal(str(pair['market_qty']))
 
-            quote_position =  {"id":'init_seed_'+ticker, 'asset': symbol, "price": 0,"qty": pair['market_qty'] * pair['seed_price'], "dt": self.datetime, "enters":[], "exits": [], }
+            pair['seed_price'] = prec(pair['seed_price'])
+            pair['seed_bid'] = prec(pair['seed_bid'])
+            pair['seed_ask'] = prec(pair['seed_ask'])
+            pair['market_qty'] = prec(pair['market_qty'])
+
+            qty = prec(pair['market_qty'] * pair['seed_price'])
+            quote_position =  {"id":'init_seed_'+ticker, 'asset': symbol, "price": 0,"qty": qty, "dt": self.datetime, "enters":[], "exits": [], }
             self.agents.append({
                 'name':'init_seed_'+ticker,
                 '_transactions':[],
@@ -133,37 +132,22 @@ class CryptoExchange(Exchange):
                 'wallets':{symbol: (await self.generate_address()), pair['asset']: (await self.generate_address())},
                 'assets': {},
                 'frozen_assets': {
-                    symbol: [{'order_id': 'init_seed_'+ticker, 'frozen_qty': pair['market_qty'], 'frozen_exchange_fee': Decimal('0.0'), 'frozen_network_fee': Decimal('1')}],
-                    pair['asset']: [{'order_id': 'init_seed_'+ticker, 'frozen_qty': pair['market_qty'] * pair['seed_price'], 'frozen_exchange_fee': Decimal('0.0'), 'frozen_network_fee': Decimal('1')}]
+                    symbol: [{'order_id': 'init_seed_'+ticker, 'frozen_qty': pair['market_qty'], 'frozen_exchange_fee': prec('0.0'), 'frozen_network_fee': prec('1')}],
+                    pair['asset']: [{'order_id': 'init_seed_'+ticker, 'frozen_qty': qty, 'frozen_exchange_fee': prec('0.0'), 'frozen_network_fee': prec('1')}]
                 }
             })
-            
-            # await self.register_agent('init_seed_'+ticker, {symbol: pair['market_qty'], pair['asset']: pair['market_qty'] * pair['seed_price']})
-
-            # buyer = 'init_seed_'+ticker
-            # seller = 'init_seed_'+ticker
-            # price = Decimal(str(pair['seed_price']))
-            # qty = Decimal(str(pair['market_qty']))
-            # base = symbol
-            # quote = pair['asset']
-            # network_fee = {'base': Decimal('0.0001'), 'quote': Decimal('0.0001')}
-            # exchange_fee={'quote':0.0, 'base':0.0}
-            # txn_time = self.datetime
-
             await self.list_asset(symbol, pair)
 
-            # await self._process_trade(base, quote, qty, price, buyer, seller, accounting='FIFO', network_fee=network_fee, position_id='init_seed_'+ticker)
-            # self.pending_asset_pairs[symbol] = pairs
         return {'asset_created': symbol, 'pairs': pairs}
         
-    async def _process_trade(self, base, quote, qty, price, buyer, seller, seller_order_id, buyer_order_id, accounting='FIFO', exchange_fee={'quote':0.0, 'base':0.0}, network_fee={'quote':0.0, 'base':0.0}, position_id=None):
+    async def _process_trade(self, base, quote, qty, price, buyer, seller, seller_order_id, buyer_order_id, accounting='FIFO', exchange_fee={'quote':'0.0', 'base':'0.0'}, network_fee={'quote':'0.0', 'base':'0.0'}, position_id=None):
         try:
             if buyer == 'init_seed_'+base+quote: 
                 self.logger.info('waive exchange fees for init_seed_'+base+quote)
-                exchange_fee['quote'] = Decimal('0.0')
+                exchange_fee['quote'] = prec('0.0')
             if seller == 'init_seed_'+base+quote:
                 self.logger.info('waive exchange fees for init_seed_'+base+quote)
-                exchange_fee['base'] = Decimal('0.0')
+                exchange_fee['base'] = prec('0.0')
             
             if not (await self.agent_has_assets_frozen(buyer, quote, buyer_order_id, (price*qty), exchange_fee['quote'], network_fee['quote'])):
                 self.logger.error(f'Unable to Process buy_order: {buyer_order_id} / sell order: {seller_order_id} ')
@@ -186,8 +170,8 @@ class CryptoExchange(Exchange):
 
             txn_time = self.datetime
             transaction = [
-                {'id': str(UUID()), 'agent':buyer, 'order_id':buyer_order_id, 'quote_flow':-qty*price, 'price': price, 'base': base, 'quote': quote, 'qty': qty, 'fee':exchange_fee['quote'], 'network_fee':network_fee['quote'], 'dt': txn_time, 'type': 'buy'},
-                {'id': str(UUID()), 'agent':seller, 'order_id': seller_order_id, 'quote_flow':qty*price, 'price': price, 'base': base, 'quote': quote, 'qty': -qty, 'fee':exchange_fee['base'], 'network_fee':network_fee['base'], 'dt': txn_time, 'type': 'sell'}
+                {'id': str(UUID()), 'agent':buyer, 'order_id':buyer_order_id, 'quote_flow':prec(-qty*price), 'price': price, 'base': base, 'quote': quote, 'qty': qty, 'fee':exchange_fee['quote'], 'network_fee':network_fee['quote'], 'dt': txn_time, 'type': 'buy'},
+                {'id': str(UUID()), 'agent':seller, 'order_id': seller_order_id, 'quote_flow':prec(qty*price), 'price': price, 'base': base, 'quote': quote, 'qty': -qty, 'fee':exchange_fee['base'], 'network_fee':network_fee['base'], 'dt': txn_time, 'type': 'sell'}
             ]
 
             self.pending_transactions.append({'base_txn': pending_base_transaction, 'quote_txn': pending_quote_transaction, 'exchange_txn': transaction, 'accounting': accounting, 'position_id': position_id})
@@ -206,7 +190,7 @@ class CryptoExchange(Exchange):
         price = transaction['exchange_txn'][0]['price']
         buyer = transaction['exchange_txn'][0]['agent']
         seller = transaction['exchange_txn'][1]['agent']
-        network_fee = {'base': Decimal(base_transaction['fee']), 'quote': Decimal(quote_transaction['fee'])}
+        network_fee = {'base': prec(base_transaction['fee']), 'quote': prec(quote_transaction['fee'])}
         exchange_fee = {'base': transaction['exchange_txn'][1]['fee'], 'quote': transaction['exchange_txn'][0]['fee']}
         trade = CryptoTrade(base, quote, qty, price, buyer, seller, self.datetime, network_fee=network_fee, exchange_fee=exchange_fee)
         self.trade_log.append(trade)
@@ -377,10 +361,13 @@ class CryptoExchange(Exchange):
                     return {'success': 'network fee paid'}
 
     async def create_new_order(self, base, quote, price, qty, creator, side, fee, tif, position_id) -> CryptoLimitOrder:
+        qty = prec(qty)
+        price = prec(price)
+        fee = prec(fee)
         if side == OrderSide.BUY:   
-            new_order = CryptoLimitOrder(base+quote, price, qty, creator, OrderSide.BUY, self.datetime, exchange_fee=self.fees.taker_fee(qty*price), network_fee=fee, position_id=position_id)
+            new_order = CryptoLimitOrder(base+quote, price, qty, creator, OrderSide.BUY, self.datetime, exchange_fee=prec(self.fees.taker_fee(qty*price)), network_fee=fee, position_id=position_id, fills=[])
         else:
-            new_order = CryptoLimitOrder(base+quote, price, qty, creator, OrderSide.SELL, self.datetime, exchange_fee=self.fees.taker_fee(qty), network_fee=fee, position_id=position_id)
+            new_order = CryptoLimitOrder(base+quote, price, qty, creator, OrderSide.SELL, self.datetime, exchange_fee=prec(self.fees.taker_fee(qty)), network_fee=fee, position_id=position_id, fills=[])
         if price <= 0:
             new_order.status='error' 
             new_order.accounting ='price_must_be_greater_than_zero'
@@ -393,83 +380,87 @@ class CryptoExchange(Exchange):
             new_order.status='error'
             new_order.accounting ='fee_must_be_greater_than_zero'
             return new_order
-        return new_order
+        else:
+            new_order.base = base
+            new_order.quote = quote
+            new_order.exchange_fees_due = 0
+            new_order.unfilled_qty = qty 
+            new_order.network_fee_per_qty = prec(fee/qty)
+            old_fee = fee
+            new_fee = prec(new_order.network_fee_per_qty * qty)
+            if new_fee != old_fee:
+                self.logger.info(f"fee changed: {new_order.id} new fee: {new_fee} old fee: {old_fee} {new_order.network_fee_per_qty} {qty}")
+                new_order.network_fee = new_fee
+                new_order.remaining_network_fee = new_fee
+                #TODO: maybe do a ping back to user to confirm order before executing?
+            self.logger.info(f'created new order {new_order.id} {new_order.qty} {new_order.price} {new_order.fills}')            
+            return new_order
 
-    async def limit_buy(self, base: str, quote:str, price: float, qty: int, creator: str, fee=0.0, tif='GTC', position_id=UUID()) -> CryptoLimitOrder:
+    async def limit_buy(self, base: str, quote:str, price: float, qty: int, creator: str, fee='0.0', tif='GTC', position_id=UUID()) -> CryptoLimitOrder:
         if len(self.books[base+quote].bids) >= self.max_bids:
             return CryptoLimitOrder(base+quote, 0, 0, creator, OrderSide.BUY, self.datetime, status='error', accounting='max_bid_depth_reached')
         if len(self.pending_transactions) >= self.max_pending_transactions:
             return CryptoLimitOrder(base+quote, 0, 0, creator, OrderSide.BUY, self.datetime, status='error', accounting='max_pending_transactions_reached')
         #NOTE: the fee arg here is the network fee... consider renaming
-        qty = Decimal(str(qty))
-        price = Decimal(str(price))
-        fee = Decimal(str(fee))
         new_order = await self.create_new_order(base, quote, price, qty, creator, OrderSide.BUY, fee, tif, position_id)
         if new_order.status == 'error': return new_order
-        has_asset = await self.agent_has_assets(creator, quote, (qty * price)+fee+new_order.exchange_fee)      
+        has_asset = await self.agent_has_assets(creator, quote, prec((new_order.qty * new_order.price)+new_order.network_fee+new_order.exchange_fee))      
         ticker = base+quote
         if has_asset:
-            await self.freeze_assets(creator, quote, new_order.id, (qty * price), new_order.exchange_fee, new_order.network_fee )
-            # check if we can match trades before submitting the limit order
-            network_fee_per_unit = fee/qty
-            remaining_network_fee =fee
-            exchange_fees_due = 0
-            unfilled_qty = qty
-            fills=[]
-            while unfilled_qty > 0:
+            await self.freeze_assets(creator, quote, new_order.id, prec(new_order.qty * new_order.price), new_order.exchange_fee, new_order.network_fee)
+            while new_order.unfilled_qty > 0:
+                self.logger.info(f'limit buy unfilled {new_order.unfilled_qty}' )
                 if tif == 'TEST':
                     break
                 best_ask = await self.get_best_ask(ticker)
-                if best_ask.creator != 'null_quote' and best_ask.creator != creator and price >= best_ask.price:
-                    trade_qty = Decimal(str(min(unfilled_qty, best_ask.qty)))
-                    taker_fee = self.fees.taker_fee(trade_qty*best_ask.price)
-                    partial_fee = network_fee_per_unit * trade_qty
-                    #TODO: consider writing a matching engine method to handle all trades
-                    seller_network_fee = best_ask.network_fee_per_qty * trade_qty
-                    seller_exchange_fee = (best_ask.exchange_fee / best_ask.qty) * trade_qty
+                if best_ask.creator != 'null_quote' and best_ask.creator != creator and new_order.price >= best_ask.price:
+                    trade_qty = prec(min(new_order.unfilled_qty, best_ask.qty))
+                    taker_fee = prec(self.fees.taker_fee(trade_qty*best_ask.price))
+                    partial_network_fee = prec(new_order.network_fee_per_qty * trade_qty)
+                    seller_network_fee = prec(best_ask.network_fee_per_qty * trade_qty) #TODO: update the seller's remaining network fee...
+                    seller_exchange_fee = prec((best_ask.exchange_fee / best_ask.qty) * trade_qty)
                     self.logger.info(f"best ask {best_ask.qty} {best_ask.network_fee} {seller_network_fee} trade_qty: {trade_qty}")
-                    processed = await self._process_trade(base, quote, trade_qty, best_ask.price, creator, best_ask.creator, best_ask.id, new_order.id, exchange_fee={'quote':taker_fee, 'base': seller_exchange_fee}, network_fee={'quote': partial_fee, 'base': seller_network_fee}, position_id=position_id)
+                    processed = await self._process_trade(base, quote, trade_qty, best_ask.price, creator, best_ask.creator, best_ask.id, new_order.id, exchange_fee={'quote':taker_fee, 'base': seller_exchange_fee}, network_fee={'quote': partial_network_fee, 'base': seller_network_fee}, position_id=position_id)
                     if('error' in processed):
                         #NOTE: instead of canceling, unfreezing assets, and attempting to handle a partial fill, push the rest of this order into the book
                         break
-                    fills.append({'qty': trade_qty, 'price': best_ask.price, 'fee': taker_fee, 'creator': best_ask.creator})
-                    unfilled_qty -= trade_qty
-                    remaining_network_fee -= partial_fee
-                    exchange_fees_due += taker_fee
+                    new_order.fills.append({'qty': trade_qty, 'price': best_ask.price, 'fee': taker_fee, 'creator': best_ask.creator})
+                    new_order.unfilled_qty -= trade_qty
+                    new_order.remaining_network_fee -= partial_network_fee
+                    new_order.exchange_fees_due += taker_fee
                     self.books[ticker].asks[0].qty -= trade_qty
                     self.books[ticker].asks[0].exchange_fee -= seller_exchange_fee
+                    self.books[ticker].asks[0].remaining_network_fee -= seller_network_fee
                     self.books[ticker].asks = [ask for ask in self.books[ticker].asks if ask.qty > 0]
-                    deductions = (trade_qty*price) - (trade_qty*best_ask.price)
+                    deductions = prec((trade_qty* new_order.price) - (trade_qty*best_ask.price))
                     if deductions > 0:
                         self.logger.info(f'Unfreezing deductions {deductions} from {creator} {quote} {new_order.id}')
                         await self.unfreeze_assets(creator, quote, new_order.id, qty=deductions)
+                    self.logger.info(f'limit buy new fill {new_order.fills[-1]}')
                 else:
                     break
             queue = len(self.books[ticker].bids)
             for idx, order in enumerate(self.books[ticker].bids):
-                if price > order.price:
+                if new_order.price > order.price:
                     queue = idx
                     break            
-            if unfilled_qty > 0:
-                maker_fee = self.fees.maker_fee(unfilled_qty*price)
-                self.logger.info(f'converting {new_order.id}, amount: {unfilled_qty*price} to maker order unfreezing {new_order.exchange_fee} and freezing: new fee {maker_fee} + fees due {exchange_fees_due}')
+            if new_order.unfilled_qty > 0:
+                maker_fee = prec(self.fees.maker_fee(new_order.unfilled_qty*new_order.price))
+                self.logger.info(f'converting {new_order.id}, amount: {new_order.unfilled_qty*new_order.price} to maker order unfreezing {new_order.exchange_fee} and freezing: new fee {maker_fee} + fees due {new_order.exchange_fees_due}')
                 await self.unfreeze_assets(creator, quote, new_order.id, exchange_fee=new_order.exchange_fee)
-                await self.freeze_assets(creator, quote, new_order.id, exchange_fee=maker_fee+exchange_fees_due)
-                new_order.qty = unfilled_qty
+                await self.freeze_assets(creator, quote, new_order.id, exchange_fee=prec(maker_fee+new_order.exchange_fees_due))
+                new_order.qty = new_order.unfilled_qty
                 new_order.exchange_fee = maker_fee
-                new_order.network_fee = remaining_network_fee
-                new_order.fills = fills
                 self.books[ticker].bids.insert(queue, new_order)
                 self.logger.info(f'limit buy queued {new_order.id} {new_order.qty} {new_order.price} {new_order.fills}')
                 return new_order
             else:
-                if new_order.exchange_fee > exchange_fees_due:
-                    self.logger.info(f'Unfreezing Fees {new_order.exchange_fee - exchange_fees_due} from {creator} {quote} {new_order.id}')
-                    await self.unfreeze_assets(creator, quote, new_order.id, exchange_fee=new_order.exchange_fee - exchange_fees_due)
-                new_order.exchange_fee = exchange_fees_due
-                new_order.network_fee = fee
-                new_order.fills = fills
+                if new_order.exchange_fee > new_order.exchange_fees_due:
+                    refund_amount = prec(new_order.exchange_fee - new_order.exchange_fees_due)
+                    self.logger.info(f'Unfreezing Fees {refund_amount} from {creator} {quote} {new_order.id}')
+                    await self.unfreeze_assets(creator, quote, new_order.id, exchange_fee=refund_amount)
                 new_order.status = 'filled_unconfirmed'
+                new_order.exchange_fee = new_order.exchange_fees_due
                 self.logger.info(f'limit buy filled {new_order.id} {new_order.qty} {new_order.price} {new_order.fills}')
                 return new_order
         else:
@@ -477,80 +468,191 @@ class CryptoExchange(Exchange):
             new_order.accounting ='insufficient_assets'
             return new_order
         
-    async def limit_sell(self, base: str, quote:str, price: float, qty: int, creator: str, fee=0.0, tif='GTC', accounting='FIFO') -> CryptoLimitOrder:
+    async def limit_sell(self, base: str, quote:str, price: float, qty: int, creator: str, fee='0.0', tif='GTC', accounting='FIFO') -> CryptoLimitOrder:
         if len(self.books[base+quote].asks) >= self.max_asks:
             return CryptoLimitOrder(base+quote, 0, 0, creator, OrderSide.SELL, self.datetime, status='error', accounting='max_ask_depth_reached')
         if len(self.pending_transactions) >= self.max_pending_transactions:
             return CryptoLimitOrder(base+quote, 0, 0, creator, OrderSide.SELL, self.datetime, status='error', accounting='max_pending_transactions_reached')
         #NOTE: the fee arg here is the network fee... consider renaming
-        qty = Decimal(str(qty))
-        price = Decimal(str(price))
-        fee = Decimal(str(fee))
         new_order = await self.create_new_order(base, quote, price, qty, creator, OrderSide.SELL, fee, tif, None)
         if new_order.status == 'error': return new_order        
         ticker = base+quote
-        has_assets = await self.agent_has_assets(creator, base, qty+fee+new_order.exchange_fee)
+        has_assets = await self.agent_has_assets(creator, base, prec(new_order.qty+new_order.network_fee+new_order.exchange_fee))
         if has_assets:
-            await self.freeze_assets(creator, base, new_order.id, qty, new_order.exchange_fee, new_order.network_fee)
-            network_fee_per_unit = fee/qty
-            remaining_network_fee = fee
-            unfilled_qty = qty
-            exchange_fees_due = 0
+            await self.freeze_assets(creator, base, new_order.id, new_order.qty, new_order.exchange_fee, new_order.network_fee)
             # check if we can match trades before submitting the limit order
-            fills = []
-            while unfilled_qty > 0:
+            while new_order.unfilled_qty > 0:
                 if tif == 'TEST':
                     break
                 best_bid = await self.get_best_bid(ticker)
-                if best_bid.creator != 'null_quote' and best_bid.creator != creator and price <= best_bid.price:
-                    trade_qty = Decimal(str(min(unfilled_qty, best_bid.qty)))
-                    taker_fee = self.fees.taker_fee(trade_qty)
-                    partial_network_fee = network_fee_per_unit * trade_qty
-                    buyer_network_fee = best_bid.network_fee_per_qty * trade_qty
-                    buyer_exchange_fee = (best_bid.exchange_fee / best_bid.price) * trade_qty
+                if best_bid.creator != 'null_quote' and best_bid.creator != creator and new_order.price <= best_bid.price:
+                    trade_qty = prec(min(new_order.unfilled_qty, best_bid.qty))
+                    taker_fee = prec(self.fees.taker_fee(trade_qty))
+                    partial_network_fee = prec(new_order.network_fee_per_qty * trade_qty)
+                    buyer_network_fee = prec(best_bid.network_fee_per_qty * trade_qty)
+                    buyer_exchange_fee = prec((best_bid.exchange_fee / best_bid.price) * trade_qty)
                     processed = await self._process_trade(base, quote, trade_qty, best_bid.price, best_bid.creator, creator, new_order.id, best_bid.id, accounting, exchange_fee={'quote': buyer_exchange_fee, 'base': taker_fee}, network_fee={'base':partial_network_fee, 'quote': buyer_network_fee})
                     if('error' in processed):
                         #NOTE: instead of canceling, unfreezing assets, and attempting to handle a partial fill, push the rest of this order into the book
                         break
-                    fills.append({'qty': trade_qty, 'price': best_bid.price, 'fee': taker_fee, 'creator': best_bid.creator})
-                    unfilled_qty -= trade_qty
-                    remaining_network_fee -= partial_network_fee
-                    exchange_fees_due += taker_fee
+                    new_order.fills.append({'qty': trade_qty, 'price': best_bid.price, 'fee': taker_fee, 'creator': best_bid.creator})
+                    new_order.unfilled_qty -= trade_qty
+                    new_order.remaining_network_fee -= partial_network_fee
+                    new_order.exchange_fees_due += taker_fee
                     self.books[ticker].bids[0].qty -= trade_qty
                     self.books[ticker].bids[0].exchange_fee -= buyer_exchange_fee
+                    self.books[ticker].bids[0].remaining_network_fee -= buyer_network_fee
                     self.books[ticker].bids = [bid for bid in self.books[ticker].bids if bid.qty > 0]
                 else:
                     break
             queue = len(self.books[ticker].asks)
             for idx, order in enumerate(self.books[ticker].asks):
-                if price < order.price:
+                if new_order.price < order.price:
                     queue = idx
                     break             
-            if unfilled_qty > 0:
-                maker_fee = self.fees.maker_fee(unfilled_qty)
-                self.logger.info(f'converting {new_order.id} amount {unfilled_qty} to maker order unfreezing exchange fee {new_order.exchange_fee} and freezing: new fee {maker_fee} + fees due {exchange_fees_due}')
+            if new_order.unfilled_qty > 0:
+                maker_fee = prec(self.fees.maker_fee(new_order.unfilled_qty))
+                self.logger.info(f'converting {new_order.id} amount {new_order.unfilled_qty} to maker order unfreezing exchange fee {new_order.exchange_fee} and freezing: new fee {maker_fee} + fees due {new_order.exchange_fees_due}')
                 await self.unfreeze_assets(creator, base, new_order.id, exchange_fee=new_order.exchange_fee)
-                await self.freeze_assets(creator, base, new_order.id, exchange_fee=maker_fee+exchange_fees_due)
-                new_order.qty = unfilled_qty
+                await self.freeze_assets(creator, base, new_order.id, exchange_fee=prec(maker_fee+new_order.exchange_fees_due))
+                new_order.qty = new_order.unfilled_qty
                 new_order.exchange_fee = maker_fee
-                new_order.network_fee = remaining_network_fee
-                new_order.fills = fills
                 self.books[ticker].asks.insert(queue, new_order)
                 self.logger.info(f'limit sell queued {new_order.id} {new_order.qty} {new_order.price} {new_order.fills}')
                 return new_order
             else:
-                if new_order.exchange_fee > exchange_fees_due:
-                    self.logger.info(f'Unfreezing Fees {new_order.exchange_fee - exchange_fees_due} from {creator} {base} {new_order.id}')
-                    await self.unfreeze_assets(creator, base, new_order.id, exchange_fee=new_order.exchange_fee - exchange_fees_due)                
-                new_order.exchange_fee = exchange_fees_due
-                new_order.network_fee = fee
-                new_order.fills = fills
+                if new_order.exchange_fee > new_order.exchange_fees_due:
+                    refund_amount = prec(new_order.exchange_fee - new_order.exchange_fees_due)
+                    self.logger.info(f'Unfreezing Fees {refund_amount} from {creator} {base} {new_order.id}')
+                    await self.unfreeze_assets(creator, base, new_order.id, exchange_fee=refund_amount)                
+                new_order.exchange_fee = new_order.exchange_fees_due
                 new_order.status = 'filled_unconfirmed'
                 self.logger.info(f'limit sell filled {new_order.id} {new_order.qty} {new_order.price} {new_order.fills}')
                 return new_order
         else:
             return CryptoLimitOrder(ticker, 0, 0, creator, OrderSide.SELL, self.datetime, status='error', accounting='insufficient_assets')
            
+    async def market_buy(self, base: str, quote:str, qty: int, buyer: str, fee='0.0') -> dict:
+        if len(self.pending_transactions) >= self.max_pending_transactions:
+            return {"market_buy": "max_pending_transactions_reached", "buyer": buyer}
+        qty = prec(qty)
+        fee = prec(fee)
+        if fee <= 0:
+            return {"market_buy": "fee_must_be_greater_than_zero", "buyer": buyer}
+        if qty <= 0:
+            return {"market_buy": "qty_must_be_greater_than_zero", "buyer": buyer}
+        order_id = get_random_string()
+        ticker = base+quote
+        network_fee_per_unit = prec(fee/qty)
+        old_fee = fee
+        fee = prec(network_fee_per_unit * qty)
+        if fee != old_fee:
+            self.logger.info(f"market buy fee changed: {fee} {old_fee} {network_fee_per_unit} {qty}")
+            #TODO: maybe do a ping back to user to confirm order before executing?
+        remaining_network_fee =fee
+        unfilled_qty = qty
+        exchange_fees_paid = 0
+        fills = []
+        await self.freeze_assets(buyer, quote, order_id, network_fee=fee)
+        for idx, ask in enumerate(self.books[ticker].asks):
+            if ask.creator == buyer:
+                continue
+            trade_qty = prec(min(ask.qty, unfilled_qty))
+            if ask.qty <=0:
+                self.logger.debug('ask qty: ', '{0:.18f}'.format(ask.qty), ask.creator, ask.ticker, ask.price, ask.status, ask.accounting)
+                continue
+            seller_network_fee = prec(ask.network_fee_per_qty * trade_qty)
+            taker_fee = prec(self.fees.taker_fee(trade_qty))
+            partial_network_fee = prec(network_fee_per_unit * trade_qty)
+            print(f" partial network fee {partial_network_fee} {network_fee_per_unit} {trade_qty}")
+            order_total = prec((trade_qty*ask.price)+taker_fee)
+            has_assets = await self.agent_has_assets(buyer, quote, order_total)
+            if has_assets == False: 
+                self.logger.warning('insufficient assets', buyer, quote, order_total)
+                await self.unfreeze_assets(buyer, quote, order_id, network_fee=remaining_network_fee)
+                return {"market_buy": "insufficient assets", "id":order_id, "buyer": buyer}
+            buy_total = prec(trade_qty*ask.price)
+            self.logger.info(f"market buy freezing {buy_total} + {taker_fee} ")
+            await self.freeze_assets(buyer, quote, order_id, buy_total, taker_fee)
+            seller_exchange_fee = prec((ask.exchange_fee / ask.qty) * trade_qty)
+            processed = await self._process_trade(base, quote, trade_qty, ask.price, buyer, ask.creator, ask.id, order_id, exchange_fee={'quote': taker_fee, 'base': seller_exchange_fee}, network_fee={'quote':partial_network_fee, 'base': seller_network_fee})
+            if'error' in processed: 
+                await self.unfreeze_assets(buyer, quote, order_id, prec(trade_qty*ask.price), taker_fee)
+                continue
+            self.books[ticker].asks[idx].qty -= trade_qty
+            self.books[ticker].asks[idx].exchange_fee -= seller_exchange_fee
+            self.books[ticker].asks[idx].remaining_network_fee -= seller_network_fee
+            fills.append({'qty': trade_qty, 'price': ask.price, 'fee': taker_fee})
+            unfilled_qty -= trade_qty
+            exchange_fees_paid += taker_fee
+            remaining_network_fee -= partial_network_fee
+            if unfilled_qty == 0:
+                break
+        
+        self.books[ticker].asks = [ask for ask in self.books[ticker].asks if ask.qty > 0]
+        if unfilled_qty > 0:
+            self.logger.info(f"unfreezing unfilled {unfilled_qty} {quote} {order_id} network fee: {remaining_network_fee}")
+            await self.unfreeze_assets(buyer, quote, order_id, network_fee=remaining_network_fee)
+        if fills == []:
+            return {"market_buy": "no fills", "id": order_id, "buyer": buyer}
+        return {"market_buy": ticker, "id": order_id, "buyer": buyer, 'qty': qty, 'exchange_fee':exchange_fees_paid, "network_fee":prec((qty-unfilled_qty) * network_fee_per_unit), "fills": fills}
+
+    async def market_sell(self, base: str, quote:str, qty: int, seller: str, fee='0.0', accounting='FIFO') -> dict:
+        if len(self.pending_transactions) >= self.max_pending_transactions:
+            return {"market_sell": "max_pending_transactions_reached", "seller": seller}
+        qty = prec(qty)
+        fee = prec(fee)
+        if fee <= 0:
+            return {"market_sell": "fee_must_be_greater_than_zero", "seller": seller}
+        if qty <= 0:
+            return {"market_sell": "qty_must_be_greater_than_zero", "seller": seller}
+        order_id = get_random_string()
+        has_assets = await self.agent_has_assets(seller, base, qty)
+        if has_assets == False:
+            return {"market_sell": "insufficient assets", 'id': order_id, "seller": seller}        
+        ticker = base+quote
+        network_fee_per_unit = prec(fee/qty)
+        old_fee = fee
+        fee = prec(network_fee_per_unit * qty)
+        if fee != old_fee:
+            self.logger.info(f"market sell fee changed: {fee} {old_fee} {network_fee_per_unit} {qty}")
+            #TODO: maybe do a ping back to user to confirm order before executing?        
+        remaining_network_fee = fee
+        unfilled_qty = qty
+        exchange_fee = prec(self.fees.taker_fee(qty))
+        exchange_fee_per_unit = prec(exchange_fee / qty)
+        exchange_fees_paid = 0
+        fills = []
+        await self.freeze_assets(seller, base, order_id, qty=qty, network_fee=fee, exchange_fee=exchange_fee)
+        for idx, bid in enumerate(self.books[ticker].bids):
+            if bid.creator == seller:
+                continue
+            trade_qty = prec(min(bid.qty, unfilled_qty))
+            buyer_network_fee = prec(bid.network_fee_per_qty * trade_qty)
+            partial_network_fee = prec(network_fee_per_unit * trade_qty)
+            partial_exchange_fee = prec(exchange_fee_per_unit * trade_qty)
+            buyer_exchange_fee = prec((bid.exchange_fee / bid.price) * trade_qty)
+            processed = await self._process_trade(base, quote, trade_qty,bid.price, bid.creator, seller, order_id, bid.id, accounting, exchange_fee={'base': partial_exchange_fee, 'quote': buyer_exchange_fee}, network_fee={'base': partial_network_fee, 'quote': buyer_network_fee} )
+            if'error' in processed:
+                continue
+            fills.append({'qty': trade_qty, 'price': bid.price, 'fee': partial_exchange_fee})
+            unfilled_qty -= trade_qty
+            exchange_fees_paid += partial_exchange_fee
+            remaining_network_fee -= partial_network_fee
+            self.books[ticker].bids[idx].qty -= prec(trade_qty)
+            self.books[ticker].bids[idx].exchange_fee -= buyer_exchange_fee
+            if unfilled_qty == 0:
+                break
+        self.books[ticker].bids = [bid for bid in self.books[ticker].bids if bid.qty > 0]
+        if unfilled_qty > 0 :
+            refund_network_fee = prec(network_fee_per_unit*unfilled_qty)
+            refund_exchange_fee = prec(exchange_fee_per_unit*unfilled_qty)
+            self.logger.info(f"unfreezing unfilled {unfilled_qty} {base} {order_id} exchange fee: {refund_exchange_fee} network fee: {refund_network_fee}")
+            await self.unfreeze_assets(seller, base, order_id, qty=unfilled_qty, exchange_fee=refund_exchange_fee, network_fee=refund_network_fee)
+        if fills == []:
+            return {"market_sell": "no fills", "id": order_id, "seller": seller}                       
+        return {"market_sell": ticker, "id": order_id, "seller": seller, 'qty': qty, 'exchange_fee':exchange_fees_paid, "network_fee":prec((qty-unfilled_qty) * network_fee_per_unit), "fills": fills }
+
     async def cancel_order(self, base, quote, id) -> dict:
         ticker = base+quote
         canceled = await super().cancel_order(ticker, id)
@@ -575,7 +677,7 @@ class CryptoExchange(Exchange):
         canceled = []
         async def cancel_bid(bid, creator):
             if bid.creator == creator:
-                await self.unfreeze_assets(creator, quote, bid.id, bid.qty*bid.price , bid.exchange_fee , bid.network_fee)
+                await self.unfreeze_assets(creator, quote, bid.id, prec(bid.qty*bid.price) , bid.exchange_fee , bid.network_fee)
                 canceled.append(bid.id)
                 return False
             else:
@@ -593,112 +695,6 @@ class CryptoExchange(Exchange):
         self.books[ticker].asks[:] = [a for a in self.books[ticker].asks if await cancel_ask(a, creator)]
 
         return {'cancelled_orders': canceled}
-
-    async def market_buy(self, base: str, quote:str, qty: int, buyer: str, fee=0.0) -> dict:
-        if len(self.pending_transactions) >= self.max_pending_transactions:
-            return {"market_buy": "max_pending_transactions_reached", "buyer": buyer}
-        qty = Decimal(str(qty))
-        fee = Decimal(str(fee))
-        if fee <= 0:
-            return {"market_buy": "fee_must_be_greater_than_zero", "buyer": buyer}
-        if qty <= 0:
-            return {"market_buy": "qty_must_be_greater_than_zero", "buyer": buyer}
-        order_id = get_random_string()
-        ticker = base+quote
-        remaining_network_fee =fee
-        network_fee_per_unit = fee/qty
-        unfilled_qty = qty
-        exchange_fees_paid = 0
-        fills = []
-        await self.freeze_assets(buyer, quote, order_id, network_fee=fee)
-        for idx, ask in enumerate(self.books[ticker].asks):
-            if ask.creator == buyer:
-                continue
-            trade_qty = Decimal(str(min(ask.qty, unfilled_qty)))
-            if ask.qty <=0:
-                self.logger.debug('ask qty: ', '{0:.18f}'.format(ask.qty), ask.creator, ask.ticker, ask.price, ask.status, ask.accounting)
-                continue
-            seller_network_fee = ask.network_fee_per_qty * trade_qty
-            taker_fee = self.fees.taker_fee(trade_qty)
-            partial_network_fee = network_fee_per_unit * trade_qty
-            order_total = (trade_qty*ask.price)+taker_fee
-            has_assets = await self.agent_has_assets(buyer, quote, order_total)
-            if has_assets == False: 
-                await self.unfreeze_assets(buyer, quote, order_id, network_fee=remaining_network_fee)
-                return {"market_buy": "insufficient assets", "id":order_id, "buyer": buyer}
-            self.logger.info(f"market buy freezing {(trade_qty*ask.price)} + {taker_fee} ")
-            await self.freeze_assets(buyer, quote, order_id, (trade_qty*ask.price), taker_fee)
-            seller_exchange_fee = (ask.exchange_fee / ask.qty) * trade_qty
-            processed = await self._process_trade(base, quote, trade_qty, ask.price, buyer, ask.creator, ask.id, order_id, exchange_fee={'quote': taker_fee, 'base': seller_exchange_fee}, network_fee={'quote':partial_network_fee, 'base': seller_network_fee})
-            if'error' in processed: 
-                await self.unfreeze_assets(buyer, quote, order_id, (trade_qty*ask.price), taker_fee)
-                continue
-            self.books[ticker].asks[idx].qty -= trade_qty
-            self.books[ticker].asks[idx].exchange_fee -= seller_exchange_fee
-            fills.append({'qty': trade_qty, 'price': ask.price, 'fee': taker_fee})
-            unfilled_qty -= trade_qty
-            exchange_fees_paid += taker_fee
-            remaining_network_fee -= partial_network_fee
-            if unfilled_qty == 0:
-                break
-        
-        self.books[ticker].asks = [ask for ask in self.books[ticker].asks if ask.qty > 0]
-        if unfilled_qty > 0:
-            await self.unfreeze_assets(buyer, quote, order_id, network_fee=network_fee_per_unit*unfilled_qty)
-        if(fills == []):
-            await self.unfreeze_assets(buyer, quote, order_id, network_fee=remaining_network_fee)
-            return {"market_buy": "no fills", "id": order_id, "buyer": buyer}
-        return {"market_buy": ticker, "id": order_id, "buyer": buyer, 'qty': qty, 'exchange_fee':exchange_fees_paid, "network_fee":(qty-unfilled_qty) * network_fee_per_unit, "fills": fills}
-
-    async def market_sell(self, base: str, quote:str, qty: int, seller: str, fee=0.0, accounting='FIFO') -> dict:
-        if len(self.pending_transactions) >= self.max_pending_transactions:
-            return {"market_sell": "max_pending_transactions_reached", "seller": seller}
-        qty = Decimal(str(qty))
-        fee = Decimal(str(fee)) 
-        if fee <= 0:
-            return {"market_sell": "fee_must_be_greater_than_zero", "seller": seller}
-        if qty <= 0:
-            return {"market_sell": "qty_must_be_greater_than_zero", "seller": seller}
-        order_id = get_random_string()
-        has_assets = await self.agent_has_assets(seller, base, qty)
-        if has_assets == False:
-            return {"market_sell": "insufficient assets", 'id': order_id, "seller": seller}        
-        ticker = base+quote
-        remaining_network_fee = fee
-        network_fee_per_unit = fee/qty
-        unfilled_qty = qty
-        exchange_fee = self.fees.taker_fee(qty)
-        exchange_fee_per_unit = exchange_fee / qty
-        exchange_fees_paid = 0
-        fills = []
-        await self.freeze_assets(seller, base, order_id, qty=qty, network_fee=fee, exchange_fee=exchange_fee)
-        for idx, bid in enumerate(self.books[ticker].bids):
-            if bid.creator == seller:
-                continue
-            trade_qty = Decimal(str(min(bid.qty, unfilled_qty)))
-            buyer_network_fee = bid.network_fee_per_qty * trade_qty
-            partial_network_fee = network_fee_per_unit * trade_qty
-            partial_exchange_fee = exchange_fee_per_unit * trade_qty
-            buyer_exchange_fee = (bid.exchange_fee / bid.price) * trade_qty
-            processed = await self._process_trade(base, quote, trade_qty,bid.price, bid.creator, seller, order_id, bid.id, accounting, exchange_fee={'base': partial_exchange_fee, 'quote': buyer_exchange_fee}, network_fee={'base': partial_network_fee, 'quote': buyer_network_fee} )
-            if'error' in processed:
-                continue
-            fills.append({'qty': trade_qty, 'price': bid.price, 'fee': partial_exchange_fee})
-            unfilled_qty -= Decimal(str(trade_qty))
-            exchange_fees_paid += partial_exchange_fee
-            remaining_network_fee -= partial_network_fee
-            self.books[ticker].bids[idx].qty -= Decimal(str(trade_qty))
-            self.books[ticker].bids[idx].exchange_fee -= buyer_exchange_fee
-            if unfilled_qty == 0:
-                break
-        self.books[ticker].bids = [bid for bid in self.books[ticker].bids if bid.qty > 0]
-        if unfilled_qty > 0:
-            self.logger.info(f"unfreezing unfilled {unfilled_qty} {base} {order_id} network fee: {network_fee_per_unit*unfilled_qty}")
-            await self.unfreeze_assets(seller, base, order_id, qty=unfilled_qty, exchange_fee=exchange_fee_per_unit*unfilled_qty, network_fee=network_fee_per_unit*unfilled_qty)    
-        if(fills == []):
-            await self.unfreeze_assets(seller, base, order_id, qty=qty, exchange_fee=exchange_fee - exchange_fees_paid, network_fee=remaining_network_fee)
-            return {"market_sell": "no fills", "id": order_id, "seller": seller}                       
-        return {"market_sell": ticker, "id": order_id, "seller": seller, 'qty': qty, 'exchange_fee':exchange_fees_paid, "network_fee":(qty-unfilled_qty) * network_fee_per_unit, "fills": fills }
 
     async def generate_address(self) -> str:
         """
@@ -730,7 +726,7 @@ class CryptoExchange(Exchange):
                 'base': asset, 
                 'quote': self.default_currency['symbol'],
                 'initial_qty': 0, 
-                'qty': Decimal(str(initial_assets[asset])), 
+                'qty': prec(initial_assets[asset]), 
                 'dt': self.datetime, 
                 'type': 'buy'
             }
@@ -742,7 +738,7 @@ class CryptoExchange(Exchange):
             }
             new_position = await self.new_position(side, asset, side['qty'], basis)
             positions.append(new_position)
-            initial_assets[asset] = Decimal(str(initial_assets[asset]))
+            initial_assets[asset] = prec(initial_assets[asset])
   
         for asset in self.assets:
             wallets[asset] = (await self.generate_address())            
@@ -763,8 +759,8 @@ class CryptoExchange(Exchange):
             'id': str(UUID()),
             'agent': agent,
             'asset': asset,
-            'initial_qty': Decimal(str(qty)),
-            'qty': Decimal(str(qty)),
+            'initial_qty': prec(qty),
+            'qty': prec(qty),
             'dt': dt,
             'type': type,
             'basis': basis,
@@ -776,7 +772,7 @@ class CryptoExchange(Exchange):
         return {
             'id': str(UUID()),
             'asset': asset,
-            'qty': Decimal(str(qty)),
+            'qty': prec(qty),
             'dt': side['dt'],
             'enters': [enter],
             'exits': []
@@ -797,7 +793,7 @@ class CryptoExchange(Exchange):
         for position in positions:
             if position['id'] == position_id or position['asset'] == asset:
                 start_new_position = False
-                position['qty'] += Decimal(str(qty))
+                position['qty'] += prec(qty)
                 enter = await self.new_enter(side['agent'], asset, qty, side['dt'], side['type'], basis)
                 position['enters'].append(enter)
                 return {'enter_position': enter}
@@ -840,24 +836,24 @@ class CryptoExchange(Exchange):
                         if exit['basis']['basis_initial_unit'] != side['quote']:
                             # chain basis and update if needed
                             # e.g. USD (exit, set basis) -> BTC (enter, consume basis) -> BTC (exit, retain basis) -> ETH (enter, pass basis and adjust to ETH)
-                            cost_basis_per_unit = (enter['basis']['basis_per_unit'] * abs(side['quote_flow'])) / abs(side['qty'])
+                            cost_basis_per_unit = prec((enter['basis']['basis_per_unit'] * abs(side['quote_flow'])) / abs(side['qty']))
                             self.logger.info(f"cost_basis_per_unit: {cost_basis_per_unit:.16f}")
                             exit['basis']['basis_per_unit'] = cost_basis_per_unit
 
                     if enter['qty'] >= exit_transaction['qty']:
-                        exit['qty'] = Decimal(str(exit_transaction['qty']))
-                        enter['qty'] -= Decimal(str(exit_transaction['qty']))
-                        position['qty'] -= Decimal(str(exit_transaction['qty']))
+                        exit['qty'] = prec(exit_transaction['qty'])
+                        enter['qty'] -= prec(exit_transaction['qty'])
+                        position['qty'] -= prec(exit_transaction['qty'])
                         self.logger.info(f'full exit, {position["id"]}: {exit["qty"]} remaining {position["qty"]}')
                         exit_transaction['qty'] = 0
                         position['exits'].append(exit)
                         return {'exit_position': exit}
                     elif enter['qty'] > 0:
                         # partial exit
-                        exit_transaction['qty'] -= Decimal(str(enter['qty']))
-                        exit['qty'] = Decimal(str(enter['qty']))
+                        exit_transaction['qty'] -= prec(enter['qty'])
+                        exit['qty'] = prec(enter['qty'])
                         enter['qty'] = 0
-                        position['qty'] -= Decimal(str(enter['qty']))
+                        position['qty'] -= prec(enter['qty'])
                         self.logger.info(f'partial exit, {position["id"]}: {exit["qty"]} remaining {position["qty"]}')
                         position['exits'].append(exit)
                     
@@ -865,9 +861,9 @@ class CryptoExchange(Exchange):
 
     async def update_assets(self, asset, amount, agent_idx) -> None:
         if asset in self.agents[agent_idx]['assets']:
-            self.agents[agent_idx]['assets'][asset] += Decimal(str(amount))
+            self.agents[agent_idx]['assets'][asset] += prec(amount)
         else: 
-            self.agents[agent_idx]['assets'][asset] = Decimal(str(amount))
+            self.agents[agent_idx]['assets'][asset] = prec(amount)
 
     async def update_frozen_assets(self, agent_idx, asset, order_id, qty, fee=0) -> None:
         """
@@ -878,11 +874,11 @@ class CryptoExchange(Exchange):
         for frozen_asset_idx, frozen_asset in enumerate(self.agents[agent_idx]['frozen_assets'][asset]):
             if frozen_asset['order_id'] != order_id:
                 continue
-            if self.agents[agent_idx]['frozen_assets'][asset][frozen_asset_idx]['frozen_qty'] < Decimal(str(abs(qty))):
-                self.logger.error(f"not enough frozen for {order_id} has {self.agents[agent_idx]['frozen_assets'][asset][frozen_asset_idx]['frozen_qty']} needs {Decimal(str(abs(qty)))}")
+            if self.agents[agent_idx]['frozen_assets'][asset][frozen_asset_idx]['frozen_qty'] < prec(abs(qty)):
+                self.logger.error(f"not enough frozen for {order_id} has {self.agents[agent_idx]['frozen_assets'][asset][frozen_asset_idx]['frozen_qty']} needs {prec(abs(qty))}")
                 return {'error': 'not enough frozen'}
             else:
-                self.agents[agent_idx]['frozen_assets'][asset][frozen_asset_idx]['frozen_qty'] -= Decimal(str(abs(qty)))
+                self.agents[agent_idx]['frozen_assets'][asset][frozen_asset_idx]['frozen_qty'] -= prec(abs(qty))
 
             if fee > 0 and self.agents[agent_idx]['frozen_assets'][asset][frozen_asset_idx]['frozen_exchange_fee'] < fee:
                 self.logger.error('frozen exchange fee', self.agents[agent_idx]['frozen_assets'][asset][frozen_asset_idx]['frozen_exchange_fee'], 'less than fee', fee, 'for', asset, order_id)
@@ -897,8 +893,7 @@ class CryptoExchange(Exchange):
                 return {'update_frozen_assets': 'updated'}
         self.logger.error(f"order_id {order_id} not found in frozen assets for {asset}")
         return {'error': 'order not found'}
-            
-            
+                  
     async def update_agents(self, transaction, accounting, position_id) -> None:
         for side in transaction:
             self.logger.info('updating', side['type'], 'side')
@@ -986,21 +981,21 @@ class CryptoExchange(Exchange):
         if agent_idx is None:
             return False
         if asset not  in self.agents[agent_idx]['frozen_assets']:
-            self.logger.info(agent, 'asset not found', asset)
+            self.logger.warning(agent, 'asset not found', asset)
             return False
         if len(self.agents[agent_idx]['frozen_assets'][asset]) == 0:
-            self.logger.info(agent, 'no frozen assets', asset)
+            self.logger.warning(agent, 'no frozen assets', asset)
             return False
         for frozen_asset in self.agents[agent_idx]['frozen_assets'][asset]:
             if frozen_asset['order_id'] == order_id:
                 if frozen_asset['frozen_qty'] < qty:
-                    self.logger.info(f"Insufficient Qty:{agent} frozen { frozen_asset['frozen_qty']} less than {qty}")
+                    self.logger.warning(f"Insufficient Qty: {agent} frozen { frozen_asset['frozen_qty']} needs {qty}")
                     return False
                 if frozen_asset['frozen_exchange_fee'] < exchange_fee:
-                    self.logger.info(f"Insufficient Exchange Fee:{agent} frozen { frozen_asset['frozen_exchange_fee']} less than {exchange_fee}")
+                    self.logger.warning(f"Insufficient Exchange Fee: {agent} frozen { frozen_asset['frozen_exchange_fee']} needs {exchange_fee}")
                     return False
                 if frozen_asset['frozen_network_fee'] < network_fee:
-                    self.logger.info(f"Insufficient Network Fee:{agent} frozen { frozen_asset['frozen_network_fee']} less than {network_fee}")
+                    self.logger.warning(f"Insufficient Network Fee:{agent} frozen { frozen_asset['frozen_network_fee']} needs {network_fee}")
                     return False
                 self.logger.info(f"Frozen Qty:{agent} frozen { frozen_asset['frozen_qty']} greater than {qty}")
                 return True
@@ -1052,7 +1047,7 @@ class CryptoExchange(Exchange):
         else:
             agent_idx = await self.get_agent_index(agent)
         if agent_idx is not None:
-            qty = Decimal(amount)
+            qty = prec(amount)
             side = {'id': str(UUID()), 'agent':agent,'quote_flow':0, 'price': 0, 'base':asset, 'quote':self.default_currency['symbol'], 'qty': -qty, 'fee':0, 'dt': self.datetime, 'type': 'sell'}
             exit = await self.exit_position(side, asset, -qty, agent_idx)
             if 'error' in exit:

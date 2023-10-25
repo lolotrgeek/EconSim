@@ -7,6 +7,7 @@ from source.Instruments.Tax import Tax
 from source.utils._utils import string_to_time
 from source.Archive import Archive
 from source.utils.logger import Logger
+from source.utils._utils import prec
 from decimal import Decimal
 
 class Government(Agent):
@@ -43,17 +44,17 @@ class Government(Agent):
             short_term_tax = await self.taxes.calculate_tax(short_term_capital_gains, 'ordinary', debug=False)
             long_term_tax = await self.taxes.calculate_tax(long_term_capital_gains, 'long_term', debug=False)
             local_tax = await self.taxes.calculate_tax(long_term_capital_gains + short_term_capital_gains, 'state', debug=False)
-            self.taxes_last_collected['amount'] += long_term_tax['amount'] + short_term_tax['amount'] + local_tax['amount']
+            self.taxes_last_collected['amount'] += prec(long_term_tax['amount'] + short_term_tax['amount'] + local_tax['amount'], places=2)
             self.logger.info(f"Collecting Taxes from {event['agent']} for {long_term_tax['amount'] + short_term_tax['amount'] + local_tax['amount']}")
-            tax_record = {"date_collected": self.current_date, "tax_year": self.current_date.year -1, "agent": event['agent'], "long_term": long_term_tax['amount'], "short_term": short_term_tax['amount'], "local": local_tax['amount']}
-            remove = await self.requests.remove_cash(event['agent'], str(long_term_tax['amount'] + short_term_tax['amount']), 'taxes')
+            tax_record = {"date_collected": self.current_date, "tax_year": self.current_date.year -1, "agent": event['agent'], "long_term": prec(long_term_tax['amount'], 2), "short_term": prec(short_term_tax['amount'], 2), "local": prec(local_tax['amount'], 2)}
+            remove = await self.requests.remove_cash(event['agent'], prec(long_term_tax['amount'] + short_term_tax['amount']), 'taxes')
             if 'error' in remove:
                 self.back_taxes.append(tax_record)
                 self.logger.error(remove['error'], event['agent'])
                 continue
             else:
                 self.tax_records.append(tax_record)
-                self.cash += long_term_tax['amount'] + short_term_tax['amount']
+                self.cash += prec(long_term_tax['amount'] + short_term_tax['amount'], 2)
         self.logger.info("Successfully Collected Taxes")
             
 
