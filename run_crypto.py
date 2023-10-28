@@ -7,6 +7,7 @@ from rich import print
 asyncio.set_event_loop_policy(asyncio.WindowsSelectorEventLoopPolicy())
 from source.utils._utils import dumps, string_to_time
 from Channels import Channels
+from random import random
 
 names = ['BTC', 'ETH', 'LTC']
 
@@ -16,7 +17,7 @@ async def generate_cryptos(names, requester, time) -> dict:
     for name in names:
         crypto = CryptoCurrency(name, time, requester=requester)
         cryptos[crypto.symbol] = crypto
-        await crypto.issue_coins([{'asset': 'USD' ,'market_qty':1000 ,'seed_price':100 ,'seed_bid':'.99', 'seed_ask':'1.01'}], 1_000_000_000)
+        await crypto.issue_coins([{'asset': 'USD' ,'market_qty':1000 ,'seed_price':str(random()) ,'seed_bid':'.99', 'seed_ask':'1.01'}], 1_000_000_000)
     return cryptos
 
 async def run_crypto() -> None:
