@@ -11,8 +11,6 @@ asyncio.set_event_loop_policy(asyncio.WindowsSelectorEventLoopPolicy())
 
 async def run_trader() -> None:
     try:
-        trader = None
-        picker = randint(0,2)
         channels = Channels()
         exchange_requester = Requester(channel=channels.crypto_exchange_channel)
         crypto_requester = Requester(channel=channels.crypto_channel)
@@ -20,13 +18,7 @@ async def run_trader() -> None:
         await crypto_requester.connect()
         exchange_requests = CryptoExchangeRequests(requester=exchange_requester)
         crypto_requests = CryptoCurrencyRequests(requester=crypto_requester)
-        if picker == 0:
-            trader =  NaiveMarketMaker(name='market_maker', aum=1_000_000, spread_pct='0.005', requests=(exchange_requests, crypto_requests))
-        elif picker == 1:
-            trader = SimpleMarketTaker(name='market_taker', aum=1_000, requests=(exchange_requests, crypto_requests))
-        elif picker == 2:
-            trader = SimpleMarketTaker(name='market_taker', aum=10_000, requests=(exchange_requests, crypto_requests))
-
+        trader = SimpleMarketTaker(name='market_taker', aum=1_000, requests=(exchange_requests, crypto_requests))
         registered = await trader.register()
         if registered is None:
             raise Exception("Trader not registered")

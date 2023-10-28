@@ -12,8 +12,7 @@ files = [
     parent_dir+'\\EconSim\\run_crypto.py',
     parent_dir+'\\EconSim\\run_government.py',
     parent_dir+'\\EconSim\\run_clock.py',
-    parent_dir+'\\EconSim\\run_trader_maker.py',
-    parent_dir+'\\EconSim\\run_trader_taker.py',
+    parent_dir+'\\EconSim\\run_traders.py',
 ]
 api = [
     parent_dir+'\\EconSim\\source\\api\crypto_exchange_api.js',

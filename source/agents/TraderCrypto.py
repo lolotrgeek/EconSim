@@ -3,10 +3,10 @@ from typing import List, Union
 from .Trader import Trader
 import sys
 import os
-parent_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-sys.path.append(parent_dir)
+sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 from decimal import Decimal
 from source.utils.logger import Logger
+from source.utils._utils import prec
 
 class CryptoTrader(Trader):
     def __init__(self, name:str, aum:int=10_000, exchange_requests=None, crypto_requests=None):
@@ -33,7 +33,7 @@ class CryptoTrader(Trader):
             Trade: the most recent trade
         """
         latest_trade = await self.exchange_requests.get_latest_trade(base, quote)
-        latest_trade['price'] = Decimal(latest_trade['price'])
+        latest_trade['price'] = prec(latest_trade['price'])
         return latest_trade
 
     async def get_trades(self, base:str, quote:str, limit=20) -> List[dict]:
@@ -124,11 +124,9 @@ class CryptoTrader(Trader):
     async def get_price_bars(self,ticker, bar_size='1D', limit=20) -> pd.DataFrame:
         return await self.exchange_requests.get_price_bars(ticker, bar_size, limit=limit)
     
-    async def get_cash(self) -> float:
-        """
-        returns: {cash: float}
-        """
-        return await self.exchange_requests.get_cash(self.name)
+    async def get_cash(self) -> Decimal:
+        cash = await self.exchange_requests.get_cash(self.name)
+        return prec(cash['cash'])
     
     async def get_assets(self) -> dict:
         """
@@ -136,7 +134,7 @@ class CryptoTrader(Trader):
         """
         assets = await self.exchange_requests.get_assets(self.name)
         for asset in assets['assets']:
-            assets['assets'][asset] = Decimal(assets['assets'][asset])
+            assets['assets'][asset] = prec(assets['assets'][asset])
         return assets
     
     async def register(self, logger=False) -> dict:
@@ -161,7 +159,7 @@ class CryptoTrader(Trader):
     async def has_assets(self) -> bool:
         self.assets = (await self.get_assets())['assets']
         for asset in self.assets:
-            self.assets[asset] = Decimal(self.assets[asset])
+            self.assets[asset] = prec(self.assets[asset])
         if all(asset == 0 for asset in self.assets.values()) == True:
             print(self.name, "has no assets. Terminating.", self.cash, self.assets)
             return False

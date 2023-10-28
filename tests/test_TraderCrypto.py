@@ -303,7 +303,7 @@ class GetCashTest(unittest.IsolatedAsyncioTestCase):
 
 
     async def test_get_cash(self):
-        self.assertEqual(await self.trader.get_cash(), await self.requests[0].get_cash(self.trader.name))
+        self.assertEqual(await self.trader.get_cash(), (await self.requests[0].get_cash(self.trader.name))['cash'])
 
 class GetPositionSimpleTest(unittest.IsolatedAsyncioTestCase):
     async def asyncSetUp(self) -> None:
