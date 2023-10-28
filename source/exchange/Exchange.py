@@ -449,6 +449,7 @@ class Exchange():
         if ticker in agent_assets['assets']:
             return agent_assets['assets'][ticker] >= qty
         else: 
+            self.logger.warning(f'Not enough {ticker}, agent {agent} needs {qty} has {agent_assets["assets"]} ')
             return False
         
     @property

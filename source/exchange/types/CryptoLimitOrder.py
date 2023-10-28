@@ -4,11 +4,11 @@ parent_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 from datetime import datetime
 from decimal import Decimal
 from .OrderSide import OrderSide
-from source.utils._utils import get_random_string
+from source.utils._utils import get_random_string, prec
 
 class CryptoLimitOrder():
 
-    def __init__(self, ticker, price, qty, creator, side, dt=None, exchange_fee=0.0, network_fee=0.0, status='open', accounting='FIFO', position_id=None, fills =[]):
+    def __init__(self, ticker, price, qty, creator, side, dt=None, exchange_fee='0.0', network_fee='0.0', status='open', accounting='FIFO', position_id=None, fills =[]):
         self.id = get_random_string()
         self.ticker: str = ticker
         self.base: str = ""
@@ -20,7 +20,7 @@ class CryptoLimitOrder():
         self.dt: datetime = dt if dt else datetime.now()
         self.exchange_fee: Decimal = exchange_fee #NOTE: the fee is assessed in base currency for sell, quote currency for buy to match the network fee
         self.network_fee: Decimal = network_fee # base currency for sell, quote currency for buy
-        self.network_fee_per_qty: Decimal = network_fee / qty if qty > 0 else 0
+        self.network_fee_per_qty: Decimal = prec(network_fee / qty) if qty > 0 else 0
         self.remaining_network_fee = self.network_fee
         self.exchange_fees_due = 0
         self.unfilled_qty = qty
