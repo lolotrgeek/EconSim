@@ -5,13 +5,13 @@ import sys
 import os
 parent_dir = os.path.dirname(os.path.dirname(os.path.abspath(__name__)))
 
-
-
 files = [
     parent_dir+'\\EconSim\\run_crypto_exchange.py',
     parent_dir+'\\EconSim\\run_crypto.py',
     parent_dir+'\\EconSim\\run_government.py',
     parent_dir+'\\EconSim\\run_clock.py',
+]
+traders = [
     parent_dir+'\\EconSim\\run_trader_maker.py',
     parent_dir+'\\EconSim\\run_trader_taker.py',
 ]
@@ -40,6 +40,13 @@ if __name__ == '__main__':
         for file in api:
             process = subprocess.Popen(['node', file])
             processes.append(process)
+
+        sleep(10)
+
+        for trader in traders:
+            process = subprocess.Popen(['python', trader])
+            processes.append(process)
+            sleep(.1)
 
         while True:
             sleep(.1)
