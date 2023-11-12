@@ -524,12 +524,14 @@ class Exchange():
         positions = agent['positions']
         viable_positions = [position for position in positions if position['ticker'] == sell['ticker'] and position['qty'] > 0]
         if len(viable_positions) == 0: 
+            self.logger.error(f'no viable positions for {sell}')
             return {'exit_position': 'no viable positions'}
         #NOTE: sell sell['qty'] comes in negative, so we need to flip the sign and add the quantity flow to the sell['qty'] as we pull from enters 
         while sell['qty'] < 0:
             for position in viable_positions:
                 enters = position['enters']
                 if len(enters) == 0:
+                    self.logger.error(f'no enters to exit for {sell}')
                     return {'exit_position': 'no enters'}
                 for enter in enters:
                     normalised_qty = sell['qty'] * -1
@@ -560,6 +562,7 @@ class Exchange():
                         sell['qty'] += position['qty']
                         enter['qty'] += sell['qty']
                         position['qty'] = 0
+        self.logger.error(f'no position to exit for {sell}')
         return {'exit_position': 'no position to exit'}                            
 
     async def sort_positions(self, agent_idx, accounting) -> None:
@@ -568,6 +571,7 @@ class Exchange():
             self.agents[agent_idx]['positions'].sort(key=lambda x: x['dt'])
         if accounting == 'LIFO':
             self.agents[agent_idx]['positions'].sort(key=lambda x: x['dt'], reverse=True)
+        self.logger.debug(f'sorted positions for {self.agents[agent_idx]["name"]}')
 
     async def update_assets(self, side, agent_idx) -> None:
         if side['ticker'] in self.agents[agent_idx]['assets']: 
