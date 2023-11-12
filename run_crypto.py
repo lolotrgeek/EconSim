@@ -50,6 +50,8 @@ async def run_crypto() -> None:
                     elif msg['topic'] == 'get_mempool': return dumps(await cryptos[msg['asset']].blockchain.get_mempool())
                     elif msg['topic'] == 'get_pending_transactions': return dumps(await cryptos[msg['asset']].blockchain.mempool.get_pending_transactions(to_dicts=True))
                     elif msg['topic'] == 'get_confirmed_transactions': return dumps(await cryptos[msg['asset']].blockchain.mempool.get_confirmed_transactions(to_dicts=True))
+                    elif msg['topic'] == 'get_last_fee': return dumps(await cryptos[msg['asset']].get_last_fee())
+                    elif msg['topic'] == 'get_fees': return dumps(await cryptos[msg['asset']].get_fees(msg['num']))
 
                 else: return f'unknown asset {msg["asset"]}'    
             else: return f'unknown topic {msg["topic"]}'

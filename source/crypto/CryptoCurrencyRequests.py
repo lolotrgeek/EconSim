@@ -25,3 +25,6 @@ class CryptoCurrencyRequests(Requests):
     
     async def get_confirmed_transactions(self, asset) -> str:
         return await self.make_request('get_confirmed_transactions', {'asset': asset}, self.requester)
+    
+    async def get_last_fee(self, asset) -> str:
+        return await self.make_request('get_last_fee', {'asset': asset}, self.requester)

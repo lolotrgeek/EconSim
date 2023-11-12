@@ -45,6 +45,12 @@ class CryptoCurrency():
         self.last_halving_block = len(self.blockchain.chain)
         self.block_reward = prec(str(self.block_reward / 2))
 
+    async def get_last_fee(self) -> Decimal:
+        return self.blockchain.chain[-1].fee
+    
+    async def get_fees(self, num) -> list:
+        return list(map(lambda block: str(block.fee), self.blockchain.chain[-num:]))
+
     async def next(self, currentdate) -> None:
         self.currentdate = currentdate
         self.blockchain.datetime = currentdate
