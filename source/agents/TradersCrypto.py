@@ -53,7 +53,7 @@ class SimpleMarketTaker(Trader):
     def __init__(self,name , aum=10000, requests=()):
         Trader.__init__(self, name, aum, exchange_requests=requests[0], crypto_requests=requests[1])
         self.fee_reserve = prec(str(aum * 0.02)) # the amount of cash to reserve for fees
-        self.asset_reserve = prec('0.5')
+        self.asset_reserve = prec(str(aum * 0.02))
         self.last_trade_time = None
         self.current_time = None
         self.logger = Logger('SimpleMarketTaker', mode='w')
@@ -84,7 +84,9 @@ class SimpleMarketTaker(Trader):
     async def dump_assets(self):
         for asset in self.assets:
             if asset != 'USD' and self.assets[asset] + self.asset_reserve > 0:
+                self.logger.info(f"{asset}: {self.assets[asset]} reserve {self.asset_reserve}")
                 qty = self.assets[asset] - self.asset_reserve
+                self.logger.info(f"{self.name} selling {qty} {asset}")
                 order = await self.market_sell(asset, 'USD', qty, '0.01')
                 if order['market_sell'] == "max_pending_transactions_reached":
                     self.logger.info(order)
@@ -175,8 +177,8 @@ class NaiveMarketMaker(Trader):
         self.sell_spread = prec(str(1+self.spread_pct/2))
         self.buy_spread = prec(str(1-self.spread_pct/2))
         self.qty_pct_per_order = prec(qty_pct_per_order)
-        self.fee_reserve = prec(str(aum * 0.002)) # the amount of cash to reserve for fees
-        self.asset_reserve = prec('0.5')
+        self.fee_reserve = prec(str(aum * 0.02)) # the amount of cash to reserve for fees
+        self.asset_reserve = prec(str(aum * 0.02))
         self.cash_per_ticker = 0
         self.cash_to_trade = aum - self.fee_reserve
         self.aum = aum
@@ -190,13 +192,20 @@ class NaiveMarketMaker(Trader):
         await self.cancel_all_orders(ticker['base'], ticker['quote'])
         buy_price = prec(price * self.buy_spread)
         sell_price = prec(price * self.sell_spread)
+        fee = prec('0.01')
         qty = prec(str(self.assets[ticker['base']] * self.qty_pct_per_order))
         if qty <= 0:
             self.logger.error(f'Naive Market Maker {self.name} {qty} below 0') 
             return False
-        buy_order = await self.limit_buy(ticker['base'], ticker['quote'], buy_price, qty=qty, fee='0.01')
+        if prec(qty + fee) > self.assets[ticker['base']]:
+            self.logger.warning(f' {self.name} not enough assets needs: {qty+fee} has {self.assets[ticker["base"]]}') 
+            return False
+        if prec(qty * buy_price + fee)  > self.cash_to_trade:
+            self.logger.warning(f' {self.name} not enough cash needs: {qty * buy_price + fee} has {self.cash_to_trade}') 
+            return False
+        buy_order = await self.limit_buy(ticker['base'], ticker['quote'], buy_price, qty=qty, fee=fee)
         self.logger.debug(f"Making Market {self.name} buy order: {buy_order}")
-        sell_order = await self.limit_sell(ticker['base'], ticker['quote'], sell_price, qty=qty, fee='0.01')
+        sell_order = await self.limit_sell(ticker['base'], ticker['quote'], sell_price, qty=qty, fee=fee)
         self.logger.debug(f"Making Market {self.name} sell order: {sell_order}")
 
     async def acquire_assets(self, ticker):
@@ -232,7 +241,7 @@ class NaiveMarketMaker(Trader):
 
     async def set_tradable_cash(self):
         self.cash = await self.get_cash() 
-        self.fee_reserve = prec(str(self.cash * Decimal('0.002'))) 
+        self.fee_reserve = prec(str(self.cash * Decimal('0.02'))) 
         self.cash_to_trade = prec(str(self.cash - self.fee_reserve))
         self.cash_per_ticker = prec(str(self.cash_to_trade / (len(self.tickers)+1)))
 

@@ -61,7 +61,7 @@ class CryptoTrader(Trader):
         order = await self.exchange_requests.market_sell(base, quote, qty, self.name, fee)
         return order
 
-    async def limit_buy(self, base:str, quote:str, price:float, qty:int, fee='0.0') -> Union[dict,None]:
+    async def limit_buy(self, base:str, quote:str, price:str, qty:int, fee='0.0') -> Union[dict,None]:
         """Creates a limit buy order for a given asset and quantity at a certain price.
 
         Args:
@@ -75,7 +75,7 @@ class CryptoTrader(Trader):
         order = await self.exchange_requests.limit_buy(base, quote,price,qty,self.name, fee)
         return order
 
-    async def limit_sell(self, base:str, quote:str, price:float, qty:int, fee='0.0') -> Union[dict,None]:
+    async def limit_sell(self, base:str, quote:str, price:str, qty:int, fee='0.0') -> Union[dict,None]:
         """Creates a limit sell order for a given asset and quantity at a certain price.
 
         Args:
