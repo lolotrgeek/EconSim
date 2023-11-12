@@ -41,7 +41,7 @@ if __name__ == '__main__':
             process = subprocess.Popen(['node', file])
             processes.append(process)
 
-        sleep(10)
+        sleep(5)
 
         for trader in traders:
             process = subprocess.Popen(['python', trader])
