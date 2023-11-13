@@ -52,8 +52,7 @@ class RandomMarketTaker(Trader):
 class SimpleMarketTaker(Trader):
     def __init__(self,name , aum=10000, requests=()):
         Trader.__init__(self, name, aum, exchange_requests=requests[0], crypto_requests=requests[1])
-        self.fee_reserve = prec(str(aum * 0.02)) # the amount of cash to reserve for fees
-        self.asset_reserve = prec(str(aum * 0.02))
+        self.asset_to_trade = prec('0.8')
         self.last_trade_time = None
         self.current_time = None
         self.logger = Logger('SimpleMarketTaker', mode='w')
@@ -65,9 +64,11 @@ class SimpleMarketTaker(Trader):
         self.logger.info(f"{self.name} latest trade: {latest_trade}")
         if latest_trade is None or 'price' not in latest_trade or latest_trade['price'] <= 0:
             return False
-        qty = prec(str((self.assets['USD'] - self.fee_reserve) / latest_trade['price']))
+        cash_to_trade = prec(self.asset_to_trade * self.assets['USD'])
+        fee = prec('0.01')
+        qty = prec(str((cash_to_trade) / latest_trade['price']))
         self.logger.info(f"{self.name} buying {qty} {ticker['base']} at {latest_trade['price']}")
-        order = await self.market_buy(ticker['base'], 'USD', qty, '0.01')
+        order = await self.market_buy(ticker['base'], 'USD', qty, fee )
         if order['market_buy'] == "max_pending_transactions_reached":
             self.logger.info(order)
             return False
@@ -83,11 +84,11 @@ class SimpleMarketTaker(Trader):
 
     async def dump_assets(self):
         for asset in self.assets:
-            if asset != 'USD' and self.assets[asset] + self.asset_reserve > 0:
-                self.logger.info(f"{asset}: {self.assets[asset]} reserve {self.asset_reserve}")
-                qty = self.assets[asset] - self.asset_reserve
+            qty = prec(self.assets[asset] * self.asset_to_trade)
+            if asset != 'USD' and qty > 0:
+                fee = prec('0.01')
                 self.logger.info(f"{self.name} selling {qty} {asset}")
-                order = await self.market_sell(asset, 'USD', qty, '0.01')
+                order = await self.market_sell(asset, 'USD', qty, fee)
                 if order['market_sell'] == "max_pending_transactions_reached":
                     self.logger.info(order)
                     return False
@@ -115,7 +116,7 @@ class SimpleMarketTaker(Trader):
         if len(self.tickers) == 0: return True
         if (await self.has_assets()) == False: return False
 
-        if prec(self.assets['USD']) > self.fee_reserve:
+        if prec(self.assets['USD'] * self.asset_to_trade) > 0:
             await self.spend_cash()
         else:
             await self.dump_assets()
