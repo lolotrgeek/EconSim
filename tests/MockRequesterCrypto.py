@@ -69,7 +69,7 @@ class MockResponderCryptoExchange():
         self.mock_requester = MockRequesterCrypto()
         self.requests = Requests(self.mock_requester)
         self.exchange = Exchange(datetime=datetime(2023, 1, 1), requester=self.requests)
-        self.exchange.logger =Null_Logger()
+        self.exchange.logger =Null_Logger(debug_print=False)
         self.agent = None
         self.mock_order = None
 

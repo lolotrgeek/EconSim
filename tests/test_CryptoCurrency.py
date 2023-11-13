@@ -5,8 +5,10 @@ import sys
 import os
 parent_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 sys.path.append(parent_dir)
+from decimal import Decimal
 
 from source.crypto.CryptoCurrency import CryptoCurrency
+from source.crypto.MemPool import MempoolTransaction
 from source.exchange.CryptoExchangeRequests import CryptoExchangeRequests as Requests
 from .MockRequesterCrypto import MockRequesterCrypto as MockRequester
 
@@ -52,6 +54,14 @@ class CryptoCurrencyTests(unittest.IsolatedAsyncioTestCase):
         await self.crypto.halving()
         self.assertEqual(self.crypto.block_reward, 25)
         self.assertEqual(self.crypto.last_halving_block, 1)
+
+    async def test_get_last_fee(self):
+        self.crypto.blockchain.chain.append(MempoolTransaction("BTC", Decimal('0.01'), 0, 'sender', 'recipient', datetime(2022, 1, 1))) 
+        self.assertEqual(await self.crypto.get_last_fee(), Decimal('0.01'))
+
+    async def test_get_fees(self):
+        self.crypto.blockchain.chain.append(MempoolTransaction("BTC", Decimal('0.01'), 0, 'sender', 'recipient', datetime(2022, 1, 1))) 
+        self.assertEqual(await self.crypto.get_fees(10), ['0', '0.01'])
 
     async def test_next(self):
         await self.crypto.next(datetime(2022, 1, 2))

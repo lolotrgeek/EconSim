@@ -258,7 +258,7 @@ class MarketBuyTest(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(response['market_buy'] , 'BTCUSD')
         self.assertEqual(response['buyer'], self.mock_requester.responder.agent)
         self.assertEqual(response['qty'], Decimal('1.000000000000000000'))
-        self.assertEqual(response['fills'], [{'qty': Decimal('1.000000000000000000'), 'price': Decimal('151.500000000000000000'), 'fee': Decimal('0.002000000000000000')}])
+        self.assertEqual(response['fills'], [{'qty': Decimal('1.000000000000000000'), 'price': Decimal('151.500000000000000000'), 'fee': Decimal('0.303000000000000000')}])
 
 class MarketSellTest(unittest.IsolatedAsyncioTestCase):
     async def asyncSetUp(self) -> None:
