@@ -477,7 +477,7 @@ class CryptoExchange(Exchange):
                     self.books[ticker].asks[0].exchange_fee -= seller_exchange_fee
                     self.books[ticker].asks[0].remaining_network_fee -= seller_network_fee
                     self.books[ticker].asks = [ask for ask in self.books[ticker].asks if ask.qty > 0]
-                    deductions = prec((trade_qty* new_order.price) - (trade_qty*best_ask.price))
+                    deductions = prec((trade_qty * new_order.price) - (trade_qty*best_ask.price))
                     if deductions > 0:
                         self.logger.debug(f'Unfreezing deductions {deductions} from {creator} {quote} {new_order.id}')
                         await self.unfreeze_assets(creator, quote, new_order.id, qty=deductions)
@@ -490,7 +490,7 @@ class CryptoExchange(Exchange):
                     queue = idx
                     break            
             if new_order.unfilled_qty > 0:
-                new_amount = prec(new_order.network_fee_per_qty * new_order.unfilled_qty)
+                new_amount = prec(new_order.price * new_order.unfilled_qty)
                 maker_fee = prec(self.fees.maker_fee(new_amount))
                 self.logger.info(f'converting to maker: {new_order.id}, amount: {new_amount} unfreezing {new_order.exchange_fee} and freezing: new fee {maker_fee} + fees due {new_order.exchange_fees_due}')
                 await self.unfreeze_assets(creator, quote, new_order.id, exchange_fee=new_order.exchange_fee)
@@ -1147,7 +1147,7 @@ class CryptoExchange(Exchange):
             agent_idx = await self.get_agent_index(agent)
         if agent_idx is not None:
             qty = prec(amount)
-            side = {'id': str(UUID()), 'agent':agent,'quote_flow':0, 'price': 0, 'base':asset, 'quote':self.default_currency['symbol'], 'qty': -qty, 'fee':0, 'dt': self.datetime, 'type': 'sell'}
+            side = {'id': str(UUID()), 'agent':agent,'quote_flow':0, 'order_id':'remove_asset_'+get_random_string(), 'price': 0, 'base':asset, 'quote':self.default_currency['symbol'], 'qty': -qty, 'fee':0, 'dt': self.datetime, 'type': 'sell'}
             exit = await self.exit_position(side, asset, -qty, agent_idx)
             if 'error' in exit:
                 return exit
