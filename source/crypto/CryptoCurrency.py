@@ -5,9 +5,12 @@ from decimal import Decimal
 from source.utils._utils import prec
 
 class CryptoCurrency():
-    def __init__(self, name:str, startdate, max_supply=0, requester=None) -> None:
+    def __init__(self, name:str, startdate, base_unit_name='sats', precision=8, max_supply=0, requester=None) -> None:
         self.name = name
         self.symbol = name[:3].upper()
+        self.base_unit = 100_000_000
+        self.precision = precision
+        self.base_unit_name = base_unit_name 
         self.blockchain = Blockchain(self.symbol, startdate)
         self.supply = 1
         self.block_reward = 50
@@ -16,7 +19,7 @@ class CryptoCurrency():
         self.startdate = startdate
         self.currentdate = startdate
         self.halving_period = 210_000 # halve the block reward every 210,000 blocks
-        self.last_halving_block = 0        
+        self.last_halving_block = 0     
         self.requests = requester
 
     def __str__(self) -> str:
@@ -32,6 +35,18 @@ class CryptoCurrency():
             "startdate": self.startdate,
             "currentdate": self.currentdate,            
         }
+    
+    async def to_base_unit(self, amount:Decimal) -> int:
+        amount_places = len(str(amount).split('.')[1])
+        if amount_places > self.precision:
+            return FloatingPointError(f"amount {str(amount)} cannot have more than {self.precision} decimal places") 
+        return amount * self.base_unit
+    
+    async def from_base_unit(self, amount:Decimal) -> Decimal:
+        amount_len = len(str(amount))
+        if amount_len > 15:
+            return(Decimal(str(amount)[:-8]+'.'+str(amount)[-8:]))
+        return prec(str(amount / self.base_unit), self.precision)
 
     async def validate_address(self, address:str) -> bool:
         return type(address) == str and address.isalnum() and len(address) >= 26 and len(address) <= 35

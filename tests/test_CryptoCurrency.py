@@ -37,6 +37,32 @@ class CryptoCurrencyTests(unittest.IsolatedAsyncioTestCase):
             "currentdate": datetime(2022, 1, 1),
         })
 
+    async def test_to_base_unit(self):
+        self.assertEqual(await self.crypto.to_base_unit(Decimal('1')), 100_000_000)
+        self.assertEqual(await self.crypto.to_base_unit(Decimal('0.1')), 10_000_000)
+        self.assertEqual(await self.crypto.to_base_unit(Decimal('0.01')), 1_000_000)
+        self.assertEqual(await self.crypto.to_base_unit(Decimal('0.001')), 100_000)
+        self.assertEqual(await self.crypto.to_base_unit(Decimal('0.0001')), 10_000)
+        self.assertEqual(await self.crypto.to_base_unit(Decimal('0.00001')), 1_000)
+        self.assertEqual(await self.crypto.to_base_unit(Decimal('0.000001')), 100)
+        self.assertEqual(await self.crypto.to_base_unit(Decimal('0.0000001')), 10)
+        self.assertEqual(await self.crypto.to_base_unit(Decimal('0.00000001')), 1)
+        self.assertEqual(await self.crypto.to_base_unit(Decimal('1234567.89101112')), 123456789101112)
+        self.assertEqual(await self.crypto.to_base_unit(Decimal('1234567891011.12131415')), 123456789101112131415)
+
+    async def test_from_base_unit(self):
+        self.assertEqual(await self.crypto.from_base_unit(100_000_000), Decimal('1'))
+        self.assertEqual(await self.crypto.from_base_unit(10_000_000), Decimal('0.1'))
+        self.assertEqual(await self.crypto.from_base_unit(1_000_000), Decimal('0.01'))
+        self.assertEqual(await self.crypto.from_base_unit(100_000), Decimal('0.001'))
+        self.assertEqual(await self.crypto.from_base_unit(10_000), Decimal('0.0001'))
+        self.assertEqual(await self.crypto.from_base_unit(1_000), Decimal('0.00001'))
+        self.assertEqual(await self.crypto.from_base_unit(100), Decimal('0.000001'))
+        self.assertEqual(await self.crypto.from_base_unit(10), Decimal('0.0000001'))
+        self.assertEqual(await self.crypto.from_base_unit(1), Decimal('0.00000001'))
+        self.assertEqual(await self.crypto.from_base_unit(123456789101112), Decimal('1234567.89101112'))
+        self.assertEqual(await self.crypto.from_base_unit(123456789101112131415), Decimal('1234567891011.12131415'))
+
     async def test_validate_address(self):
         self.assertEqual((await self.crypto.validate_address('0x0')), False)
         self.assertEqual((await self.crypto.validate_address('0x0'*10)), True)

@@ -13,7 +13,7 @@ names = ['BTC', 'ETH', 'LTC']
 
 async def generate_cryptos(names, requester, time) -> dict:
     # create the default currency chain
-    cryptos = {"USD": CryptoCurrency("USD", time, requester=requester)}
+    cryptos = {"USD": CryptoCurrency("USD", time, 'cents', 2 , requester=requester)}
     for name in names:
         crypto = CryptoCurrency(name, time, requester=requester)
         cryptos[crypto.symbol] = crypto
