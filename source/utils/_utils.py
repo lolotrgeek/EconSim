@@ -52,7 +52,9 @@ def prec(num, places=18) -> Decimal:
         raise TypeError('num cannot accept floats, it must be a int, string, or Decimal')
     if type(num) is int:
         num = str(num)
-    return Decimal(num).quantize(Decimal(10) ** -places)
+    set_prec = Decimal(num).quantize(Decimal(10) ** -places)
+    if places == 0: return int(set_prec)
+    return set_prec
 
 def get_random_string(length=9) -> str:
     x = ''.join(random.choice(string.ascii_uppercase + string.ascii_lowercase + string.digits) for _ in range(length))

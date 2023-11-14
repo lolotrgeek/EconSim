@@ -66,6 +66,7 @@ class TestUtilsTest(unittest.TestCase):
         self.assertEqual( len(str(prec(max)).split('.')[0]), 18)
         # double prec
         self.assertEqual( prec(prec('0.123456789012345678')) , Decimal('0.123456789012345678'))
+        self.assertEqual(prec('0.1234567890123456789',0), 1)
 
 if __name__ == '__main__':
     unittest.main()
