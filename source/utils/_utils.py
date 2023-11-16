@@ -49,7 +49,7 @@ def prec(num, places=18) -> Decimal:
     Set the precision of a Decimal `num` to a number of `places`.
     """
     if type(num) is float:
-        raise TypeError('num cannot accept floats, it must be a int, string, or Decimal')
+        num = str(num)
     if type(num) is int:
         num = str(num)
     set_prec = Decimal(num).quantize(Decimal(10) ** -places)

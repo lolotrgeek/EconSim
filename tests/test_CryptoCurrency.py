@@ -49,6 +49,7 @@ class CryptoCurrencyTests(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(await self.crypto.to_base_unit(Decimal('0.00000001')), 1)
         self.assertEqual(await self.crypto.to_base_unit(Decimal('1234567.89101112')), 123456789101112)
         self.assertEqual(await self.crypto.to_base_unit(Decimal('1234567891011.12131415')), 123456789101112131415)
+        self.assertEqual(type(await self.crypto.to_base_unit(Decimal('1234567891011.121314151'))), FloatingPointError)
 
     async def test_from_base_unit(self):
         self.assertEqual(await self.crypto.from_base_unit(100_000_000), Decimal('1'))

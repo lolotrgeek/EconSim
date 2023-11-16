@@ -17,13 +17,13 @@ class CryptoExchangeRequests(Requests):
     async def get_price_bars(self, ticker, interval, limit):
         return await self.make_request('candles', {'ticker': ticker, 'interval': interval, 'limit': limit}, self.requester)
 
-    async def create_asset(self, symbol, pairs=[]):
+    async def create_asset(self, symbol, pairs=[], precision=8):
         """
         Creates an asset with the given symbol and pairs
         pairs - a list of pair dicts, pair example `{'asset': 'USD' ,'market_qty':1000 ,'seed_price':100 ,'seed_bid':.99, 'seed_ask':1.01}`
         
         """
-        return await self.make_request('create_asset', {'symbol': symbol, 'pairs': pairs}, self.requester)
+        return await self.make_request('create_asset', {'symbol': symbol, 'pairs': pairs, 'precision': precision}, self.requester)
 
     async def get_order_book(self, ticker, limit=20):
         return await self.make_request('order_book', {'ticker': ticker, 'limit': limit}, self.requester)

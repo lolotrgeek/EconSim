@@ -14,7 +14,7 @@ class CreateAssetTest(unittest.IsolatedAsyncioTestCase):
         self.requests = Requests(self.mock_requester)
 
     async def test_create_asset(self):
-        response = await self.requests.make_request('create_asset', {'symbol': "ETH", 'pairs': [{'asset': 'USD','market_qty':50000 ,'seed_price':100 ,'seed_bid':'.99', 'seed_ask':'1.01'}]}, self.mock_requester)
+        response = await self.requests.make_request('create_asset', {'symbol': "ETH", 'pairs': [{'asset': 'USD','market_qty':50000 ,'seed_price':100 ,'seed_bid':'.99', 'seed_ask':'1.01'}], 'precision': 18}, self.mock_requester)
        
      
         print (response)

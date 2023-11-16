@@ -2,25 +2,24 @@ import sys
 import os
 parent_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 from datetime import datetime
-from decimal import Decimal
 from .OrderSide import OrderSide
 from source.utils._utils import get_random_string, prec
 
 class CryptoLimitOrder():
-    def __init__(self, ticker, price, qty, creator, side, dt=None, exchange_fee='0.0', network_fee='0.0', status='open', accounting='FIFO', position_id=None, fills =[]):
+    def __init__(self, ticker, price, qty, creator, side, dt=None, exchange_fee=0, network_fee=0, status='open', accounting='FIFO', position_id=None, fills =[]):
         self.id = get_random_string()
         self.ticker: str = ticker
         self.base: str = ""
         self.quote: str = ""
-        self.price: Decimal = price
+        self.price: int = price
         self.type: OrderSide = side
-        self.qty: Decimal = qty
+        self.qty: int = qty
         self.creator: str = creator
         self.dt: datetime = dt if dt else datetime.now()
-        self.exchange_fee: Decimal = exchange_fee #NOTE: the fee is assessed in base currency for sell, quote currency for buy to match the network fee
-        self.exchange_fee_per_qty: Decimal = prec(exchange_fee / qty) if qty > 0 else 0
-        self.network_fee: Decimal = network_fee # base currency for sell, quote currency for buy
-        self.network_fee_per_qty: Decimal = prec(network_fee / qty) if qty > 0 else 0
+        self.exchange_fee: int = exchange_fee #NOTE: the fee is assessed in base currency for sell, quote currency for buy to match the network fee
+        self.exchange_fee_per_qty: int = prec(exchange_fee / qty,0) if qty > 0 else 0
+        self.network_fee: int = network_fee # base currency for sell, quote currency for buy
+        self.network_fee_per_qty: int = prec(network_fee / qty,0) if qty > 0 else 0
         self.remaining_network_fee = self.network_fee
         self.exchange_fees_due = 0
         self.unfilled_qty = qty

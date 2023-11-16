@@ -15,45 +15,60 @@ async def standard_asyncSetUp(self):
     self.requests = Requests(self.mock_requester)
     self.exchange = Exchange(datetime=datetime(2023, 1, 1), requester=self.requests)
     self.exchange.logger = Null_Logger(debug_print=True)
-    await self.exchange.create_asset("BTC", pairs=[{'asset': 'USD','market_qty':1000 ,'seed_price':150 ,'seed_bid':'.99', 'seed_ask':'1.01'}])
+    await self.exchange.create_asset("BTC", pairs=[{'asset': 'USD','market_qty':1000 ,'seed_price':150 ,'seed_bid':148.5, 'seed_ask':151.5}])
     await self.exchange.next()
     return self.exchange      
+
+class ToSubUnitTestCases(unittest.IsolatedAsyncioTestCase):
+    async def asyncSetUp(self):
+        self.requests = Requests(MockRequester())
+        self.exchange = Exchange(datetime=datetime(2023, 1, 1), requester=self.requests)
+
+    async def test_to_subunit(self):
+        self.assertEqual(await self.exchange.to_sub_unit(.99, 8), 99000000)
+        self.assertEqual(await self.exchange.to_sub_unit('.99', 8), 99000000)
+        self.assertEqual(await self.exchange.to_sub_unit(1.01, 2), 101)
+        self.assertEqual(await self.exchange.to_sub_unit(148.50, 2), 14850)
+        self.assertEqual(type(await self.exchange.to_sub_unit('1234567891011.121314151')), FloatingPointError)
 
 class CreateAssetTestCase(unittest.IsolatedAsyncioTestCase):
     async def asyncSetUp(self):
         self.mock_requester = MockRequester()
         self.requests = Requests(self.mock_requester)
         self.exchange = Exchange(datetime=datetime(2023, 1, 1), requester=self.requests)
+        self.exchange.logger = Null_Logger(debug_print=True)
 
     async def test_create_asset(self):
-        asset = await self.exchange.create_asset("BTC", pairs=[{'asset': 'USD','market_qty':50000 ,'seed_price':100 ,'seed_bid':'.99', 'seed_ask':'1.01'}])
+        asset = await self.exchange.create_asset("BTC", pairs=[{'asset': 'USD','market_qty':50000 ,'seed_price':100 ,'seed_bid':99, 'seed_ask':101}])
+        #TODO: need to put default quote currency in exchange.assets to pass asset check...
         self.assertEqual("BTC" in self.exchange.assets, True )
         self.assertEqual(self.exchange.assets['BTC']['type'], "crypto")
         book = self.exchange.books["BTCUSD"]
-        self.assertEqual(book.bids[0].price, Decimal('99.0'))
-        self.assertEqual(book.asks[0].price, 101)
+        self.assertEqual(book.bids[0].price, asset['pairs'][0]['seed_bid'])
+        self.assertEqual(book.asks[0].price, asset['pairs'][0]['seed_ask'])
 
     async def test_create_asset_pairs(self):
-        asset = await self.exchange.create_asset("ETH", pairs=[{'asset': 'USD','market_qty':1000 ,'seed_price':150 ,'seed_bid':'.99', 'seed_ask':'1.01'}, {'asset': 'BTC','market_qty':1000 ,'seed_price':'0.5' ,'seed_bid':'.99', 'seed_ask':'1.01'}])
+        await self.exchange.create_asset("BTC", pairs=[{'asset': 'USD','market_qty':50000 ,'seed_price':100 ,'seed_bid':99, 'seed_ask':101}])
+        asset = await self.exchange.create_asset("ETH", precision=10, pairs=[{'asset': 'USD','market_qty':1000 ,'seed_price':150 ,'seed_bid':148.5, 'seed_ask':151.5}, {'asset': 'BTC','market_qty':1000 ,'seed_price':0.5 ,'seed_bid':0.4954321, 'seed_ask':0.505}])
         print(asset)
         self.assertEqual("ETH" in self.exchange.assets, True )
         self.assertEqual(self.exchange.assets['ETH']['type'], "crypto")
         book = self.exchange.books["ETHUSD"]
-        self.assertEqual(book.bids[0].price, Decimal('148.50'))
-        self.assertEqual(book.asks[0].price, Decimal('151.50'))
+        self.assertEqual(book.bids[0].price, 148.50 * (10 ** 2) )
+        self.assertEqual(book.asks[0].price, 151.50 * (10 ** 2) )
         book = self.exchange.books["ETHBTC"]
-        self.assertEqual(book.bids[0].price, Decimal('0.495'))
-        self.assertEqual(book.asks[0].price, Decimal('0.505'))
+        self.assertEqual(book.bids[0].price, 0.4954321 * (10 ** 8) )
+        self.assertEqual(book.asks[0].price, 0.505 * (10 ** 8) )
 
     async def test_create_duplicate_asset(self):
-        asset = await self.exchange.create_asset("BTC", pairs=[{'asset': 'USD','market_qty':50000 ,'seed_price':100 ,'seed_bid':'.99', 'seed_ask':'1.01'}])      
-        asset = await self.exchange.create_asset("BTC", pairs=[{'asset': 'USD','market_qty':50000 ,'seed_price':100 ,'seed_bid':'.99', 'seed_ask':'1.01'}])
+        asset = await self.exchange.create_asset("BTC", pairs=[{'asset': 'USD','market_qty':50000 ,'seed_price':100 ,'seed_bid':'99', 'seed_ask':'101'}])      
+        asset = await self.exchange.create_asset("BTC", pairs=[{'asset': 'USD','market_qty':50000 ,'seed_price':100 ,'seed_bid':'99', 'seed_ask':'101'}])
         self.assertEqual(asset, {"error": "asset BTC already exists"})
 
     async def test_create_max_asset(self):
         self.exchange.max_assets = 1
-        await self.exchange.create_asset("BTC", pairs=[{'asset': 'USD','market_qty':50000 ,'seed_price':100 ,'seed_bid':'.99', 'seed_ask':'1.01'}])        
-        asset = await self.exchange.create_asset("LTC", pairs=[{'asset': 'USD','market_qty':50000 ,'seed_price':100 ,'seed_bid':'.99', 'seed_ask':'1.01'}])      
+        await self.exchange.create_asset("BTC", pairs=[{'asset': 'USD','market_qty':50000 ,'seed_price':100 ,'seed_bid':'99', 'seed_ask':'101'}])        
+        asset = await self.exchange.create_asset("LTC", pairs=[{'asset': 'USD','market_qty':50000 ,'seed_price':100 ,'seed_bid':'99', 'seed_ask':'101'}])      
         self.assertEqual(asset, {'error': 'cannot create, max_assets_reached'})                   
 
 class FreezeAssetsTestCase(unittest.IsolatedAsyncioTestCase):
@@ -62,12 +77,14 @@ class FreezeAssetsTestCase(unittest.IsolatedAsyncioTestCase):
         self.agent = (await self.exchange.register_agent("agent1", initial_assets={"BTC": 10000, "USD" : 10000}))['registered_agent']
 
     async def test_freeze_asset(self):
-        await self.exchange.freeze_assets(self.agent, "BTC", "test_order", 100, Decimal('0.01'), Decimal('0.01'))
+        exchange_fee = await self.exchange.to_sub_unit('0.01', 8)
+        network_fee = await self.exchange.to_sub_unit('0.01', 8)
+        await self.exchange.freeze_assets(self.agent, "BTC", "test_order", 100* (10 ** 8), exchange_fee, network_fee)
         agent = await self.exchange.get_agent(self.agent)
         self.assertEqual(agent['frozen_assets']['BTC'][0]['order_id'],"test_order" )
-        self.assertEqual(agent['frozen_assets']['BTC'][0]['frozen_qty'],100)
-        self.assertEqual(agent['frozen_assets']['BTC'][0]['frozen_exchange_fee'], Decimal('0.01'))
-        self.assertEqual(agent['frozen_assets']['BTC'][0]['frozen_network_fee'], Decimal('0.01'))
+        self.assertEqual(agent['frozen_assets']['BTC'][0]['frozen_qty'],100* (10 ** 8))
+        self.assertEqual(agent['frozen_assets']['BTC'][0]['frozen_exchange_fee'],exchange_fee )
+        self.assertEqual(agent['frozen_assets']['BTC'][0]['frozen_network_fee'], network_fee )
 
     async def test_freeze_no_asset(self):
         freeze = await self.exchange.freeze_assets(self.agent, "ETH", "test_order", 100, Decimal('0.01'), Decimal('0.01'))
@@ -101,7 +118,7 @@ class GetLatestTradeTestCase(unittest.IsolatedAsyncioTestCase):
         print(latest_trade)
         self.assertEqual(latest_trade["base"], "BTC")
         self.assertEqual(latest_trade["quote"], "USD")
-        self.assertEqual(latest_trade["price"], 150)
+        self.assertEqual(latest_trade["price"], 150 * (10 ** 8))
         self.assertEqual(latest_trade["buyer"], "init_seed_BTCUSD")
         self.assertEqual(latest_trade["seller"], "init_seed_BTCUSD")
 
@@ -118,9 +135,9 @@ class GetQuotesTestCase(unittest.IsolatedAsyncioTestCase):
         quotes = await self.exchange.get_quotes("BTCUSD")
         self.assertEqual(quotes["ticker"], "BTCUSD")
         self.assertEqual(quotes["bid_qty"], 1)
-        self.assertEqual(quotes["bid_p"], 148.5)
-        self.assertEqual(quotes["ask_qty"], Decimal('1000')) # this is not 1000 because it has accounted for fees
-        self.assertEqual(quotes["ask_p"], 151.5)
+        self.assertEqual(quotes["bid_p"], 148.5 * (10 ** 2))
+        self.assertEqual(quotes["ask_qty"], Decimal('1000')* (10 ** 8)) # this is not 1000 because it has accounted for fees
+        self.assertEqual(quotes["ask_p"], 151.5 * (10 ** 2))
 
 class GetMidpriceTestCase(unittest.IsolatedAsyncioTestCase):
     async def asyncSetUp(self) -> None:
@@ -128,7 +145,7 @@ class GetMidpriceTestCase(unittest.IsolatedAsyncioTestCase):
 
     async def test_get_midprice(self):
         midprice = await self.exchange.get_midprice("BTCUSD")
-        self.assertEqual(midprice, 150)
+        self.assertEqual(midprice, 150* (10 ** 2))
 
 class RegisterAgentTestCase(unittest.IsolatedAsyncioTestCase):
     async def asyncSetUp(self) -> None:
@@ -139,13 +156,13 @@ class RegisterAgentTestCase(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(result[:6], "agent1")
         self.assertEqual(len(self.exchange.agents), 2)
         self.assertEqual(self.exchange.agents[1]['name'], result)
-        self.assertEqual(self.exchange.agents[1]['assets'], {"BTC": 10000, "USD" : 10000})
+        self.assertEqual(self.exchange.agents[1]['assets'], {"BTC": 10000* (10 ** 8), "USD" : 10000* (10 ** 2)})
         self.assertEqual(len(self.exchange.agents[0]['_transactions']), 0)
 
     async def test_register_agent_error(self):
         self.exchange.max_agents = 1
         await self.exchange.register_agent("agent1", initial_assets={"BTC": 10000, "USD" : 10000})
-        agent = await self.exchange.register_agent("agent2", initial_assets={"BTC": 10000, "USD" : 10000})
+        agent = await self.exchange.register_agent("agent2", initial_assets={"BTC": 10000 * (10 ** 8), "USD" : 10000* (10 ** 2)})
         self.assertEqual(agent, {"error": "max agents reached"})        
         
 class GetBestAskTestCase(unittest.IsolatedAsyncioTestCase):
@@ -154,8 +171,8 @@ class GetBestAskTestCase(unittest.IsolatedAsyncioTestCase):
 
     async def test_get_best_ask(self):
         best_ask = await self.exchange.get_best_ask("BTCUSD")
-        self.assertEqual(best_ask.price, 151.5)
-        self.assertEqual(best_ask.qty, Decimal('1000'))
+        self.assertEqual(best_ask.price, 151.5* (10 ** 2))
+        self.assertEqual(best_ask.qty, Decimal('1000')* (10 ** 8))
 
 class GetBestBidTestCase(unittest.IsolatedAsyncioTestCase):
     async def asyncSetUp(self) -> None:
@@ -163,8 +180,8 @@ class GetBestBidTestCase(unittest.IsolatedAsyncioTestCase):
 
     async def test_get_best_bid(self):
         best_bid = await self.exchange.get_best_bid("BTCUSD")
-        self.assertEqual(best_bid.price, 148.5)
-        self.assertEqual(best_bid.qty, 1)
+        self.assertEqual(best_bid.price, 148.5 * (10 ** 2))
+        self.assertEqual(best_bid.qty, 1* (10 ** 8))
 
     async def test_get_best_bid_error(self):
         self.exchange.books["BTCUSD"].bids.clear()
@@ -212,8 +229,8 @@ class LimitBuyTestCase(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(self.exchange.books['BTCUSD'].bids[1].price, 148)
         self.assertEqual(self.exchange.books['BTCUSD'].bids[1].qty, 3)
         self.assertEqual(new_order.ticker, 'BTCUSD')
-        self.assertEqual(new_order.price, 148)
-        self.assertEqual(new_order.qty, 3)
+        self.assertEqual(new_order.price, 148 * (10 ** 2))
+        self.assertEqual(new_order.qty, 3 * (10 ** 8))
         self.assertEqual(new_order.creator, self.buyer)
         self.assertEqual(agent['frozen_assets']['USD'][0]['order_id'],new_order.id )
         self.assertEqual(agent['frozen_assets']['USD'][0]['frozen_qty'],new_order.qty * new_order.price)
@@ -1423,7 +1440,7 @@ class getTaxableEventsTest(unittest.IsolatedAsyncioTestCase):
         """
         tests whether basis is chained correctly when there are multiple currencies traded
         """
-        await self.exchange.create_asset("ETH", pairs=[{'asset': 'USD','market_qty':1000 ,'seed_price':150 ,'seed_bid':'.99', 'seed_ask':'1.01'}, {'asset': 'BTC','market_qty':1000 ,'seed_price':'0.5' ,'seed_bid':'.99', 'seed_ask':'1.01'}])
+        await self.exchange.create_asset("ETH", pairs=[{'asset': 'USD','market_qty':1000 ,'seed_price':150 ,'seed_bid':'148.5', 'seed_ask':'151.5'}, {'asset': 'BTC','market_qty':1000 ,'seed_price':'0.5' ,'seed_bid':'.495', 'seed_ask':'.505'}])
 
         print('assets', (await self.exchange.get_agent('init_seed_ETHUSD')))
 
@@ -1725,7 +1742,7 @@ class getAgentsSimpleTest(unittest.IsolatedAsyncioTestCase):
         self.mock_requester = MockRequester()
         self.requests = Requests(self.mock_requester)
         self.exchange = Exchange(datetime=datetime(2023, 1, 1), requester=self.requests)
-        await self.exchange.create_asset("BTC", pairs=[{'asset': 'USD','market_qty':1000 ,'seed_price':150 ,'seed_bid':'.99', 'seed_ask':'1.01'}])
+        await self.exchange.create_asset("BTC", pairs=[{'asset': 'USD','market_qty':1000 ,'seed_price':150 ,'seed_bid':148.5, 'seed_ask':151.5}])
         self.agent1 = (await self.exchange.register_agent("agent1", initial_assets={"BTC": 10000, "USD" : 10000}))['registered_agent']
         self.agent2 = (await self.exchange.register_agent("agent2", initial_assets={"BTC": 10000, "USD" : 10000}))['registered_agent']
         self.agent3 = (await self.exchange.register_agent("agent3", initial_assets={"BTC": 10000, "USD" : 10000}))['registered_agent']
@@ -1754,7 +1771,7 @@ class GetPriceBarsTestCase(unittest.IsolatedAsyncioTestCase):
         self.mock_requester = MockRequester()
         self.requests = Requests(self.mock_requester)
         self.exchange = Exchange(datetime=datetime(2023, 1, 1), requester=self.requests)
-        await self.exchange.create_asset("BTC", pairs=[{'asset': 'USD','market_qty':1000 ,'seed_price':150 ,'seed_bid':'.99', 'seed_ask':'1.01'}])
+        await self.exchange.create_asset("BTC", pairs=[{'asset': 'USD','market_qty':1000 ,'seed_price':150 ,'seed_bid':148.5, 'seed_ask':151.5}])
         self.agent = (await self.exchange.register_agent("agent", initial_assets={"BTC": 10000, "USD" : 10000}))['registered_agent']
 
     async def test_get_price_bars(self):
@@ -1804,7 +1821,7 @@ class calculateMarketCapTest(unittest.IsolatedAsyncioTestCase):
         self.mock_requester = MockRequester()
         self.requests = Requests(self.mock_requester)
         self.exchange = Exchange(datetime=datetime(2023, 1, 1), requester=self.requests)
-        await self.exchange.create_asset("BTC", pairs=[{'asset': 'USD','market_qty':1000 ,'seed_price':150 ,'seed_bid':'.99', 'seed_ask':'1.01'}])
+        await self.exchange.create_asset("BTC", pairs=[{'asset': 'USD','market_qty':1000 ,'seed_price':150 ,'seed_bid':148.5, 'seed_ask':151.5}])
         self.agent1 = (await self.exchange.register_agent("agentcap", initial_assets={"BTC": 10000, "USD" : 10000}))['registered_agent']
         await self.exchange.market_buy("BTC", "USD", qty=1000, buyer=self.agent1, fee='0.01')
 

@@ -37,10 +37,12 @@ class CryptoCurrency():
         }
     
     async def to_base_unit(self, amount:Decimal) -> int:
-        amount_places = len(str(amount).split('.')[1])
-        if amount_places > self.precision:
-            return FloatingPointError(f"amount {str(amount)} cannot have more than {self.precision} decimal places") 
-        return amount * self.base_unit
+        amount_decimal = str(amount).split('.') 
+        if len(amount_decimal) == 2:
+            amount_places = len(amount_decimal[1])
+            if amount_places > self.precision:
+                return FloatingPointError(f"amount {str(amount)} cannot have more than {self.precision} decimal places") 
+        return float(amount) * self.base_unit
     
     async def from_base_unit(self, amount:Decimal) -> Decimal:
         amount_len = len(str(amount))
@@ -53,7 +55,7 @@ class CryptoCurrency():
 
     async def issue_coins(self, pairs:list, amount:Decimal) -> None:
         self.supply += amount
-        return await self.requests.create_asset(self.symbol, pairs)
+        return await self.requests.create_asset(self.symbol, pairs, self.precision)
 
     async def halving(self):
         # reduce the block reward on a halving schedule, asymptotically approaching the max supply

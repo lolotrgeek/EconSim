@@ -6,29 +6,29 @@ from source.utils._utils import prec
 class Fees():
     def __init__(self):
         self.waive_fees = True
-        self.maker_fee_rate = prec('0.001')  # Maker fee rate as a decimal (e.g., 0.001 = 0.1%)
-        self.taker_fee_rate = prec('0.002')  # Taker fee rate as a decimal (e.g., 0.002 = 0.2%)
+        self.maker_fee_rate = 0.001  # Maker fee rate as a decimal (e.g., 0.001 = 0.1%)
+        self.taker_fee_rate = 0.002  # Taker fee rate as a decimal (e.g., 0.002 = 0.2%)
         self.total_fee_revenue = 0  # Total fee revenue collected by the exchange
         self.fees_collected = {}
 
-    def taker_fee(self, volume) -> Decimal:
+    def taker_fee(self, volume) -> int:
         if self.waive_fees:
             return 0
-        return prec(volume * self.taker_fee_rate)
+        return int(prec(volume * self.taker_fee_rate,0))
     
-    def maker_fee(self, volume) -> Decimal:
+    def maker_fee(self, volume) -> int:
         if self.waive_fees:
             return 0
-        return prec(volume * self.maker_fee_rate)
+        return int(prec(volume * self.maker_fee_rate,0))
         
-    def add_fee(self, asset: str, fee: Decimal) -> dict:
+    def add_fee(self, asset: str, fee: int) -> dict:
         if asset in self.fees_collected: 
             self.fees_collected[asset] += fee
         else: 
             self.fees_collected[asset] = fee
         return {asset: fee}
     
-    def remove_fee(self, asset: str, fee: Decimal) -> dict:
+    def remove_fee(self, asset: str, fee: int) -> dict:
         if asset in self.fees_collected: 
             self.fees_collected[asset] -= fee
         else: 

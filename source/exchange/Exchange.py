@@ -22,7 +22,7 @@ class Exchange():
         self.books = {}
         self.trade_log: List[Trade] = [] #TODO: this is going to get to big to hold in memory, need a DB
         self.datetime = datetime
-        self.default_currency = {'name': 'US Dollar', 'symbol': 'USD', 'id': str(UUID())}
+        self.default_currency = {'name': 'US Dollar', 'symbol': 'USD', 'id': str(UUID()), 'precision': 2}
         self.fees = Fees()
         self.agents_archive = Archive('agents')
         self.assets_archive = Archive('assets')

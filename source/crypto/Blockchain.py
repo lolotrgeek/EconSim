@@ -1,8 +1,6 @@
 import sys, os
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-from decimal import Decimal
 from .MemPool import MemPool, MempoolTransaction
-from source.utils._utils import prec
 from source.Archive import Archive
 import random
 import pandas as pd
@@ -32,9 +30,13 @@ class Blockchain():
         self.chain.append(block)
         return block
     
-    async def add_transaction(self, asset:str, fee:Decimal, amount:Decimal, sender:str, recipient:str) -> MempoolTransaction:
-        fee = prec(fee)
-        amount = prec(amount)
+    async def add_transaction(self, asset:str, fee:int, amount:int, sender:str, recipient:str) -> MempoolTransaction:
+        """
+        Add a transaction to the mempool
+        NOTE: transactions are processed in subunits i.e. `satoshis`, `wei`, `cents`, etc.
+        """
+        if type(fee) != int: return MempoolTransaction(asset, 0, 0, "error", "refusing transaction: fee must be an integer", dt=self.datetime)
+        if type(amount) != int: return MempoolTransaction(asset, 0, 0, "error", "refusing transaction: amount must be an integer", dt=self.datetime)
         if(fee <= 0): return MempoolTransaction(asset, 0, 0, "error", "refusing transaction: no fee", dt=self.datetime)
         self.total_transactions += 1
         mempool_transaction = MempoolTransaction(asset, fee, amount, sender, recipient, dt=self.datetime)
