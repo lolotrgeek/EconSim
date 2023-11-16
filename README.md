@@ -1,4 +1,4 @@
-# 🚀EconSim🚀
+# 🚀EconSim - Crypto Integer🚀
 A simulated economy with an exchange using backed assets.
 
 ## Goal
