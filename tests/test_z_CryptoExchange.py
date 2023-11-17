@@ -34,6 +34,7 @@ class CreateAssetTestCase(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(book.asks[0].price, 101)
 
     async def test_create_asset_pairs(self):
+        await self.exchange.create_asset("BTC", pairs=[{'asset': 'USD','market_qty':50000 ,'seed_price':100 ,'seed_bid':'.99', 'seed_ask':'1.01'}])
         asset = await self.exchange.create_asset("ETH", pairs=[{'asset': 'USD','market_qty':1000 ,'seed_price':150 ,'seed_bid':'.99', 'seed_ask':'1.01'}, {'asset': 'BTC','market_qty':1000 ,'seed_price':'0.5' ,'seed_bid':'.99', 'seed_ask':'1.01'}])
         print(asset)
         self.assertEqual("ETH" in self.exchange.assets, True )

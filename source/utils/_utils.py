@@ -5,7 +5,7 @@ from decimal import *
 
 context = getcontext()
 context.prec = 36
-context.rounding = ROUND_UP
+context.rounding = ROUND_HALF_EVEN
 
 def dumps(data):
     return json.dumps(data, indent=4, sort_keys=True, default=str)

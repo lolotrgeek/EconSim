@@ -18,9 +18,9 @@ class CryptoLimitOrder():
         self.creator: str = creator
         self.dt: datetime = dt if dt else datetime.now()
         self.exchange_fee: Decimal = exchange_fee #NOTE: the fee is assessed in base currency for sell, quote currency for buy to match the network fee
-        self.exchange_fee_per_qty: Decimal = prec(exchange_fee / qty) if qty > 0 else 0
+        self.exchange_fee_per_qty: Decimal = 0
         self.network_fee: Decimal = network_fee # base currency for sell, quote currency for buy
-        self.network_fee_per_qty: Decimal = prec(network_fee / qty) if qty > 0 else 0
+        self.network_fee_per_qty: Decimal = 0
         self.remaining_network_fee = self.network_fee
         self.exchange_fees_due = 0
         self.unfilled_qty = qty
