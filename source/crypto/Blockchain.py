@@ -8,8 +8,9 @@ import random
 import pandas as pd
 
 class Blockchain():
-    def __init__(self, asset="", datetime=None):
+    def __init__(self, asset="", datetime=None, decimals=8):
         seed = MempoolTransaction(asset, 0, 0, 'init_seed', 'init_seed', datetime)
+        self.decimals = decimals
         self.no_fee = False
         seed.confirmed = True
         self.chain = [seed]
@@ -33,8 +34,8 @@ class Blockchain():
         return block
     
     async def add_transaction(self, asset:str, fee:Decimal, amount:Decimal, sender:str, recipient:str) -> MempoolTransaction:
-        fee = prec(fee)
-        amount = prec(amount)
+        fee = prec(fee, self.decimals)
+        amount = prec(amount, self.decimals)
         if(fee <= 0): return MempoolTransaction(asset, 0, 0, "error", "refusing transaction: no fee", dt=self.datetime)
         self.total_transactions += 1
         mempool_transaction = MempoolTransaction(asset, fee, amount, sender, recipient, dt=self.datetime)

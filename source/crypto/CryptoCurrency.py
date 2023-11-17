@@ -5,10 +5,10 @@ from decimal import Decimal
 from source.utils._utils import prec
 
 class CryptoCurrency():
-    def __init__(self, name:str, startdate, max_supply=0, requester=None) -> None:
+    def __init__(self, name:str, startdate, max_supply=0, decimals=8, requester=None) -> None:
         self.name = name
         self.symbol = name[:3].upper()
-        self.blockchain = Blockchain(self.symbol, startdate)
+        self.blockchain = Blockchain(self.symbol, startdate, decimals)
         self.supply = 1
         self.block_reward = 50
         self.max_supply = max_supply
