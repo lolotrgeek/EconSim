@@ -5,7 +5,7 @@ from decimal import *
 
 context = getcontext()
 context.prec = 36
-context.rounding = ROUND_HALF_EVEN
+context.rounding = ROUND_UP
 
 def dumps(data):
     return json.dumps(data, indent=4, sort_keys=True, default=str)
@@ -54,6 +54,37 @@ def prec(num, places=18) -> Decimal:
         num = str(num)
     return Decimal(num).quantize(Decimal(10) ** -places)
 
+def to_sub_unit(self, amount, precision=8) -> int:
+    """
+    Converts primary units to subunits i.e. `BTC -> sats` , `ETH -> wei`
+    """
+    self.logger.debug('to_sub_unit', amount, precision)
+    amount_decimal = str(amount).split('.') 
+    if len(amount_decimal) == 2:
+        amount_places = len(amount_decimal[1])
+        if amount_places > precision:
+            return FloatingPointError(f"amount {str(amount)} cannot have more than {precision} decimal places") 
+    return int(float(amount) * (10 ** precision ))
+
+def to_primary_unit(self, amount, precision=8) -> Decimal:
+    """
+    Converts subunits to primary units i.e. `sats -> BTC`, `wei -> ETH`
+    """
+    amount_len = len(str(amount))
+    if amount_len > 15:
+        return(Decimal(str(amount)[:-8]+'.'+str(amount)[-8:]))
+    return prec(str(amount / (10 ** precision )), precision)
+
+def convert_unit(self, amount, base_precision=8) -> int:
+    """
+    Converts between units i.e. `sats -> cents`, `wei -> sats`
+
+    Args:
+        amount (int): the amount of base unit to convert to quote unit
+        base_precision (int, optional): the precision of the base unit. Defaults to 8.
+    """
+    return prec(str(amount / (10 ** base_precision )), 0)
+
 def get_random_string(length=9) -> str:
     x = ''.join(random.choice(string.ascii_uppercase + string.ascii_lowercase + string.digits) for _ in range(length))
     return x
@@ -85,3 +116,6 @@ def generate_names(num_to_gen=20) -> list:
         else:
             i -= 1
     return names
+
+def convert_sci_to_str(num):
+    return "{:f}".format(num)

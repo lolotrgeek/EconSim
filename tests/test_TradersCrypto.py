@@ -204,7 +204,7 @@ class TestNaiveMarketMaker(unittest.IsolatedAsyncioTestCase):
         await self.mock_requester.responder.exchange._complete_trade(txn, base_txn, quote_txn)
 
         get_assets = await self.market_maker.get_assets()
-        order_qty = prec(str(self.market_maker.assets['BTC'] * self.market_maker.qty_pct_per_order))
+        order_qty = prec(str(self.market_maker.assets['BTC'] * self.market_maker.qty_pct_per_order), 8)
 
         latest_trade = await self.market_maker.get_latest_trade(self.market_maker.tickers[0]['base'], self.market_maker.tickers[0]['quote'])
         await self.market_maker.make_market(self.market_maker.tickers[0], latest_trade['price'])
@@ -223,8 +223,8 @@ class TestNaiveMarketMaker(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(self.mock_requester.responder.exchange.books['BTCUSD'].asks[1].qty, order_qty)
 
         self.assertEqual(self.mock_requester.responder.exchange.books['BTCUSD'].bids[0].qty, order_qty)
-        self.assertEqual(self.mock_requester.responder.exchange.books['BTCUSD'].bids[0].price, prec(latest_trade['price'] * self.market_maker.buy_spread))
-        self.assertEqual(self.mock_requester.responder.exchange.books['BTCUSD'].asks[1].price, prec(latest_trade['price'] * self.market_maker.sell_spread))
+        self.assertEqual(self.mock_requester.responder.exchange.books['BTCUSD'].bids[0].price, prec(latest_trade['price'] * self.market_maker.buy_spread, 2))
+        self.assertEqual(self.mock_requester.responder.exchange.books['BTCUSD'].asks[1].price, prec(latest_trade['price'] * self.market_maker.sell_spread, 2))
 
     async def test_take_action(self):
         # Test that the market taker buys or sells an asset

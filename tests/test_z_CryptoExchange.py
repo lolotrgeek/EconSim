@@ -182,16 +182,16 @@ class LimitBuyTestCase(unittest.IsolatedAsyncioTestCase):
         self.buyer = (await self.exchange.register_agent("buyer1", initial_assets={"BTC": 10000, "USD" : 10000}))['registered_agent']
         self.seller = (await self.exchange.register_agent("seller1", initial_assets={"BTC": 10000, "USD" : 10000}))['registered_agent']
         self.match_buyer = (await self.exchange.register_agent("match_buyer", initial_assets={"BTC": 10000, "USD" : 10000}))['registered_agent']
-    
+
     async def test_limit_buy_zero_price(self):
-        result = await self.exchange.limit_buy('BTC', 'USD', 0, 100, self.buyer, fee='0.01')
+        result = await self.exchange.limit_buy('BTC', 'USD', 0, 100, self.buyer, fee='1')
         self.assertEqual(result.creator, self.buyer)
         self.assertEqual(result.accounting, 'price_must_be_greater_than_zero')
         self.assertEqual(result.status, 'error')
         self.assertEqual(len(self.exchange.books['BTCUSD'].bids), 1)
 
     async def test_limit_buy_zero_qty(self):
-        result = await self.exchange.limit_buy('BTC', 'USD', 148, 0, self.buyer, fee='0.01')
+        result = await self.exchange.limit_buy('BTC', 'USD', 148, 0, self.buyer, fee='1')
         self.assertEqual(result.creator, self.buyer)
         self.assertEqual(result.accounting, 'qty_must_be_greater_than_zero')
         self.assertEqual(result.status, 'error')
@@ -205,7 +205,7 @@ class LimitBuyTestCase(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(maxed_order.accounting, 'max_bid_depth_reached')    
 
     async def test_limit_buy_sufficient_funds(self):
-        new_order = await self.exchange.limit_buy('BTC', 'USD', 148, 3, self.buyer, fee='0.01')
+        new_order = await self.exchange.limit_buy('BTC', 'USD', 148, 3, self.buyer, fee='0.03')
         print(new_order)
         agent = await self.exchange.get_agent(self.buyer)
         print(agent['frozen_assets'])
@@ -222,7 +222,7 @@ class LimitBuyTestCase(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(agent['frozen_assets']['USD'][0]['frozen_network_fee'], new_order.network_fee)
         
     async def test_limit_buy_insufficient_funds(self):
-        result = await self.exchange.limit_buy('BTC', 'USD', 220, 3, self.insufficient_agent, fee='0.01')
+        result = await self.exchange.limit_buy('BTC', 'USD', 220, 3, self.insufficient_agent, fee='0.03')
 
         self.assertEqual(result.creator, self.insufficient_agent)
         self.assertEqual(result.accounting, 'insufficient_assets')
@@ -293,7 +293,7 @@ class LimitOrderMatchingTestCase(unittest.IsolatedAsyncioTestCase):
 
     async def test_limit_order_match_trades(self):
         new_sell = await self.exchange.limit_sell("BTC", "USD", price=145, qty=5, creator=self.seller, fee='0.001')
-        new_order = await self.exchange.limit_buy('BTC', 'USD', 145, 4, self.match_buyer, fee='0.001')
+        new_order = await self.exchange.limit_buy('BTC', 'USD', 145, 4, self.match_buyer, fee='0.04')
 
         self.mock_requester.responder.cryptos['BTC'].blockchain.mempool.transactions[0].confirmed = True
         self.mock_requester.responder.cryptos['USD'].blockchain.mempool.transactions[0].confirmed = True
@@ -338,7 +338,7 @@ class LimitOrderMatchingTestCase(unittest.IsolatedAsyncioTestCase):
         self.requests.add_transaction = add_transaction
 
         sell_order = await self.exchange.limit_sell("BTC", "USD", price=145, qty=5, creator=self.seller, fee='0.001')
-        new_order = await self.exchange.limit_buy('BTC', 'USD', 145, 4, self.match_buyer, fee='0.001')
+        new_order = await self.exchange.limit_buy('BTC', 'USD', 145, 4, self.match_buyer, fee='0.04')
 
         print(sell_order.to_dict())
         print(new_order)
@@ -358,7 +358,7 @@ class LimitOrderMatchingTestCase(unittest.IsolatedAsyncioTestCase):
         # NOTE: normally the sell order would process, at least partially, as a taker order, in this case it cannot process at all so it becomes a maker order
         self.assertEqual(len(books.bids), 2)
         self.assertEqual(len(books.asks), 2)
-        trade_USD_inBook = books.bids[1].qty * books.bids[1].price + books.bids[1].exchange_fee + books.bids[1].network_fee
+        trade_USD_inBook = prec(books.bids[1].qty * books.bids[1].price + books.bids[1].exchange_fee + books.bids[1].network_fee,2)
         self.assertEqual(agent['assets'], {'BTC': Decimal('10000'), 'USD': 10000 - trade_USD_inBook}) 
         trade_BTC_inBook = books.asks[0].qty + books.asks[0].exchange_fee + books.asks[0].network_fee
         self.assertEqual(agent_seller['assets'], {"BTC": 10000-trade_BTC_inBook, "USD": 10000}) 
@@ -385,7 +385,7 @@ class LimitOrderMatchingTestCase(unittest.IsolatedAsyncioTestCase):
 
         initial_sell_qty = 5
         sell_fee = Decimal('0.001')
-        buy_fee = Decimal('0.001')
+        buy_fee = Decimal('0.01')
         sell_order = await self.exchange.limit_sell("BTC", "USD", price=145, qty=initial_sell_qty, creator=self.seller, fee=sell_fee)
         new_order = await self.exchange.limit_buy('BTC', 'USD', 150, 4, self.match_buyer, fee=buy_fee)
         books = self.exchange.books['BTCUSD']
@@ -410,25 +410,26 @@ class LimitOrderMatchingTestCase(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(len(self.exchange.pending_transactions), 2)
         self.assertEqual(len(books.bids), 0) # NOTE: the orders are still going to match even if the transaction cannot be retrieved or confirmed yet
         self.assertEqual(len(books.asks), 1) 
-        trade_payment_USD = new_order.fills[0]['qty'] * new_order.fills[0]['price'] + new_order.fills[0]['fee'] + buy_fee
+        trade_payment_USD = prec(new_order.fills[0]['qty'] * new_order.fills[0]['price'] + new_order.fills[0]['fee'] + new_order.network_fee, 2) #NOTE: this will be higher because the network fee cannot be deducted since the blockchain is unreachable
         self.assertEqual(agent['assets'], {'BTC': Decimal('10000'), 'USD': Decimal('10000') - trade_payment_USD})
-        trade_BTC_earned = new_order.fills[0]['qty'] + sell_order.fills[0]['qty'] +sell_order.fills[0]['fee'] + sell_fee + self.exchange.fees.maker_fee(initial_sell_qty - sell_order.fills[0]['qty'])
+        buffer_fee = Decimal('.00000001')
+        trade_BTC_earned = prec(new_order.fills[0]['qty'] + sell_order.fills[0]['qty'] +sell_order.fills[0]['fee'] + sell_order.network_fee + self.exchange.fees.maker_fee(initial_sell_qty - sell_order.fills[0]['qty'])+buffer_fee, 8)
         self.assertEqual(agent_seller['assets'], {'BTC': 10000 - trade_BTC_earned, 'USD': 10000})
         #NOTE: assets will stay frozen for unconfirmed taker orders
         self.assertEqual(agent['frozen_assets']['USD'][0]['order_id'],new_order.id )
         self.assertEqual(agent['frozen_assets']['USD'][0]['frozen_qty'],new_order.fills[0]['qty'] * new_order.fills[0]['price']) #NOTE: the order will get "filled" it just won't be confirmed yet
         self.assertEqual(agent['frozen_assets']['USD'][0]['frozen_exchange_fee'], new_order.exchange_fee) #NOTE: because we matched to a "better" trade the difference between placed exchange fee and cheaper exchange fee will be deducted from the frozen assets, so it will be different from the original frozen 
-        self.assertEqual(agent['frozen_assets']['USD'][0]['frozen_network_fee'], 0) # NOTE: the network fee is going be 0 because the transaction did get sent to the chain and was confirmed, it just can't be retrieved yet
+        self.assertEqual(agent['frozen_assets']['USD'][0]['frozen_network_fee'], new_order.remaining_network_fee) # NOTE: the network fee is still frozen because the transaction did get sent to the chain and was confirmed, it just can't be retrieved yet
         self.assertEqual(agent_seller['frozen_assets']['BTC'][0]['order_id'],sell_order.id )
         self.assertEqual(agent_seller['frozen_assets']['BTC'][0]['frozen_qty'],initial_sell_qty) #NOTE: the sell_order.qty will be 0 because this order was completely filled, have to check the fill, but assets remain frozen until confirmed
-        self.assertEqual(agent_seller['frozen_assets']['BTC'][0]['frozen_exchange_fee'], self.exchange.pending_transactions[0]['exchange_txn'][1]['fee'] + self.exchange.pending_transactions[1]['exchange_txn'][1]['fee'])  #NOTE: assets are still frozen for pending sell transactions
-        self.assertEqual(agent_seller['frozen_assets']['BTC'][0]['frozen_network_fee'], 0)
+        self.assertEqual(agent_seller['frozen_assets']['BTC'][0]['frozen_exchange_fee'], self.exchange.pending_transactions[0]['exchange_txn'][1]['fee'] + self.exchange.pending_transactions[1]['exchange_txn'][1]['fee']+buffer_fee)  #NOTE: assets are still frozen for pending sell transactions
+        self.assertEqual(agent_seller['frozen_assets']['BTC'][0]['frozen_network_fee'], sell_order.remaining_network_fee) #NOTE: the network fee is still frozen because the transaction did get sent to the chain and was confirmed, it just can't be retrieved yet
         # assert that the assets frozen total + remaining assert are equal to 10000
         total_seller_assets = agent_seller['frozen_assets']['BTC'][0]['frozen_qty'] + agent_seller['frozen_assets']['BTC'][0]['frozen_exchange_fee'] + agent_seller['frozen_assets']['BTC'][0]['frozen_network_fee'] + agent_seller['assets']['BTC']
         total_buyer_assets = agent['frozen_assets']['USD'][0]['frozen_qty'] + agent['frozen_assets']['USD'][0]['frozen_exchange_fee'] + agent['frozen_assets']['USD'][0]['frozen_network_fee'] + agent['assets']['USD']
         #NOTE: neither below is 10000 because we paid out fees
-        self.assertEqual(total_seller_assets, Decimal('10000') - sell_fee) 
-        self.assertEqual(total_buyer_assets, 10000 - buy_fee) 
+        self.assertEqual(total_seller_assets, Decimal('10000') - (sell_order.network_fee-sell_order.remaining_network_fee)) 
+        self.assertEqual(total_buyer_assets, 10000 - (new_order.network_fee - new_order.remaining_network_fee)) 
 
     async def test_limit_sell_partial_match(self):
         # half of the order gets filled, the other half becomes a maker order
@@ -436,7 +437,7 @@ class LimitOrderMatchingTestCase(unittest.IsolatedAsyncioTestCase):
         sell_fee = Decimal('0.001')
         sell_order = await self.exchange.limit_sell("BTC", "USD", price=145, qty=sell_qty, creator=self.seller, fee=sell_fee)
         print(sell_order.fills)
-        new_order = await self.exchange.limit_buy('BTC', "USD", 152, 5, self.buyer, fee='0.001')
+        new_order = await self.exchange.limit_buy('BTC', "USD", 152, 5, self.buyer, fee='0.01')
         self.mock_requester.responder.cryptos['BTC'].blockchain.mempool.transactions[0].confirmed = True
         self.mock_requester.responder.cryptos['USD'].blockchain.mempool.transactions[0].confirmed = True
         await self.exchange.next()
@@ -450,7 +451,7 @@ class LimitOrderMatchingTestCase(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(new_order.qty, 5)
         self.assertEqual(new_order.creator, self.buyer)
 
-        trade_payment_USD = new_order.fills[0]['qty'] * new_order.fills[0]['price'] + new_order.fills[0]['fee'] + self.exchange.trade_log[2].network_fee['quote']
+        trade_payment_USD = prec(new_order.fills[0]['qty'] * new_order.fills[0]['price'] + new_order.fills[0]['fee'] + self.exchange.trade_log[2].network_fee['quote'], 2)
         self.assertEqual(agent['assets'], {
             'BTC': Decimal('10005'), 
             'USD': Decimal('10000') - trade_payment_USD
@@ -461,14 +462,15 @@ class LimitOrderMatchingTestCase(unittest.IsolatedAsyncioTestCase):
             'BTC': 10000 - trade_BTC_earned - agent_seller['frozen_assets']['BTC'][0]['frozen_qty'] - agent_seller['frozen_assets']['BTC'][0]['frozen_exchange_fee'] - agent_seller['frozen_assets']['BTC'][0]['frozen_network_fee'], 
             'USD': 10000 + new_order.fills[0]['qty'] * new_order.fills[0]['price'] + self.exchange.trade_log[1].price
         })
+        
         self.assertEqual(agent['frozen_assets']['USD'][0]['order_id'],new_order.id )
         self.assertEqual(agent['frozen_assets']['USD'][0]['frozen_qty'],0)
         self.assertEqual(agent['frozen_assets']['USD'][0]['frozen_exchange_fee'], 0)
         self.assertEqual(agent['frozen_assets']['USD'][0]['frozen_network_fee'], 0)
         self.assertEqual(agent_seller['frozen_assets']['BTC'][0]['order_id'],sell_order.id )
         self.assertEqual(agent_seller['frozen_assets']['BTC'][0]['frozen_qty'],sell_order.qty)
-        self.assertEqual(agent_seller['frozen_assets']['BTC'][0]['frozen_exchange_fee'], self.exchange.books['BTCUSD'].asks[0].exchange_fee)
-        self.assertEqual(agent_seller['frozen_assets']['BTC'][0]['frozen_network_fee'], sell_fee - (sell_fee/sell_qty * (new_order.qty + 1))) #NOTE: we add 1 because the sell order fills the init_seed bid
+        self.assertEqual(agent_seller['frozen_assets']['BTC'][0]['frozen_exchange_fee'], self.exchange.books['BTCUSD'].asks[0].exchange_fee-self.exchange.books['BTCUSD'].asks[0].exchange_fees_due)
+        self.assertEqual(agent_seller['frozen_assets']['BTC'][0]['frozen_network_fee'], sell_order.remaining_network_fee) #NOTE: we add 1 because the sell order fills the init_seed bid
         #NOTE: except for the network fees, all the funds in the above trade should still be in the exchange, just in different accounts
         BTC_in_trade = self.exchange.trade_log[1].qty + self.exchange.fees.fees_collected['BTC'] + agent['assets']['BTC'] + agent_seller['assets']['BTC'] + agent_seller['frozen_assets']['BTC'][0]['frozen_qty'] + agent_seller['frozen_assets']['BTC'][0]['frozen_exchange_fee'] + agent_seller['frozen_assets']['BTC'][0]['frozen_network_fee']
         USD_in_trade = self.exchange.fees.fees_collected['USD'] + agent['assets']['USD'] + agent_seller['assets']['USD'] 
@@ -481,7 +483,7 @@ class LimitOrderMatchingTestCase(unittest.IsolatedAsyncioTestCase):
     async def test_limit_buy_partial_match(self):
         # half of the order gets filled, the other half becomes a maker order
         buy_qty = 10
-        buy_fee = Decimal('0.001')
+        buy_fee = Decimal('0.01')
         sell_fee = Decimal('0.001')
         buy_order = await self.exchange.limit_buy("BTC", "USD", price=130, qty=buy_qty, creator=self.buyer, fee=buy_fee)
         new_order = await self.exchange.limit_sell('BTC', "USD",130, 5, self.seller, fee=sell_fee)
@@ -521,8 +523,8 @@ class LimitOrderMatchingTestCase(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(agent['frozen_assets']['USD'][0]['order_id'],buy_order.id )
         self.assertEqual(agent['frozen_assets']['USD'][0]['frozen_qty'],buy_qty*buy_order.price - new_order.fills[1]['qty'] * new_order.fills[1]['price'] )
         self.assertEqual(agent['frozen_assets']['USD'][0]['frozen_exchange_fee'], self.exchange.books['BTCUSD'].bids[0].exchange_fee)
-        self.assertEqual(agent['frozen_assets']['USD'][0]['frozen_network_fee'], buy_fee - (buy_fee/buy_qty * new_order.fills[1]['qty'] ))
-        self.assertEqual(self.exchange.trade_log[2].network_fee['base'], (sell_fee/new_order.qty)*(new_order.qty-1)) #NOTE: 1 is subtracted because it was sold to init_seed bid
+        self.assertEqual(agent['frozen_assets']['USD'][0]['frozen_network_fee'], buy_order.remaining_network_fee)
+        self.assertEqual(self.exchange.trade_log[2].network_fee['base'], sell_fee)
         self.assertEqual(self.exchange.fees.fees_collected['BTC'], self.exchange.trade_log[1].exchange_fee['base'] + self.exchange.trade_log[2].exchange_fee['base'])   
         self.assertEqual(self.exchange.fees.fees_collected['USD'], self.exchange.trade_log[1].exchange_fee['quote'] + self.exchange.trade_log[2].exchange_fee['quote'])   
         #NOTE: except for the network fees, all the funds in the above trade should still be in the exchange, just in different accounts
@@ -533,6 +535,67 @@ class LimitOrderMatchingTestCase(unittest.IsolatedAsyncioTestCase):
         USD_from_init = self.exchange.trade_log[1].qty*self.exchange.trade_log[1].price + self.exchange.trade_log[1].exchange_fee['quote'] #NOTE: we have to include this because the seller receives monies from the init_seed bid
         self.assertEqual(BTC_in_trade, Decimal('20000') - BTC_network_fees)
         self.assertEqual(USD_in_trade, Decimal('20000') - USD_network_fees+USD_from_init)
+
+class LimitOrderMarketMakingTestCase(unittest.IsolatedAsyncioTestCase):
+    async def asyncSetUp(self) -> None:
+        self.exchange = await standard_asyncSetUp(self)
+        self.buyer = (await self.exchange.register_agent("buyer1", initial_assets={"BTC": 10000, "USD" : 10000}))['registered_agent']
+        self.seller = (await self.exchange.register_agent("seller1", initial_assets={"BTC": 10000, "USD" : 10000}))['registered_agent']
+        self.match_buyer = (await self.exchange.register_agent("match_buyer", initial_assets={"BTC": 10000, "USD" : 10000}))['registered_agent']      
+      
+    async def test_market_make_complete(self):
+        sell_qty = 11
+        sell_fee = Decimal('0.00100001')
+        sell_order = await self.exchange.limit_sell("BTC", "USD", price=145, qty=sell_qty, creator=self.seller, fee=sell_fee)
+        print(sell_order.fills)
+        self.mock_requester.responder.cryptos['BTC'].blockchain.mempool.transactions[0].confirmed = True
+        self.mock_requester.responder.cryptos['USD'].blockchain.mempool.transactions[0].confirmed = True
+        await self.exchange.next()
+        new_order = await self.exchange.limit_buy('BTC', "USD", 152, 5, self.buyer, fee='0.05')
+        complete_order = await self.exchange.limit_buy('BTC', "USD", 152, 5, self.buyer, fee='0.05')
+        self.mock_requester.responder.cryptos['BTC'].blockchain.mempool.transactions[1].confirmed = True
+        self.mock_requester.responder.cryptos['USD'].blockchain.mempool.transactions[1].confirmed = True
+        await self.exchange.next()
+        self.mock_requester.responder.cryptos['BTC'].blockchain.mempool.transactions[2].confirmed = True
+        self.mock_requester.responder.cryptos['USD'].blockchain.mempool.transactions[2].confirmed = True
+        await self.exchange.next()        
+        agent = await self.exchange.get_agent(self.buyer)
+        agent_seller = await self.exchange.get_agent(self.seller)
+        self.assertEqual(new_order.ticker, 'BTCUSD')
+        self.assertEqual(new_order.price, 152)
+        self.assertEqual(new_order.qty, 5)
+        self.assertEqual(new_order.creator, self.buyer)
+
+        new_order_payment_USD = new_order.fills[0]['qty'] * new_order.fills[0]['price'] + new_order.fills[0]['fee'] + self.exchange.trade_log[2].network_fee['quote']
+        complete_order_payment_USD = complete_order.fills[0]['qty'] * complete_order.fills[0]['price'] + complete_order.fills[0]['fee'] + self.exchange.trade_log[3].network_fee['quote']
+        self.assertEqual(agent['assets'], {
+            'BTC': Decimal('10010'), 
+            'USD': Decimal('10000') - new_order_payment_USD - complete_order_payment_USD
+        })
+
+        new_order_BTC_earned = self.exchange.trade_log[1].qty +self.exchange.trade_log[2].qty + self.exchange.trade_log[1].network_fee['base'] + self.exchange.trade_log[1].exchange_fee['base'] + self.exchange.trade_log[2].network_fee['base'] + self.exchange.trade_log[2].exchange_fee['base']
+        complete_order_BTC_earned = self.exchange.trade_log[3].qty + self.exchange.trade_log[3].network_fee['base'] + self.exchange.trade_log[3].exchange_fee['base']
+        self.assertEqual(agent_seller['assets'], {
+            'BTC': 10000 - new_order_BTC_earned - complete_order_BTC_earned, 
+            'USD': 10000 + (new_order.fills[0]['qty'] * new_order.fills[0]['price'] + self.exchange.trade_log[1].price) + (complete_order.fills[0]['qty'] * complete_order.fills[0]['price'])
+        })
+        
+        self.assertEqual(agent['frozen_assets']['USD'][0]['order_id'],new_order.id )
+        self.assertEqual(agent['frozen_assets']['USD'][0]['frozen_qty'],0)
+        self.assertEqual(agent['frozen_assets']['USD'][0]['frozen_exchange_fee'], 0)
+        self.assertEqual(agent['frozen_assets']['USD'][0]['frozen_network_fee'], 0)
+        self.assertEqual(agent_seller['frozen_assets']['BTC'][0]['order_id'],sell_order.id )
+        self.assertEqual(agent_seller['frozen_assets']['BTC'][0]['frozen_qty'],0)
+        self.assertEqual(agent_seller['frozen_assets']['BTC'][0]['frozen_exchange_fee'], 0)
+        self.assertEqual(agent_seller['frozen_assets']['BTC'][0]['frozen_network_fee'], 0) #NOTE: we add 1 because the sell order fills the init_seed bid
+        #NOTE: except for the network fees, all the funds in the above trade should still be in the exchange, just in different accounts
+        BTC_in_trade = self.exchange.trade_log[1].qty + self.exchange.fees.fees_collected['BTC'] + agent['assets']['BTC'] + agent_seller['assets']['BTC'] + agent_seller['frozen_assets']['BTC'][0]['frozen_qty'] + agent_seller['frozen_assets']['BTC'][0]['frozen_exchange_fee'] + agent_seller['frozen_assets']['BTC'][0]['frozen_network_fee']
+        USD_in_trade = self.exchange.fees.fees_collected['USD'] + agent['assets']['USD'] + agent_seller['assets']['USD'] 
+        BTC_network_fees = self.exchange.trade_log[1].network_fee['base'] + self.exchange.trade_log[2].network_fee['base'] + self.exchange.trade_log[3].network_fee['base']
+        USD_network_fees = self.exchange.trade_log[2].network_fee['quote'] + self.exchange.trade_log[3].network_fee['quote'] #NOTE: do not include the network fee from the init_seed bid because the init_seed pays the network fee
+        USD_from_init = self.exchange.trade_log[1].qty*self.exchange.trade_log[1].price + self.exchange.trade_log[1].exchange_fee['quote'] #NOTE: we have to include this because the seller receives monies from the init_seed bid
+        self.assertEqual(BTC_in_trade, Decimal('20000') - BTC_network_fees)
+        self.assertEqual(USD_in_trade, Decimal('20000') - USD_network_fees+USD_from_init) 
 
 class MarketBuyTestCase(unittest.IsolatedAsyncioTestCase):
     async def asyncSetUp(self) -> None:
@@ -550,7 +613,7 @@ class MarketBuyTestCase(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(maxed_order, {'market_buy': 'max_pending_transactions_reached', 'buyer': self.agent})
 
     async def test_market_buy(self):
-        result = await self.exchange.market_buy("BTC", "USD", qty=4, buyer=self.agent, fee='0.01')
+        result = await self.exchange.market_buy("BTC", "USD", qty=4, buyer=self.agent, fee='0.04')
         print(result)
         self.mock_requester.responder.cryptos['BTC'].blockchain.mempool.transactions[0].confirmed = True
         self.mock_requester.responder.cryptos['USD'].blockchain.mempool.transactions[0].confirmed = True
@@ -560,10 +623,10 @@ class MarketBuyTestCase(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(result['market_buy'], 'BTCUSD')
         self.assertEqual(result['buyer'], self.agent)
         self.assertEqual(result['qty'], 4)
-        self.assertEqual(result['fills'], [{'qty': 4, 'price': Decimal('151.500000000000000000'), 'fee': Decimal('1.212000000000000000')}])
+        self.assertEqual(result['fills'], [{'qty': 4, 'price': Decimal('151.5'), 'fee': Decimal('1.22')}])
         self.assertEqual(len(self.exchange.books["BTCUSD"].asks), 1)
         self.assertEqual(self.exchange.books["BTCUSD"].asks[0].qty, Decimal('996'))
-        self.assertEqual(agent['assets'], {'BTC': Decimal('4'), 'USD': Decimal('499392.778000000000000000')} )
+        self.assertEqual(agent['assets'], {'BTC': Decimal('4'), 'USD': Decimal('499392.74')})
         self.assertEqual(agent['frozen_assets']['USD'][0]['order_id'],result['id'] )
         self.assertEqual(agent['frozen_assets']['USD'][0]['frozen_qty'],0)
         self.assertEqual(agent['frozen_assets']['USD'][0]['frozen_exchange_fee'],0)
@@ -572,25 +635,22 @@ class MarketBuyTestCase(unittest.IsolatedAsyncioTestCase):
     async def test_insufficient_funds(self):
         result = await self.exchange.market_buy("BTC", "USD", qty=4, buyer=self.insufficient_buyer, fee='0.01')
         agent = await self.exchange.get_agent(self.insufficient_buyer)
-        self.assertEqual(result, {"market_buy": "insufficient assets", "id":result['id'], "buyer": self.insufficient_buyer})
+        self.assertEqual(result, {"market_buy": "initial_freeze_error", "id":result['id'], "buyer": self.insufficient_buyer})
         self.assertEqual(agent['assets'], {'USD': 1}  )
-        self.assertEqual(agent['frozen_assets']['USD'][0]['order_id'],result['id'] )
-        self.assertEqual(agent['frozen_assets']['USD'][0]['frozen_qty'],0)
-        self.assertEqual(agent['frozen_assets']['USD'][0]['frozen_exchange_fee'],0)
-        self.assertEqual(agent['frozen_assets']['USD'][0]['frozen_network_fee'], 0)   
+        self.assertEqual('USD' not in agent['frozen_assets'], True )
         self.assertEqual(len(self.exchange.books["BTCUSD"].asks), 1)
         self.assertEqual(len(self.exchange.books["BTCUSD"].bids), 1)
 
     async def test_no_fills(self):
         book = self.exchange.books["BTCUSD"]
         for bid in book.bids:
-            buyup = await self.exchange.market_buy("BTC", "USD", qty=bid.qty, buyer=self.agent, fee='0.01')
+            buyup = await self.exchange.market_buy("BTC", "USD", qty=bid.qty, buyer=self.agent, fee='.01')
         self.mock_requester.responder.cryptos['BTC'].blockchain.mempool.transactions[0].confirmed = True
         self.mock_requester.responder.cryptos['USD'].blockchain.mempool.transactions[0].confirmed = True
         await self.exchange.next()
         self.exchange.books["BTCUSD"].asks.clear()
         agent = await self.exchange.get_agent(self.agent)
-        result = await self.exchange.market_buy("BTC","USD", qty=3, buyer=self.agent, fee='0.02')
+        result = await self.exchange.market_buy("BTC","USD", qty=3, buyer=self.agent, fee='0.03')
         self.assertEqual(result['market_buy'],  "no fills")
         self.assertEqual(agent['frozen_assets']['USD'][1]['order_id'],result['id'] )
         self.assertEqual(agent['frozen_assets']['USD'][1]['frozen_qty'],0)
@@ -615,11 +675,11 @@ class MarketSellTestCase(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(maxed_order, {'market_sell': 'max_pending_transactions_reached', 'seller': self.seller1})
 
     async def test_market_sell(self):
-        buy = await self.exchange.limit_buy("BTC" , "USD", price=145, qty=3, creator=self.buyer1, fee='0.01')
+        buy = await self.exchange.limit_buy("BTC" , "USD", price=145, qty=3, creator=self.buyer1, fee='0.03')
         # print(buy.to_dict_full())
         books = self.exchange.books["BTCUSD"]
         # print(books.bids)
-        result = await self.exchange.market_sell("BTC","USD", qty=3, seller=self.seller1, fee='0.02')
+        result = await self.exchange.market_sell("BTC","USD", qty=3, seller=self.seller1, fee='0.02000001')
         self.mock_requester.responder.cryptos['BTC'].blockchain.mempool.transactions[0].confirmed = True
         self.mock_requester.responder.cryptos['USD'].blockchain.mempool.transactions[0].confirmed = True
         await self.exchange.next()
@@ -656,7 +716,7 @@ class MarketSellTestCase(unittest.IsolatedAsyncioTestCase):
         
     async def test_insufficient_assets(self):
         await self.exchange.market_buy("BTC", "USD", qty=1, buyer=self.insufficient_seller, fee='0.01')
-        result = await self.exchange.market_sell("BTC", "USD", qty=3, seller=self.insufficient_seller, fee='0.02')
+        result = await self.exchange.market_sell("BTC", "USD", qty=3, seller=self.insufficient_seller, fee='0.02000001')
 
         insufficient_seller = await self.exchange.get_agent(self.insufficient_seller)
         self.assertEqual(result, {"market_sell": "insufficient assets", 'id':result['id'], "seller": self.insufficient_seller})
@@ -666,7 +726,7 @@ class MarketSellTestCase(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(len(self.exchange.books["BTCUSD"].asks), 1)
 
     async def test_no_assets(self):
-        result = await self.exchange.market_sell("BTC", "USD", qty=3, seller=self.no_asset_seller, fee='0.02')
+        result = await self.exchange.market_sell("BTC", "USD", qty=3, seller=self.no_asset_seller, fee='0.02000001')
 
         no_asset_seller = await self.exchange.get_agent(self.no_asset_seller)
         self.assertEqual(result, {"market_sell": "insufficient assets", 'id':result['id'], "seller": self.no_asset_seller})
@@ -680,7 +740,7 @@ class MarketSellTestCase(unittest.IsolatedAsyncioTestCase):
             await self.exchange.market_buy("BTC", "USD", qty=ask.qty, buyer=self.seller1, fee='0.01')
         
         self.exchange.books["BTCUSD"].bids.clear()
-        result = await self.exchange.market_sell("BTC", "USD", qty=3, seller=self.seller1, fee='0.02')
+        result = await self.exchange.market_sell("BTC", "USD", qty=3, seller=self.seller1, fee='0.02000001')
         self.assertEqual(result["market_sell"], "no fills")
 
 class MarketMatchingTestCase(unittest.IsolatedAsyncioTestCase):
@@ -695,7 +755,7 @@ class MarketMatchingTestCase(unittest.IsolatedAsyncioTestCase):
         async def add_transaction(asset, fee, amount, sender, recipient): return {"error": "messaging error, blockchain unreachable"}
         self.requests.add_transaction = add_transaction
 
-        buy_order = await self.exchange.market_buy("BTC", "USD", qty=1000, buyer=self.buyer1, fee='0.01')
+        buy_order = await self.exchange.market_buy("BTC", "USD", qty=1000, buyer=self.buyer1, fee='10')
         sell_order = await self.exchange.market_sell("BTC", "USD", qty=1000, seller=self.seller, fee='0.01')
         
         books = self.exchange.books['BTCUSD']
@@ -741,7 +801,7 @@ class MarketMatchingTestCase(unittest.IsolatedAsyncioTestCase):
 
         initial_sell_qty = 5
         sell_fee = Decimal('0.001')
-        buy_fee = Decimal('0.001')
+        buy_fee = Decimal('0.04')
         sell_order = await self.exchange.market_sell("BTC", "USD", qty=initial_sell_qty, seller=self.seller, fee=sell_fee)
         new_order = await self.exchange.market_buy('BTC', 'USD', 4, buyer=self.buyer1, fee=buy_fee)
         books = self.exchange.books['BTCUSD']
@@ -766,16 +826,15 @@ class MarketMatchingTestCase(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(len(self.exchange.pending_transactions), 2)
         self.assertEqual(len(books.bids), 0) # NOTE: the orders are still going to match even if the transaction cannot be retrieved or confirmed yet
         self.assertEqual(len(books.asks), 1) 
-        trade_payment_USD = prec(new_order['fills'][0]['qty'] * new_order['fills'][0]['price'] + new_order['fills'][0]['fee'] + buy_fee)
+        trade_payment_USD = prec(new_order['fills'][0]['qty'] * new_order['fills'][0]['price'] + new_order['fills'][0]['fee'] + new_order['network_fee'], 2)
         self.assertEqual(agent['assets'], {'USD': Decimal('500000') - trade_payment_USD})
-        btc_network_fee = prec(sell_fee/initial_sell_qty * sell_order['fills'][0]['qty'])
-        trade_BTC_earned = prec(sell_order['fills'][0]['qty'] +sell_order['fills'][0]['fee']+ btc_network_fee)
+        trade_BTC_earned = prec(sell_order['fills'][0]['qty'] +sell_order['fills'][0]['fee']+ sell_order['network_fee'], 8)
         self.assertEqual(agent_seller['assets'], {'BTC': 10000 - trade_BTC_earned, 'USD': 10000})
         #NOTE: assets will stay frozen for unconfirmed taker orders
         self.assertEqual(agent['frozen_assets']['USD'][0]['order_id'],new_order['id'] )
         self.assertEqual(agent['frozen_assets']['USD'][0]['frozen_qty'],new_order['fills'][0]['qty'] * new_order['fills'][0]['price']) #NOTE: the order will get "filled" it just won't be confirmed yet
         self.assertEqual(agent['frozen_assets']['USD'][0]['frozen_exchange_fee'], new_order['exchange_fee'])
-        self.assertEqual(agent['frozen_assets']['USD'][0]['frozen_network_fee'], 0) # NOTE: the network fee is going be 0 because the transaction did get sent to the chain and was confirmed, it just can't be retrieved yet
+        self.assertEqual(agent['frozen_assets']['USD'][0]['frozen_network_fee'], new_order['remaining_network_fee']) # NOTE: the network fee is going be 0 because the transaction did get sent to the chain and was confirmed, it just can't be retrieved yet
         self.assertEqual(agent_seller['frozen_assets']['BTC'][0]['order_id'],sell_order['id'] )
         self.assertEqual(agent_seller['frozen_assets']['BTC'][0]['frozen_qty'],sell_order['fills'][0]['qty'])
         self.assertEqual(agent_seller['frozen_assets']['BTC'][0]['frozen_exchange_fee'], self.exchange.pending_transactions[0]['exchange_txn'][1]['fee'])  #NOTE: assets are still frozen for pending sell transactions
@@ -784,19 +843,19 @@ class MarketMatchingTestCase(unittest.IsolatedAsyncioTestCase):
         total_seller_assets = agent_seller['frozen_assets']['BTC'][0]['frozen_qty'] + agent_seller['frozen_assets']['BTC'][0]['frozen_exchange_fee'] + agent_seller['frozen_assets']['BTC'][0]['frozen_network_fee'] + agent_seller['assets']['BTC']
         total_buyer_assets = agent['frozen_assets']['USD'][0]['frozen_qty'] + agent['frozen_assets']['USD'][0]['frozen_exchange_fee'] + agent['frozen_assets']['USD'][0]['frozen_network_fee'] + agent['assets']['USD']
         # NOTE: the only assets resolved are the network fees, everything else stays frozen until the transaction is confirmed
-        self.assertEqual(total_seller_assets, prec(Decimal('10000') - btc_network_fee)) 
-        self.assertEqual(total_buyer_assets, prec(500000 - buy_fee))         
+        self.assertEqual(total_seller_assets, prec(Decimal('10000') - sell_order['network_fee']), 8) 
+        self.assertEqual(total_buyer_assets, prec(500000 - (new_order['network_fee'] - new_order['remaining_network_fee']), 2 ))         
 
     async def test_market_partial_matching(self):
         """
         the goal here is to see if a market order will partially fill and still resolve: closing the order and unfreezing the assets
         """
-        hoard = await self.exchange.market_buy("BTC", "USD", qty=1000, buyer=self.hoarder, fee='0.01')
+        hoard = await self.exchange.market_buy("BTC", "USD", qty=1000, buyer=self.hoarder, fee='10')
         self.mock_requester.responder.cryptos['BTC'].blockchain.mempool.transactions[0].confirmed = True
         self.mock_requester.responder.cryptos['USD'].blockchain.mempool.transactions[0].confirmed = True
         await self.exchange.next()
         await self.exchange.limit_sell("BTC", "USD", price=200, qty=1, creator=self.hoarder, fee='0.01')
-        market_buy_fee = Decimal('0.01')
+        market_buy_fee = Decimal('0.02')
         result = await self.exchange.market_buy("BTC", "USD", qty=2, buyer=self.buyer1, fee=market_buy_fee)
         self.mock_requester.responder.cryptos['BTC'].blockchain.mempool.transactions[1].confirmed = True
         self.mock_requester.responder.cryptos['USD'].blockchain.mempool.transactions[1].confirmed = True
@@ -819,13 +878,13 @@ class MarketMatchingTestCase(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(agent['frozen_assets']['USD'][0]['frozen_network_fee'], Decimal('0.00'))
 
     async def test_buy_multi_fill(self):
-        hoard = await self.exchange.market_buy("BTC", "USD", qty=999, buyer=self.hoarder, fee='0.01')
+        hoard = await self.exchange.market_buy("BTC", "USD", qty=999, buyer=self.hoarder, fee='9.99')
         print("hoard order", hoard)
         self.mock_requester.responder.cryptos['BTC'].blockchain.mempool.transactions[0].confirmed = True
         self.mock_requester.responder.cryptos['USD'].blockchain.mempool.transactions[0].confirmed = True
         await self.exchange.next()
         await self.exchange.limit_sell("BTC", "USD", price=200, qty=1, creator=self.hoarder, fee='0.01')
-        market_buy_fee = Decimal('0.01')
+        market_buy_fee = Decimal('0.02')
         result = await self.exchange.market_buy("BTC", "USD", qty=2, buyer=self.buyer1, fee=market_buy_fee)
         self.mock_requester.responder.cryptos['BTC'].blockchain.mempool.transactions[1].confirmed = True
         self.mock_requester.responder.cryptos['USD'].blockchain.mempool.transactions[1].confirmed = True
@@ -840,8 +899,8 @@ class MarketMatchingTestCase(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(result['buyer'], self.buyer1)
         self.assertEqual(result['qty'], 2)
         self.assertEqual(result['fills'], [
-            {'fee': Decimal('0.303000000000000000'), 'price': Decimal('151.500000000000000000'), 'qty': Decimal('1')}, 
-            {'qty': 1, 'price': Decimal('200'), 'fee': Decimal('0.400000000000000000')}
+            {'fee': Decimal('0.31'), 'price': Decimal('151.5'), 'qty': Decimal('1')}, 
+            {'qty': 1, 'price': Decimal('200'), 'fee': Decimal('0.4')}
         ])
         self.assertEqual(len(self.exchange.books["BTCUSD"].asks), 0)
         network_fee = self.exchange.trade_log[2].network_fee['quote'] + self.exchange.trade_log[3].network_fee['quote']
@@ -856,111 +915,114 @@ class MarketMatchingTestCase(unittest.IsolatedAsyncioTestCase):
 class FractionalOrdersTestCase(unittest.IsolatedAsyncioTestCase):
     async def asyncSetUp(self) -> None:
         self.exchange = await standard_asyncSetUp(self)
-        self.seller_initial_assets = 5
+        self.seller_initial_assets = 201
         self.buyer_initial_assets = 500000
-        self.seller1 = (await self.exchange.register_agent("seller1", initial_assets={"BTC" :self.seller_initial_assets}))['registered_agent']
-        self.buyer1 = (await self.exchange.register_agent("buyer1", initial_assets={"USD":self.buyer_initial_assets}))['registered_agent']
-        self.generous = (await self.exchange.register_agent("generous", initial_assets={"USD":10_000_000}))['registered_agent']
+        await self.exchange.create_asset("ETH", decimals=18, pairs=[{'asset': 'USD','market_qty':1000 ,'seed_price':150 ,'seed_bid':'.99', 'seed_ask':'1.01'}, {'asset': 'BTC','market_qty':1000 ,'seed_price':'0.5' ,'seed_bid':'.99', 'seed_ask':'1.01'}])
+        await self.exchange.next()        
+        self.seller1 = (await self.exchange.register_agent("seller1", initial_assets={"ETH" :self.seller_initial_assets}))['registered_agent']
+        self.buyer1 = (await self.exchange.register_agent("buyer1", initial_assets={"BTC":self.buyer_initial_assets}))['registered_agent']
+        self.generous = (await self.exchange.register_agent("generous", initial_assets={"BTC":10_000_000}))['registered_agent']
 
     async def test_fractional_buy(self):
-        new_order = await self.exchange.market_buy('BTC', 'USD', '0.00005', self.buyer1, fee='0.01')
+        new_order = await self.exchange.market_buy('ETH', 'BTC', '0.00005', self.buyer1, fee='0.01')
         print(new_order)
-        books = self.exchange.books["BTCUSD"]
+        books = self.exchange.books["ETHBTC"]
         print(books.bids)
         print(books.asks)
+        self.mock_requester.responder.cryptos['ETH'].blockchain.mempool.transactions[0].confirmed = True
         self.mock_requester.responder.cryptos['BTC'].blockchain.mempool.transactions[0].confirmed = True
-        self.mock_requester.responder.cryptos['USD'].blockchain.mempool.transactions[0].confirmed = True
         await self.exchange.next()
         agent = await self.exchange.get_agent(self.buyer1)
-        self.assertEqual(agent['assets'], {"BTC": Decimal('0.00005'), "USD":Decimal('499999.982409850000000000')} )
-        self.assertEqual(agent['frozen_assets']['USD'][0]['order_id'], new_order['id'])
-        self.assertEqual(agent['frozen_assets']['USD'][0]['frozen_qty'], Decimal('0.00'))
-        self.assertEqual(agent['frozen_assets']['USD'][0]['frozen_exchange_fee'], Decimal('0.00000'))
-        self.assertEqual(agent['frozen_assets']['USD'][0]['frozen_network_fee'], Decimal('0.0000'))        
+        self.assertEqual(agent['assets'], {"ETH": Decimal('0.00005'), "BTC":Decimal('499999.98997469')} )
+        self.assertEqual(agent['frozen_assets']['BTC'][0]['order_id'], new_order['id'])
+        self.assertEqual(agent['frozen_assets']['BTC'][0]['frozen_qty'], Decimal('0.00'))
+        self.assertEqual(agent['frozen_assets']['BTC'][0]['frozen_exchange_fee'], Decimal('0.00000'))
+        self.assertEqual(agent['frozen_assets']['BTC'][0]['frozen_network_fee'], Decimal('0.0000'))        
 
     async def test_fractional_sell(self):
-        result = await self.exchange.market_sell("BTC", "USD", qty='0.00005', seller=self.seller1, fee='0.02')
+        result = await self.exchange.market_sell("ETH", "BTC", qty='0.00005', seller=self.seller1, fee='0.0000001')
         print(result)
-        books = self.exchange.books["BTCUSD"]
+        books = self.exchange.books["ETHBTC"]
         print(books.bids)
         print(books.asks)
+        self.mock_requester.responder.cryptos['ETH'].blockchain.mempool.transactions[0].confirmed = True
         self.mock_requester.responder.cryptos['BTC'].blockchain.mempool.transactions[0].confirmed = True
-        self.mock_requester.responder.cryptos['USD'].blockchain.mempool.transactions[0].confirmed = True
         await self.exchange.next()
         agent = await self.exchange.get_agent(self.seller1)
         buyer_agent = await self.exchange.get_agent(self.buyer1)
-        BTC_traded = self.exchange.trade_log[1].qty + self.exchange.trade_log[1].exchange_fee['base'] + self.exchange.trade_log[1].network_fee['base']
-        USD_from_trade = self.exchange.trade_log[1].qty*self.exchange.trade_log[1].price 
-        self.assertEqual(agent['assets'],{'BTC':self.seller_initial_assets - BTC_traded, 'USD': USD_from_trade} )
-        self.assertEqual(agent['frozen_assets']['BTC'][0]['order_id'], result['id'])
-        self.assertEqual(agent['frozen_assets']['BTC'][0]['frozen_qty'], Decimal('0.00'))
-        self.assertEqual(agent['frozen_assets']['BTC'][0]['frozen_exchange_fee'], Decimal('0.00000'))
-        self.assertEqual(agent['frozen_assets']['BTC'][0]['frozen_network_fee'], Decimal('0.0000'))
+        ETH_traded = prec(self.exchange.trade_log[3].qty + self.exchange.trade_log[3].exchange_fee['base'] + self.exchange.trade_log[3].network_fee['base'], 18)
+        BTC_from_trade = prec(self.exchange.trade_log[3].qty*self.exchange.trade_log[3].price, 8)
+        self.assertEqual(agent['assets'],{'ETH':self.seller_initial_assets - ETH_traded, 'BTC': BTC_from_trade} )
+        self.assertEqual(agent['frozen_assets']['ETH'][0]['order_id'], result['id'])
+        self.assertEqual(agent['frozen_assets']['ETH'][0]['frozen_qty'], Decimal('0.00'))
+        self.assertEqual(agent['frozen_assets']['ETH'][0]['frozen_exchange_fee'], Decimal('0.00000'))
+        self.assertEqual(agent['frozen_assets']['ETH'][0]['frozen_network_fee'], Decimal('0.0000'))
 
     async def test_fractional_price(self):
-        generous = await self.exchange.market_buy("BTC", "USD", qty=999, buyer=self.generous, fee='0.01')
+        generous = await self.exchange.market_buy("ETH", "BTC", qty=999, buyer=self.generous, fee='.01')
         self.mock_requester.responder.cryptos['BTC'].blockchain.mempool.transactions[0].confirmed = True
-        self.mock_requester.responder.cryptos['USD'].blockchain.mempool.transactions[0].confirmed = True
+        self.mock_requester.responder.cryptos['ETH'].blockchain.mempool.transactions[0].confirmed = True
         await self.exchange.next()        
         print(generous)
-        sell_generous = await self.exchange.limit_sell("BTC", "USD", price='0.00005', qty=996, creator=self.generous, fee='0.01')
-        buy_single = await self.exchange.limit_buy("BTC", "USD", price='0.00015', qty=1, creator=self.buyer1, fee='0.01')
-        buy_fraction = await self.exchange.limit_buy("BTC", "USD", price='0.00015', qty='0.01234', creator=self.buyer1, fee='0.01')
+        sell_generous = await self.exchange.limit_sell("ETH", "BTC", price='0.00005', qty=996, creator=self.generous, fee='.000000000000000001', minimum_qty='0.01234')
         self.mock_requester.responder.cryptos['BTC'].blockchain.mempool.transactions[1].confirmed = True
-        self.mock_requester.responder.cryptos['USD'].blockchain.mempool.transactions[1].confirmed = True
-        await self.exchange.next()
+        self.mock_requester.responder.cryptos['ETH'].blockchain.mempool.transactions[1].confirmed = True
+        await self.exchange.next()        
+        buy_single = await self.exchange.limit_buy("ETH", "BTC", price='0.00015', qty=1, creator=self.buyer1, fee='0.01')
+        buy_fraction = await self.exchange.limit_buy("ETH", "BTC", price='0.00015', qty='0.01234', creator=self.buyer1, fee='0.01')
+
         self.mock_requester.responder.cryptos['BTC'].blockchain.mempool.transactions[2].confirmed = True
-        self.mock_requester.responder.cryptos['USD'].blockchain.mempool.transactions[2].confirmed = True
+        self.mock_requester.responder.cryptos['ETH'].blockchain.mempool.transactions[2].confirmed = True
         await self.exchange.next()
         self.mock_requester.responder.cryptos['BTC'].blockchain.mempool.transactions[3].confirmed = True
-        self.mock_requester.responder.cryptos['USD'].blockchain.mempool.transactions[3].confirmed = True
+        self.mock_requester.responder.cryptos['ETH'].blockchain.mempool.transactions[3].confirmed = True
         await self.exchange.next()
-        books = self.exchange.books["BTCUSD"]
+        books = self.exchange.books["ETHBTC"]
         agent = await self.exchange.get_agent(self.buyer1)
         print('buy single', buy_single.to_dict_full())
         self.assertEqual(books.asks[0].price, Decimal('0.00005'))
-        BTC_traded = self.exchange.trade_log[3].qty + self.exchange.trade_log[4].qty
-        USD_from_trade = self.exchange.trade_log[3].qty*self.exchange.trade_log[3].price + self.exchange.trade_log[3].exchange_fee['quote'] + self.exchange.trade_log[3].network_fee['quote']  + self.exchange.trade_log[4].qty*self.exchange.trade_log[4].price + self.exchange.trade_log[4].exchange_fee['quote'] + self.exchange.trade_log[4].network_fee['quote']
-        self.assertEqual(agent['assets'],{'BTC':BTC_traded, 'USD': self.buyer_initial_assets - USD_from_trade} )
+        ETH_traded = prec(self.exchange.trade_log[5].qty + self.exchange.trade_log[6].qty, 18)
+        BTC_from_trade = prec(self.exchange.trade_log[5].qty*self.exchange.trade_log[5].price + self.exchange.trade_log[5].exchange_fee['quote'] + self.exchange.trade_log[5].network_fee['quote']  + self.exchange.trade_log[6].qty*self.exchange.trade_log[6].price + self.exchange.trade_log[6].exchange_fee['quote'] + self.exchange.trade_log[6].network_fee['quote'], 8)
+        self.assertEqual(agent['assets'],{'ETH':ETH_traded, 'BTC': self.buyer_initial_assets - BTC_from_trade} )
         
     async def test_large_fractional_qty(self):
-        generous = await self.exchange.market_buy("BTC", "USD", qty=999, buyer=self.generous, fee='0.01')
+        generous = await self.exchange.market_buy("ETH", "BTC", qty=999, buyer=self.generous, fee='9.99')
+        self.mock_requester.responder.cryptos['ETH'].blockchain.mempool.transactions[0].confirmed = True
         self.mock_requester.responder.cryptos['BTC'].blockchain.mempool.transactions[0].confirmed = True
-        self.mock_requester.responder.cryptos['USD'].blockchain.mempool.transactions[0].confirmed = True
         await self.exchange.next()        
         print(generous)
-        market_made= await self.exchange.limit_sell("BTC", "USD", price='0.00005', qty=996, creator=self.generous, fee='0.01')
+        market_made= await self.exchange.limit_sell("ETH", "BTC", price='0.00005', qty=996, creator=self.generous, fee='0.000000000000000001', minimum_qty='0.000000000001234')
         print('market_made', market_made.to_dict_full())
-        print("books:" , self.exchange.books["BTCUSD"].asks)
-        buy_single = await self.exchange.limit_buy("BTC", "USD", price='0.00015', qty=1, creator=self.buyer1, fee='0.01')
+        print("books:" , self.exchange.books["ETHBTC"].asks)
+        buy_single = await self.exchange.limit_buy("ETH", "BTC", price='0.00015', qty=1, creator=self.buyer1, fee='0.01')
         print('buy single', buy_single.to_dict_full())
-        await self.exchange.limit_buy("BTC", "USD", price='0.00015', qty='0.000000000001234', creator=self.buyer1, fee='0.01')
+        await self.exchange.limit_buy("ETH", "BTC", price='0.00015', qty='0.000000000001234', creator=self.buyer1, fee='0.01')
+        self.mock_requester.responder.cryptos['ETH'].blockchain.mempool.transactions[1].confirmed = True
         self.mock_requester.responder.cryptos['BTC'].blockchain.mempool.transactions[1].confirmed = True
-        self.mock_requester.responder.cryptos['USD'].blockchain.mempool.transactions[1].confirmed = True
         await self.exchange.next()
+        self.mock_requester.responder.cryptos['ETH'].blockchain.mempool.transactions[2].confirmed = True
         self.mock_requester.responder.cryptos['BTC'].blockchain.mempool.transactions[2].confirmed = True
-        self.mock_requester.responder.cryptos['USD'].blockchain.mempool.transactions[2].confirmed = True
         await self.exchange.next()
+        self.mock_requester.responder.cryptos['ETH'].blockchain.mempool.transactions[3].confirmed = True
         self.mock_requester.responder.cryptos['BTC'].blockchain.mempool.transactions[3].confirmed = True
-        self.mock_requester.responder.cryptos['USD'].blockchain.mempool.transactions[3].confirmed = True
 
         await self.exchange.next()
-        books = self.exchange.books["BTCUSD"]
+        books = self.exchange.books["ETHBTC"]
         agent = await self.exchange.get_agent(self.buyer1)
         
         self.assertEqual(books.asks[0].price, Decimal('0.00005'))
-        BTC_traded = prec(self.exchange.trade_log[3].qty + self.exchange.trade_log[4].qty)
-        USD_from_trade = prec(self.exchange.trade_log[3].qty*self.exchange.trade_log[3].price + self.exchange.trade_log[3].exchange_fee['quote'] + self.exchange.trade_log[3].network_fee['quote']  + self.exchange.trade_log[4].qty*self.exchange.trade_log[4].price + self.exchange.trade_log[4].exchange_fee['quote'] + self.exchange.trade_log[4].network_fee['quote'])
-        self.assertEqual(agent['assets'],{'BTC':BTC_traded, 'USD': self.buyer_initial_assets - USD_from_trade} )
+        ETH_traded = prec(self.exchange.trade_log[5].qty + self.exchange.trade_log[6].qty, 18)
+        BTC_from_trade = prec(self.exchange.trade_log[5].qty*self.exchange.trade_log[5].price + self.exchange.trade_log[5].exchange_fee['quote'] + self.exchange.trade_log[5].network_fee['quote']  + self.exchange.trade_log[6].qty*self.exchange.trade_log[6].price + self.exchange.trade_log[6].exchange_fee['quote'] + self.exchange.trade_log[6].network_fee['quote'], 8)
+        self.assertEqual(agent['assets'],{'ETH':ETH_traded, 'BTC': self.buyer_initial_assets - BTC_from_trade} )
 
 class GetTradesTestCase(unittest.IsolatedAsyncioTestCase):
     async def asyncSetUp(self) -> None:
         self.exchange = await standard_asyncSetUp(self)
         self.trader1 = (await self.exchange.register_agent("trader1", initial_assets={"USD":10000}))['registered_agent']
         self.trader2 = (await self.exchange.register_agent("trader2", initial_assets={"BTC": 1000, "USD":10000}))['registered_agent']
-        await self.exchange.limit_buy("BTC", "USD", price=152, qty=2, creator=self.trader1, fee='0.01')
-        await self.exchange.limit_sell("BTC", "USD", price=152, qty=2, creator=self.trader2, fee='0.01') #NOTE this one is meant to be ignored
-        await self.exchange.market_buy("BTC", "USD", qty=2, buyer=self.trader2, fee='0.01')  
+        await self.exchange.limit_buy("BTC", "USD", price=152, qty=2, creator=self.trader1, fee='0.02')
+        await self.exchange.limit_sell("BTC", "USD", price=152, qty=2, creator=self.trader2, fee='0.02000002') #NOTE this one is meant to be ignored
+        await self.exchange.market_buy("BTC", "USD", qty=2, buyer=self.trader2, fee='0.02')  
         self.mock_requester.responder.cryptos['BTC'].blockchain.mempool.transactions[0].confirmed = True
         self.mock_requester.responder.cryptos['BTC'].blockchain.mempool.transactions[1].confirmed = True
 
@@ -984,7 +1046,7 @@ class CancelOrderTestCase(unittest.IsolatedAsyncioTestCase):
         self.agent = agent['registered_agent']
 
     async def test_cancel_order(self):
-        order = await self.exchange.limit_buy("BTC" , "USD", price=149, qty=2, creator=self.agent, fee='0.01')
+        order = await self.exchange.limit_buy("BTC" , "USD", price=149, qty=2, creator=self.agent, fee='0.02')
         self.assertEqual(len(self.exchange.books["BTCUSD"].bids), 2)
         cancel = await self.exchange.cancel_order("BTC", "USD", order.id)
         agent = await self.exchange.get_agent(self.agent)
@@ -1008,9 +1070,9 @@ class CancelAllOrdersTestCase(unittest.IsolatedAsyncioTestCase):
         self.agent2 = (await self.exchange.register_agent("buyer2", initial_assets={"BTC": 10000, "USD" : 10000}))['registered_agent']
 
     async def test_cancel_all_orders(self):
-        order = await self.exchange.limit_buy("BTC", "USD", price=150, qty=10, creator=self.agent1, tif="TEST", fee='0.01')
-        await self.exchange.limit_buy("BTC", "USD", price=149, qty=10, creator=self.agent1, tif="TEST", fee='0.01')
-        await self.exchange.limit_buy("BTC", "USD", price=153, qty=10, creator=self.agent2, tif="TEST", fee='0.01')        
+        order = await self.exchange.limit_buy("BTC", "USD", price=150, qty=10, creator=self.agent1, tif="TEST", fee='.10')
+        await self.exchange.limit_buy("BTC", "USD", price=149, qty=10, creator=self.agent1, tif="TEST", fee='.10')
+        await self.exchange.limit_buy("BTC", "USD", price=153, qty=10, creator=self.agent2, tif="TEST", fee='.10')        
         self.assertEqual(len(self.exchange.books["BTCUSD"].bids), 4)
         self.assertEqual(len(self.exchange.books["BTCUSD"].asks), 1)
 
@@ -1042,15 +1104,15 @@ class GetAssetsTestCase(unittest.IsolatedAsyncioTestCase):
         self.agent = (await self.exchange.register_agent("agent3", initial_assets={"USD" : 10000}))['registered_agent']
 
     async def test_get_assets(self):
-        order= await self.exchange.limit_buy("BTC" , "USD", price=152, qty=2, creator=self.agent, fee='0.005') 
+        order= await self.exchange.limit_buy("BTC" , "USD", price=152, qty=2, creator=self.agent, fee='0.2') 
         self.mock_requester.responder.cryptos['BTC'].blockchain.mempool.transactions[0].confirmed = True
         self.mock_requester.responder.cryptos['USD'].blockchain.mempool.transactions[0].confirmed = True
         await self.exchange.next()
         result = await self.exchange.get_assets(self.agent)
         agent = await self.exchange.get_agent(self.agent)
         self.assertEqual(result['assets']['BTC'],2 )
-        self.assertEqual(result['assets']['USD'], Decimal('9696.389000'))
-        self.assertEqual(agent['assets'], {"BTC": Decimal('2'), "USD": Decimal('9696.389000')})      
+        self.assertEqual(result['assets']['USD'], Decimal('9696.19'))
+        self.assertEqual(agent['assets'], {"BTC": Decimal('2'), "USD": Decimal('9696.19')})      
         self.assertEqual(agent['frozen_assets']['USD'][0]['frozen_qty'], Decimal('0.00'))
         self.assertEqual(agent['frozen_assets']['USD'][0]['frozen_exchange_fee'], Decimal('0.00000'))
         self.assertEqual(agent['frozen_assets']['USD'][0]['frozen_network_fee'], Decimal('0.0000'))
@@ -1290,7 +1352,7 @@ class GetOrderTest(unittest.IsolatedAsyncioTestCase):
         
 
     async def test_get_order(self):
-        order = await self.exchange.limit_buy("BTC" , "USD", price=150, qty=2, creator=self.agent, fee='0.001')
+        order = await self.exchange.limit_buy("BTC" , "USD", price=150, qty=2, creator=self.agent, fee='0.2')
         result = await self.exchange.get_order(order.ticker, order.id)
         self.assertEqual(result.id, order.id)
 
@@ -1301,7 +1363,7 @@ class getTransactionsTest(unittest.IsolatedAsyncioTestCase):
         
 
     async def test_get_transactions(self):
-        await self.exchange.market_buy("BTC", "USD", qty=2, buyer=self.agent, fee='0.01')
+        await self.exchange.market_buy("BTC", "USD", qty=2, buyer=self.agent, fee='0.2')
         self.mock_requester.responder.cryptos['BTC'].blockchain.mempool.transactions[0].confirmed = True
         self.mock_requester.responder.cryptos['USD'].blockchain.mempool.transactions[0].confirmed = True
         await self.exchange.next()        
@@ -1318,12 +1380,12 @@ class getAgentsCashTest(unittest.IsolatedAsyncioTestCase):
         self.agent = (await self.exchange.register_agent("agent13", initial_assets={"BTC": 2, "USD" : 10000}))['registered_agent']
 
     async def test_get_agents_cash(self):
-        await self.exchange.market_buy("BTC", "USD", qty=2, buyer=self.agent, fee='0.15')
+        await self.exchange.market_buy("BTC", "USD", qty=2, buyer=self.agent, fee='0.16')
         self.mock_requester.responder.cryptos['BTC'].blockchain.mempool.transactions[0].confirmed = True
         self.mock_requester.responder.cryptos['USD'].blockchain.mempool.transactions[0].confirmed = True
         await self.exchange.next()
         result = await self.exchange.agents_cash()
-        self.assertEqual(result[1][self.agent]['cash'], Decimal('9696.244000000000000000'))
+        self.assertEqual(result[1][self.agent]['cash'], Decimal('9696.23'))
 
 class totalCashTest(unittest.IsolatedAsyncioTestCase):
     async def asyncSetUp(self) -> None:
@@ -1331,12 +1393,12 @@ class totalCashTest(unittest.IsolatedAsyncioTestCase):
         self.agent = (await self.exchange.register_agent("agent14", initial_assets={"BTC": 10000, "USD" : 10000}))['registered_agent']
 
     async def test_total_cash(self):
-        await self.exchange.market_buy("BTC", "USD", qty=2, buyer=self.agent, fee='0.0004')
+        await self.exchange.market_buy("BTC", "USD", qty=2, buyer=self.agent, fee='0.2')
         self.mock_requester.responder.cryptos['BTC'].blockchain.mempool.transactions[0].confirmed = True
         self.mock_requester.responder.cryptos['USD'].blockchain.mempool.transactions[0].confirmed = True
         await self.exchange.next()          
         result = await self.exchange.total_cash()
-        self.assertEqual(result, Decimal('9696.393600000000000000'))
+        self.assertEqual(result, Decimal('9696.19'))
 
 class getPositionsTest(unittest.IsolatedAsyncioTestCase):
     async def asyncSetUp(self) -> None:
@@ -1344,7 +1406,7 @@ class getPositionsTest(unittest.IsolatedAsyncioTestCase):
         self.agent = (await self.exchange.register_agent("agent22", initial_assets={"USD" : 10000}))['registered_agent']
 
     async def test_get_positions(self):
-        await self.exchange.limit_buy("BTC" , "USD", price=152, qty=2, creator=self.agent, fee='0.01')
+        await self.exchange.limit_buy("BTC" , "USD", price=152, qty=2, creator=self.agent, fee='0.2')
         self.mock_requester.responder.cryptos['BTC'].blockchain.mempool.transactions[0].confirmed = True
         self.mock_requester.responder.cryptos['USD'].blockchain.mempool.transactions[0].confirmed = True
         await self.exchange.next()   
@@ -1372,14 +1434,14 @@ class getTaxableEventsTest(unittest.IsolatedAsyncioTestCase):
         self.mock_requester.responder.cryptos['USD'].blockchain.mempool.transactions[0].confirmed = True
         await self.exchange.next()
         agent = await self.exchange.get_agent_index(self.agent)
-        buyup = await self.exchange.limit_buy("BTC" , "USD", price=155, qty=9997, creator=self.agent_high_buyer, fee='0.01')
+        buyup = await self.exchange.limit_buy("BTC" , "USD", price=155, qty=9997, creator=self.agent_high_buyer, fee='.01')
 
         self.mock_requester.responder.cryptos['BTC'].blockchain.mempool.transactions[1].confirmed = True
         self.mock_requester.responder.cryptos['USD'].blockchain.mempool.transactions[1].confirmed = True
         await self.exchange.next()  
 
         high_buy = await self.exchange.limit_buy("BTC" , "USD", price=300, qty=2, creator=self.agent_high_buyer, fee='0.01')
-        high_sell = await self.exchange.market_sell("BTC", "USD", qty=2, seller=self.agent, fee='0.01')
+        high_sell = await self.exchange.market_sell("BTC", "USD", qty=2, seller=self.agent, fee='0.00000001')
         self.mock_requester.responder.cryptos['BTC'].blockchain.mempool.transactions[2].confirmed = True
         self.mock_requester.responder.cryptos['USD'].blockchain.mempool.transactions[2].confirmed = True
         await self.exchange.next()   
@@ -1399,14 +1461,14 @@ class getTaxableEventsTest(unittest.IsolatedAsyncioTestCase):
         await self.exchange.next()
         print(initial_buy)
         agent = await self.exchange.get_agent_index(self.agent)
-        buyup = await self.exchange.limit_buy("BTC" , "USD", price=155, qty=9997, creator=self.agent_high_buyer, fee='0.01')
+        buyup = await self.exchange.limit_buy("BTC" , "USD", price=155, qty=9997, creator=self.agent_high_buyer, fee='.01')
 
         self.mock_requester.responder.cryptos['BTC'].blockchain.mempool.transactions[1].confirmed = True
         self.mock_requester.responder.cryptos['USD'].blockchain.mempool.transactions[1].confirmed = True
         await self.exchange.next()  
 
         high_buy = await self.exchange.limit_buy("BTC" , "USD", price=300, qty=2, creator=self.agent_high_buyer, fee='0.01')
-        high_sell = await self.exchange.market_sell("BTC", "USD", qty=2, seller=self.agent, fee='0.01')
+        high_sell = await self.exchange.market_sell("BTC", "USD", qty=2, seller=self.agent, fee='0.00001')
         self.mock_requester.responder.cryptos['BTC'].blockchain.mempool.transactions[2].confirmed = True
         self.mock_requester.responder.cryptos['USD'].blockchain.mempool.transactions[2].confirmed = True
         await self.exchange.next()
@@ -1439,7 +1501,7 @@ class getTaxableEventsTest(unittest.IsolatedAsyncioTestCase):
         print(self.exchange.books['ETHBTC'].bids)
         print(self.exchange.books['ETHBTC'].asks)
 
-        change_asset = await self.exchange.market_buy("ETH", "BTC", qty=3, buyer=self.agent, fee='0.01')
+        change_asset = await self.exchange.market_buy("ETH", "BTC", qty=3, buyer=self.agent, fee='0.0000001')
         await self.exchange.next() 
         self.mock_requester.responder.cryptos['ETH'].blockchain.mempool.transactions[0].confirmed = True
         self.mock_requester.responder.cryptos['BTC'].blockchain.mempool.transactions[1].confirmed = True
@@ -1450,13 +1512,13 @@ class getTaxableEventsTest(unittest.IsolatedAsyncioTestCase):
         print('assets after change asset', self.exchange.agents[agent]['assets'])
         
 
-        buyup = await self.exchange.limit_buy("ETH" , "USD", price=155, qty=9998, creator=self.agent_high_buyer, fee='0.01')
+        buyup = await self.exchange.limit_buy("ETH" , "USD", price=155, qty=9998, creator=self.agent_high_buyer, fee='.01')
         self.mock_requester.responder.cryptos['ETH'].blockchain.mempool.transactions[1].confirmed = True
         self.mock_requester.responder.cryptos['USD'].blockchain.mempool.transactions[1].confirmed = True
         await self.exchange.next()  
 
         high_buy = await self.exchange.limit_buy("ETH" , "USD", price=300, qty=2, creator=self.agent_high_buyer, fee='0.01')
-        high_sell = await self.exchange.market_sell("ETH", "USD", qty=2, seller=self.agent, fee='0.01')
+        high_sell = await self.exchange.market_sell("ETH", "USD", qty=2, seller=self.agent, fee='0.00000001')
         self.mock_requester.responder.cryptos['ETH'].blockchain.mempool.transactions[2].confirmed = True
         self.mock_requester.responder.cryptos['USD'].blockchain.mempool.transactions[2].confirmed = True
         await self.exchange.next()
@@ -1598,9 +1660,9 @@ class getAgentsPositions(unittest.IsolatedAsyncioTestCase):
         self.agent3 = (await self.exchange.register_agent("agent18", initial_assets={"BTC": 10000, "USD" : 10000}))['registered_agent']
 
     async def test_get_agents_positions_asset(self):
-        await self.exchange.market_buy("BTC", "USD", qty=2, buyer=self.agent1, fee='0.001')
-        await self.exchange.market_buy("BTC", "USD", qty=3, buyer=self.agent2, fee='0.001')
-        await self.exchange.market_buy("BTC", "USD", qty=4, buyer=self.agent3, fee='0.001')
+        await self.exchange.market_buy("BTC", "USD", qty=2, buyer=self.agent1, fee='0.02')
+        await self.exchange.market_buy("BTC", "USD", qty=3, buyer=self.agent2, fee='0.03')
+        await self.exchange.market_buy("BTC", "USD", qty=4, buyer=self.agent3, fee='0.04')
 
         self.mock_requester.responder.cryptos['BTC'].blockchain.mempool.transactions[0].confirmed = True
         self.mock_requester.responder.cryptos['USD'].blockchain.mempool.transactions[0].confirmed = True
@@ -1625,9 +1687,9 @@ class getAgentsPositions(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(result[1]['positions'][0]['exits'], [])
 
     async def test_get_agents_positions(self):
-        buy_1 = await self.exchange.market_buy("BTC", "USD", qty=2, buyer=self.agent1, fee='0.001')
-        buy_2 = await self.exchange.market_buy("BTC", "USD", qty=3, buyer=self.agent2, fee='0.001')
-        buy_3 = await self.exchange.market_buy("BTC", "USD", qty=4, buyer=self.agent3, fee='0.001')
+        buy_1 = await self.exchange.market_buy("BTC", "USD", qty=2, buyer=self.agent1, fee='0.02')
+        buy_2 = await self.exchange.market_buy("BTC", "USD", qty=3, buyer=self.agent2, fee='0.03')
+        buy_3 = await self.exchange.market_buy("BTC", "USD", qty=4, buyer=self.agent3, fee='0.04')
 
         self.mock_requester.responder.cryptos['BTC'].blockchain.mempool.transactions[0].confirmed = True
         self.mock_requester.responder.cryptos['USD'].blockchain.mempool.transactions[0].confirmed = True
@@ -1689,9 +1751,9 @@ class getAgentsHoldingTest(unittest.IsolatedAsyncioTestCase):
         self.agent3 = (await self.exchange.register_agent("agent18", initial_assets={"BTC": 10000, "USD" : 10000}))['registered_agent']
 
     async def test_get_agents_holding(self):
-        await self.exchange.market_buy("BTC", "USD", qty=2, buyer=self.agent1, fee='0.001')
-        await self.exchange.market_buy("BTC", "USD", qty=3, buyer=self.agent2, fee='0.001')
-        await self.exchange.market_buy("BTC", "USD", qty=4, buyer=self.agent3, fee='0.001')
+        await self.exchange.market_buy("BTC", "USD", qty=2, buyer=self.agent1, fee='0.02')
+        await self.exchange.market_buy("BTC", "USD", qty=3, buyer=self.agent2, fee='0.03')
+        await self.exchange.market_buy("BTC", "USD", qty=4, buyer=self.agent3, fee='0.04')
         
         self.mock_requester.responder.cryptos['BTC'].blockchain.mempool.transactions[0].confirmed = True
         self.mock_requester.responder.cryptos['USD'].blockchain.mempool.transactions[0].confirmed = True
@@ -1708,7 +1770,7 @@ class getSharesOutstandingTest(unittest.IsolatedAsyncioTestCase):
     async def asyncSetUp(self) -> None:
         self.exchange = await standard_asyncSetUp(self)
         self.agent = (await self.exchange.register_agent("agentoutstand", initial_assets={"USD": 200000}))['registered_agent']
-        outstander = await self.exchange.market_buy("BTC", "USD", qty=1000, buyer=self.agent, fee='0.001')
+        outstander = await self.exchange.market_buy("BTC", "USD", qty=1000, buyer=self.agent, fee='.01')
         print(outstander)
 
         self.mock_requester.responder.cryptos['BTC'].blockchain.mempool.transactions[0].confirmed = True
@@ -1740,11 +1802,11 @@ class getAgentsSimpleTest(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(result[0]['frozen_assets']['BTC'][0]['order_id'], 'init_seed_BTCUSD')
         self.assertEqual(result[0]['frozen_assets']['BTC'][0]['frozen_qty'], Decimal('1000'))
         self.assertEqual(result[0]['frozen_assets']['BTC'][0]['frozen_exchange_fee'], Decimal('0.0'))
-        self.assertEqual(result[0]['frozen_assets']['BTC'][0]['frozen_network_fee'], Decimal('1'))
+        self.assertEqual(result[0]['frozen_assets']['BTC'][0]['frozen_network_fee'], Decimal('1000.00000000'))
         self.assertEqual(result[0]['frozen_assets']['USD'][0]['order_id'], 'init_seed_BTCUSD')
-        self.assertEqual(result[0]['frozen_assets']['USD'][0]['frozen_qty'], Decimal('150000'))
+        self.assertEqual(result[0]['frozen_assets']['USD'][0]['frozen_qty'], Decimal('148.5'))
         self.assertEqual(result[0]['frozen_assets']['USD'][0]['frozen_exchange_fee'], Decimal('0.0'))
-        self.assertEqual(result[0]['frozen_assets']['USD'][0]['frozen_network_fee'], Decimal('0.001000000000000000'))
+        self.assertEqual(result[0]['frozen_assets']['USD'][0]['frozen_network_fee'], Decimal('1000000.00'))
 
         self.assertEqual(result[1], {'agent': self.agent1, 'assets': { 'BTC': Decimal('10000'), 'USD': Decimal('10000')}, 'frozen_assets': {}})
         self.assertEqual(result[2], {'agent': self.agent2, 'assets': { 'BTC': Decimal('10000'), 'USD': Decimal('10000')}, 'frozen_assets': {}})

@@ -7,21 +7,23 @@ from .OrderSide import OrderSide
 from source.utils._utils import get_random_string, prec
 
 class CryptoLimitOrder():
-    def __init__(self, ticker, price, qty, creator, side, dt=None, exchange_fee='0.0', network_fee='0.0', status='open', accounting='FIFO', position_id=None, fills =[]):
+    def __init__(self, base, quote, price, qty, creator, side, dt=None, exchange_fee=0, network_fee=0, status='open', accounting='FIFO', position_id=None, fills =[]):
         self.id = get_random_string()
-        self.ticker: str = ticker
-        self.base: str = ""
-        self.quote: str = ""
+        self.base: str = base
+        self.quote: str = quote   
+        self.ticker: str = base+quote
         self.price: Decimal = price
         self.type: OrderSide = side
         self.qty: Decimal = qty
         self.creator: str = creator
         self.dt: datetime = dt if dt else datetime.now()
+        self.minimum_match_percent: Decimal = Decimal('0.05')
+        self.minimum_match_qty: Decimal = 0
+        self.network_fee: Decimal = network_fee # base currency for sell, quote currency for buy
+        self.network_fee_per_txn: Decimal = 0
+        self.remaining_network_fee = self.network_fee        
         self.exchange_fee: Decimal = exchange_fee #NOTE: the fee is assessed in base currency for sell, quote currency for buy to match the network fee
         self.exchange_fee_per_qty: Decimal = 0
-        self.network_fee: Decimal = network_fee # base currency for sell, quote currency for buy
-        self.network_fee_per_qty: Decimal = 0
-        self.remaining_network_fee = self.network_fee
         self.exchange_fees_due = 0
         self.unfilled_qty = qty
         self.position_id: str = position_id
@@ -60,7 +62,7 @@ class CryptoLimitOrder():
             'dt': self.dt,
             'exchange_fee': self.exchange_fee,
             'network_fee': self.network_fee,
-            'network_fee_per_qty': self.network_fee_per_qty,
+            'network_fee_per_txn': self.network_fee_per_txn,
             'remaining_network_fee': self.remaining_network_fee,
             'exchange_fees_due': self.exchange_fees_due,
             'unfilled_qty': self.unfilled_qty,

@@ -64,10 +64,10 @@ class SimpleMarketTaker(Trader):
         self.logger.info(f"{self.name} latest trade: {latest_trade}")
         if latest_trade is None or 'price' not in latest_trade or latest_trade['price'] <= 0:
             return False
-        cash_to_trade = prec(self.asset_to_trade * self.assets['USD'], self.assets['USD']['decimals'])
-        fee = prec('0.01', self.assets['USD']['decimals'])
-        qty = prec(str((cash_to_trade) / latest_trade['price']), self.assets[ticker['base']]['decimals'])
-        if prec(cash_to_trade + fee, self.assets['USD']['decimals']) > self.assets['USD']:
+        cash_to_trade = prec(self.asset_to_trade * self.assets['USD'], 2)
+        fee = prec('0.01', 2)
+        qty = prec(str((cash_to_trade) / latest_trade['price']), ticker['base_decimals'])
+        if prec(cash_to_trade + fee, 2) > self.assets['USD']:
             self.logger.info(f"{self.name} not enough cash to buy {qty} {ticker['base']} at {latest_trade['price']}")
             return False
         self.logger.info(f"{self.name} buying {qty} {ticker['base']} at {latest_trade['price']}")
@@ -87,11 +87,13 @@ class SimpleMarketTaker(Trader):
 
     async def dump_assets(self):
         for asset in self.assets:
-            qty = prec(self.assets[asset] * self.asset_to_trade, self.assets[asset]['decimals'])
+            if asset == 'USD': continue
+            decimal = [ticker['base_decimals'] for ticker in self.tickers if ticker.get('base') == asset][0]
+            qty = prec(self.assets[asset] * self.asset_to_trade, decimal)
             self.logger.info(f"{self.name}, has {self.assets[asset]} {asset}, dumping {qty}")
-            if asset != 'USD' and qty > 0:
-                fee = prec('0.01', self.assets[asset]['decimals'])
-                if prec(qty + fee, self.assets[asset]['decimals']) > self.assets[asset]:
+            if qty > 0:
+                fee = prec('0.00000001', decimal)
+                if prec(qty + fee, decimal) > self.assets[asset]:
                     self.logger.info(f"{self.name} not enough {asset} to sell {qty}")
                     return False
                 self.logger.info(f"{self.name} selling {qty} {asset}")
@@ -147,9 +149,9 @@ class LowBidder(Trader):
             
             if self.cash < price:
                 await self.cancel_all_orders(ticker['base'], ticker['quote'])
-                await self.limit_sell(ticker['base'], ticker['quote'], prec(str(price-len(self.assets)), self.assets[ticker['quote']]['decimals']) , qty=self.qty_per_order, fee='0.01')
+                await self.limit_sell(ticker['base'], ticker['quote'], prec(str(price-len(self.assets)), ticker['quote_decimals']) , qty=self.qty_per_order, fee='0.01')
             else:
-                await self.limit_buy(ticker['base'], ticker['quote'], prec(str(price+len(self.assets)), self.assets[ticker['quote']]['decimals']), qty=self.qty_per_order, fee='0.01')
+                await self.limit_buy(ticker['base'], ticker['quote'], prec(str(price+len(self.assets)), ticker['quote_decimals']), qty=self.qty_per_order, fee='0.01')
         return True
 
 class GreedyScalper(Trader):
@@ -197,37 +199,38 @@ class NaiveMarketMaker(Trader):
 
     async def make_market(self, ticker, price):
         await self.cancel_all_orders(ticker['base'], ticker['quote'])
-        buy_price = prec(price * self.buy_spread, self.assets[ticker['quote']]['decimals'])
-        sell_price = prec(price * self.sell_spread, self.assets[ticker['quote']]['decimals'])
-        fee = prec('0.01', self.assets[ticker['quote']]['decimals'])
-        qty = prec(str(self.assets[ticker['base']] * self.qty_pct_per_order), self.assets[ticker['base']]['decimals'])
+        buy_price = prec(price * self.buy_spread, ticker['quote_decimals'])
+        sell_price = prec(price * self.sell_spread, ticker['quote_decimals'])
+        buy_fee = prec('0.01', ticker['quote_decimals'])
+        sell_fee = prec('0.00000001', ticker['base_decimals'])
+        qty = prec(str(self.assets[ticker['base']] * self.qty_pct_per_order), ticker['base_decimals'])
         if qty <= 0:
             self.logger.error(f'Naive Market Maker {self.name} {qty} below 0') 
             return False
-        if prec(qty + fee, self.assets[ticker['base']]['decimals']) > self.assets[ticker['base']]:
-            self.logger.warning(f' {self.name} not enough assets needs: {qty+fee} has {self.assets[ticker["base"]]}') 
+        if prec(qty + sell_fee, ticker['base_decimals']) > self.assets[ticker['base']]:
+            self.logger.warning(f' {self.name} not enough assets needs: {qty+sell_fee} has {self.tickers[ticker["base"]]}') 
             return False
-        if prec(qty * buy_price + fee, self.assets[ticker['quote']]['decimals'])  > self.cash_to_trade:
-            self.logger.warning(f' {self.name} not enough cash needs: {qty * buy_price + fee} has {self.cash_to_trade}') 
+        if prec(qty * buy_price + buy_fee, ticker['quote_decimals'])  > self.cash_to_trade:
+            self.logger.warning(f' {self.name} not enough cash needs: {qty * buy_price + buy_fee} has {self.cash_to_trade}') 
             return False
-        buy_order = await self.limit_buy(ticker['base'], ticker['quote'], buy_price, qty=qty, fee=fee)
+        buy_order = await self.limit_buy(ticker['base'], ticker['quote'], buy_price, qty=qty, fee=buy_fee)
         self.logger.debug(f"Making Market {self.name} buy order: {buy_order}")
-        sell_order = await self.limit_sell(ticker['base'], ticker['quote'], sell_price, qty=qty, fee=fee)
+        sell_order = await self.limit_sell(ticker['base'], ticker['quote'], sell_price, qty=qty, fee=sell_fee)
         self.logger.debug(f"Making Market {self.name} sell order: {sell_order}")
 
     async def acquire_assets(self, ticker):
         # Calculate the amount of crypto to buy for this ticker
         best_ask = await self.get_best_ask(ticker['base']+ticker['quote'])
         if best_ask is not None and 'price' in best_ask:
-            price = prec(best_ask['price'], self.assets[ticker['quote']]['decimals'])
+            price = prec(best_ask['price'], ticker['quote_decimals'])
         if price <= 0:
             latest_trade = await self.get_latest_trade(ticker['base'], ticker['quote'])
             if latest_trade is not None and 'price' in latest_trade:
-                price = prec(latest_trade['price'], self.assets[ticker['quote']]['decimals'])
+                price = prec(latest_trade['price'], ticker['quote_decimals'])
             if price <= 0:
                 return False
             
-        qty = prec(str(self.cash_per_ticker / price), self.assets[ticker['base']]['decimals'])
+        qty = prec(str(self.cash_per_ticker / price), ticker['base_decimals'])
         if qty <= 0:
             self.logger.error(f'Naive Market Maker {self.name} {qty} below 0') 
             return False
@@ -248,9 +251,9 @@ class NaiveMarketMaker(Trader):
 
     async def set_tradable_cash(self):
         self.cash = await self.get_cash() 
-        self.fee_reserve = prec(str(self.cash * Decimal('0.02')), self.assets['USD']['decimals']) 
-        self.cash_to_trade = prec(str(self.cash - self.fee_reserve), self.assets['USD']['decimals'])
-        self.cash_per_ticker = prec(str(self.cash_to_trade / (len(self.tickers)+1)), self.assets['USD']['decimals'])
+        self.fee_reserve = prec(str(self.cash * Decimal('0.02')), 2) 
+        self.cash_to_trade = prec(str(self.cash - self.fee_reserve), 2)
+        self.cash_per_ticker = prec(str(self.cash_to_trade / (len(self.tickers)+1)), 2)
 
     async def next(self) -> bool:
         self.tickers = await self.get_tickers()
