@@ -160,7 +160,7 @@ class LimitBuyTest(unittest.IsolatedAsyncioTestCase):
         self.requests = Requests(self.mock_requester)
 
     async def test_limit_buy(self):
-        response = await self.requests.make_request('limit_buy', {'base': "BTC", 'quote': "USD", 'price': 149, 'qty': 2, 'creator': self.mock_requester.responder.agent, 'fee': '0.001'}, self.mock_requester)
+        response = await self.requests.make_request('limit_buy', {'base': "BTC", 'quote': "USD", 'price': 149, 'qty': 2, 'creator': self.mock_requester.responder.agent, 'fee': '0.001', 'min_qty': 0}, self.mock_requester)
         order = response
         self.assertEqual(order['ticker'], "BTCUSD")
         self.assertEqual(order['price'], '149.000000000000000000')
@@ -177,7 +177,7 @@ class LimitSellTest(unittest.IsolatedAsyncioTestCase):
         self.requests = Requests(self.mock_requester)
 
     async def test_limit_sell(self):
-        response = await self.requests.make_request('limit_sell', {'base': "BTC", 'quote': "USD", 'price': '151.5', 'qty': 1, 'creator': self.mock_requester.responder.agent, 'fee': '0.001'}, self.mock_requester)
+        response = await self.requests.make_request('limit_sell', {'base': "BTC", 'quote': "USD", 'price': '151.5', 'qty': 1, 'creator': self.mock_requester.responder.agent, 'fee': '0.001', 'min_qty': 0}, self.mock_requester)
         order = response
         print(response)
         self.assertEqual(order['ticker'], "BTCUSD")
