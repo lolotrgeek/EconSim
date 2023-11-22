@@ -84,7 +84,7 @@ class MockResponderCryptoExchange():
         await self.exchange.next()
 
     async def callback(self, msg):
-        if msg['topic'] == 'create_asset': return dumps((await self.exchange.create_asset(msg['symbol'], msg['pairs'])))
+        if msg['topic'] == 'create_asset': return dumps((await self.exchange.create_asset(msg['symbol'], msg['pairs'], msg['decimals'], msg['min_qty_percent'])))
         elif msg['topic'] == 'sim_time': return dumps(self.exchange.datetime)
         elif msg['topic'] == 'get_tickers': return dumps((await self.exchange.get_tickers()))
         elif msg['topic'] == 'limit_buy': return dumps((await self.exchange.limit_buy(msg['base'] , msg['quote'], msg['price'], msg['qty'], msg['creator'], msg['fee'], msg['min_qty'])).to_dict_full())
