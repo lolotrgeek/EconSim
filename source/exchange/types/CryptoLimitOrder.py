@@ -17,7 +17,6 @@ class CryptoLimitOrder():
         self.qty: Decimal = qty
         self.creator: str = creator
         self.dt: datetime = dt if dt else datetime.now()
-        self.minimum_match_percent: Decimal = Decimal('0.05')
         self.minimum_match_qty: Decimal = 0
         self.network_fee: Decimal = network_fee # base currency for sell, quote currency for buy
         self.network_fee_per_txn: Decimal = 0

@@ -38,7 +38,7 @@ class CryptoCurrency():
 
     async def issue_coins(self, pairs:list, amount:Decimal) -> None:
         self.supply += amount
-        return await self.requests.create_asset(self.symbol, pairs)
+        return await self.requests.create_asset(self.symbol, pairs, decimals=self.blockchain.decimals, min_qty_percent='0.05')
 
     async def halving(self):
         # reduce the block reward on a halving schedule, asymptotically approaching the max supply
