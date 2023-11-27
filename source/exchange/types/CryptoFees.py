@@ -11,15 +11,16 @@ class Fees():
         self.total_fee_revenue = 0  # Total fee revenue collected by the exchange
         self.fees_collected = {}
 
-    def taker_fee(self, volume) -> Decimal:
+    def taker_fee(self, volume, decimal) -> Decimal:
         if self.waive_fees:
             return 0
-        return prec(volume * self.taker_fee_rate)
+        return prec(volume * self.taker_fee_rate, decimal)
+
     
-    def maker_fee(self, volume) -> Decimal:
+    def maker_fee(self, volume, decimal) -> Decimal:
         if self.waive_fees:
             return 0
-        return prec(volume * self.maker_fee_rate)
+        return prec(volume * self.maker_fee_rate, decimal)
         
     def add_fee(self, asset: str, fee: Decimal) -> dict:
         if asset in self.fees_collected: 

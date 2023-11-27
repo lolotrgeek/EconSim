@@ -46,11 +46,11 @@ class CryptoExchangeRequests(Requests):
     async def get_midprice(self, ticker):
         return await self.make_request('midprice', {'ticker': ticker}, self.requester)
 
-    async def limit_buy(self, base, quote, price, quantity, creator, fee=0.0):
-        return await self.make_request('limit_buy', {'base': base, 'quote': quote, 'price': price, 'qty': quantity, 'creator': creator, 'fee': fee}, self.requester) 
+    async def limit_buy(self, base, quote, price, quantity, creator, fee=0.0, min_qty=0):
+        return await self.make_request('limit_buy', {'base': base, 'quote': quote, 'price': price, 'qty': quantity, 'creator': creator, 'fee': fee, 'min_qty': min_qty}, self.requester) 
 
-    async def limit_sell(self, base, quote, price, quantity, creator, fee=0.0):
-        return await self.make_request('limit_sell', {'base': base, 'quote': quote, 'price': price, 'qty': quantity, 'creator': creator, 'fee': fee}, self.requester)
+    async def limit_sell(self, base, quote, price, quantity, creator, fee=0.0, min_qty=0):
+        return await self.make_request('limit_sell', {'base': base, 'quote': quote, 'price': price, 'qty': quantity, 'creator': creator, 'fee': fee, 'min_qty': min_qty}, self.requester)
     
     async def cancel_order(self, base, quote, id):
         return await self.make_request('cancel_order', {'base': base, 'quote': quote, 'order_id': id}, self.requester)

@@ -18,12 +18,14 @@ class CryptoLimitOrder():
         self.creator: str = creator
         self.dt: datetime = dt if dt else datetime.now()
         self.minimum_match_qty: Decimal = 0
+        self.total_possible_matches: Decimal = 0
+        self.adjusted_total: Decimal = 0 # this is used when the minimum match qty is set and allows for the order to be partially filled, as a result the total price needs to be adjusted
         self.network_fee: Decimal = network_fee # base currency for sell, quote currency for buy
         self.network_fee_per_txn: Decimal = 0
         self.remaining_network_fee = self.network_fee        
         self.exchange_fee: Decimal = exchange_fee #NOTE: the fee is assessed in base currency for sell, quote currency for buy to match the network fee
-        self.exchange_fee_per_qty: Decimal = 0
-        self.exchange_fees_due = 0
+        self.exchange_fee_per_txn: Decimal = 0
+        self.exchange_fees_due: Decimal = 0
         self.unfilled_qty = qty
         self.position_id: str = position_id
         self.accounting :str = accounting
@@ -65,6 +67,7 @@ class CryptoLimitOrder():
             'remaining_network_fee': self.remaining_network_fee,
             'exchange_fees_due': self.exchange_fees_due,
             'unfilled_qty': self.unfilled_qty,
+            'adjusted_total': self.adjusted_total,
             'accounting': self.accounting,
             'position_id': self.position_id,
             'fills': self.fills,

@@ -964,7 +964,7 @@ class FractionalOrdersTestCase(unittest.IsolatedAsyncioTestCase):
         self.mock_requester.responder.cryptos['ETH'].blockchain.mempool.transactions[0].confirmed = True
         await self.exchange.next()        
         print(generous)
-        sell_generous = await self.exchange.limit_sell("ETH", "BTC", price='0.00005', qty=996, creator=self.generous, fee='.000000000000000001', minimum_qty='0.01234')
+        sell_generous = await self.exchange.limit_sell("ETH", "BTC", price='0.00005', qty=996, creator=self.generous, fee='.000000000000000001', min_qty='0.01234')
         self.mock_requester.responder.cryptos['BTC'].blockchain.mempool.transactions[1].confirmed = True
         self.mock_requester.responder.cryptos['ETH'].blockchain.mempool.transactions[1].confirmed = True
         await self.exchange.next()        
@@ -991,7 +991,7 @@ class FractionalOrdersTestCase(unittest.IsolatedAsyncioTestCase):
         self.mock_requester.responder.cryptos['BTC'].blockchain.mempool.transactions[0].confirmed = True
         await self.exchange.next()        
         print(generous)
-        market_made= await self.exchange.limit_sell("ETH", "BTC", price='0.00005', qty=996, creator=self.generous, fee='0.000000000000000001', minimum_qty='0.000000000001234')
+        market_made= await self.exchange.limit_sell("ETH", "BTC", price='0.00005', qty=996, creator=self.generous, fee='0.000000000000000001', min_qty='0.000000000001234')
         print('market_made', market_made.to_dict_full())
         print("books:" , self.exchange.books["ETHBTC"].asks)
         buy_single = await self.exchange.limit_buy("ETH", "BTC", price='0.00015', qty=1, creator=self.buyer1, fee='0.01')
@@ -1875,3 +1875,139 @@ class calculateMarketCapTest(unittest.IsolatedAsyncioTestCase):
     async def test_calculate_market_cap(self):
         result = await self.exchange.calculate_market_cap("BTC", "USD")
         self.assertEqual(result, 1500000)
+
+
+    async def asyncSetUp(self) -> None:
+        pass
+
+    async def test_fee_setting_simple(self):
+        fee = prec('0.01')
+        qty = prec('1.1', 8)
+        fee_per_qty = prec(fee / qty, 2)
+        total_fee = prec(fee * qty, 2)
+        self.assertEqual(fee_per_qty, prec('.01'))
+        self.assertEqual(total_fee, prec('.02'))
+        
+    async def test_fee_setting_fractional(self):
+        base_decimal = 8
+        quote_decimal = 2
+        
+        qty = 8
+        feeable_qty = qty * quote_decimal
+        fee = prec('0.01')
+        
+        minimum_fee = prec(feeable_qty * fee, quote_decimal )
+        
+        order_qty = prec('1.1', base_decimal)
+        order_fee = prec(fee * order_qty,quote_decimal)
+        total_fee -= order_fee
+
+        self.assertEqual(order_fee, prec('0.02'))
+             
+    async def test_fee_setting_multi(self):
+        order_qtys = [
+            '2.72846124',
+            '1.37255741',
+            '1.23502716',
+            '1.11127743',
+            '0.99992743',
+            '0.89973470'
+        ]
+
+        
+        base_decimal = 8
+        quote_decimal = 2
+
+        fee = prec('0.01', quote_decimal)
+        
+        qty = Decimal(0)
+        for order_qty in order_qtys:
+            qty += prec(order_qty, base_decimal)
+
+        feeable_qty = qty * quote_decimal
+        total_fee = prec(feeable_qty * fee, quote_decimal )
+
+        fees = []
+        for order_qty in order_qtys:
+            fees.append(prec(prec(order_qty,base_decimal) * fee, quote_decimal))
+
+        fees_paid = 0
+        for fee_paid in fees:
+            fees_paid += fee_paid
+
+        self.assertEqual(qty, prec('8.34698537', 8))
+        self.assertEqual(total_fee, prec('0.17'))
+        self.assertTrue(total_fee > fees_paid)
+
+    async def test_fee_setting_total(self):
+        order_qtys = [
+            '1.00000001',
+            '1.00000001',
+            '1.00000001',
+            '1.00000001',
+            '1.00000001',
+            '1.00000001',
+            '1.00000001',
+            '1.00000001',
+            '1.00000001',
+            '1.00000001',
+        ]
+
+        base_decimal = 8
+        quote_decimal = 2
+        fee = prec('0.01', quote_decimal)
+        
+        qty = Decimal(0)
+        for order_qty in order_qtys:
+            qty += prec(order_qty, base_decimal)
+
+        feeable_qty = qty * quote_decimal
+        total_fee = prec(feeable_qty * fee, quote_decimal )
+
+        fees = []
+        for order_qty in order_qtys:
+            fees.append(prec(prec(order_qty,base_decimal) * fee, quote_decimal))
+        print(fees)
+        fees_paid = 0
+        for fee_paid in fees:
+            fees_paid += fee_paid
+
+        self.assertEqual(qty, prec('10.00000010', 8))
+        self.assertEqual(total_fee, prec('0.21'))
+        print(total_fee, fees_paid)
+        self.assertTrue(total_fee > fees_paid)        
+
+    async def test_fee_setting_larger(self):
+        order_qtys = [
+            '1.01',
+            '1.01',
+            '1.01',
+            '1.01',
+            '1.01',
+            '1.01',
+            '1.01',
+            '1.01',
+            '1.01',
+        ]
+
+        fee = prec('0.0000000000000000001')
+        base_decimal = 2
+        quote_decimal = 18
+        
+        qty = Decimal(0)
+        for order_qty in order_qtys:
+            qty += prec(order_qty, base_decimal)
+
+        feeable_qty = prec(qty * 2, base_decimal)
+        total_fee = prec(feeable_qty * fee, quote_decimal )
+
+        fees = []
+        for order_qty in order_qtys:
+            fees.append(prec(prec(order_qty,base_decimal) * fee, quote_decimal))
+        print(fees)
+        fees_paid = 0
+        for fee_paid in fees:
+            fees_paid += fee_paid
+
+        print(total_fee, fees_paid)
+        self.assertTrue(total_fee > fees_paid)         
