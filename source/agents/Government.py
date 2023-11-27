@@ -47,7 +47,9 @@ class Government(Agent):
             self.taxes_last_collected['amount'] += prec(long_term_tax['amount'] + short_term_tax['amount'] + local_tax['amount'], places=2)
             self.logger.info(f"Collecting Taxes from {event['agent']} for {long_term_tax['amount'] + short_term_tax['amount'] + local_tax['amount']}")
             tax_record = {"date_collected": self.current_date, "tax_year": self.current_date.year -1, "agent": event['agent'], "long_term": prec(long_term_tax['amount'], 2), "short_term": prec(short_term_tax['amount'], 2), "local": prec(local_tax['amount'], 2)}
-            remove = await self.requests.remove_cash(event['agent'], prec(long_term_tax['amount'] + short_term_tax['amount']), 'taxes')
+            tax_bill = prec(long_term_tax['amount'] + short_term_tax['amount'], 2)
+            if tax_bill > 0:
+                remove = await self.requests.remove_cash(event['agent'], tax_bill, 'taxes')
             if 'error' in remove:
                 self.back_taxes.append(tax_record)
                 self.logger.error(remove['error'], event['agent'])
