@@ -53,7 +53,7 @@ class CryptoExchange(Exchange):
                 await self._complete_trade(transaction, base_transaction, quote_transaction)
         await self.archive()
         await self.prune_trades()
-        self.logger.debug('next', self.datetime)
+        # self.logger.debug('next', self.datetime)
   
     async def archive(self):
         await super().archive()
@@ -369,7 +369,7 @@ class CryptoExchange(Exchange):
                 continue
             if qty > 0:
                 if frozen_assets['frozen_qty'] < abs(qty):
-                    self.logger.error('frozen qty less than qty', frozen_assets['frozen_qty'], qty)
+                    self.logger.error('frozen qty less than qty', order_id, frozen_assets['frozen_qty'], qty)
                     return {'error': 'frozen qty less than qty'}
                 
                 if frozen_assets['frozen_qty']:
@@ -382,7 +382,7 @@ class CryptoExchange(Exchange):
 
             if exchange_fee > 0:
                 if frozen_assets['frozen_exchange_fee'] < abs(exchange_fee):
-                    self.logger.error('frozen exchange fee less than exchange fee', frozen_assets['frozen_exchange_fee'], exchange_fee)
+                    self.logger.error('frozen exchange fee less than exchange fee', order_id, frozen_assets['frozen_exchange_fee'], exchange_fee)
                     return {'error': 'frozen exchange fee less than exchange fee'}
                 
                 if frozen_assets['frozen_exchange_fee'] > 0:
@@ -395,7 +395,7 @@ class CryptoExchange(Exchange):
 
             if network_fee > 0:
                 if frozen_assets['frozen_network_fee'] < abs(network_fee):
-                    self.logger.error('frozen network fee less than network fee', frozen_assets['frozen_network_fee'], network_fee)
+                    self.logger.error('frozen network fee less than network fee', order_id, frozen_assets['frozen_network_fee'], network_fee)
                     return {'error': 'frozen network fee less than network fee'}
                 if frozen_assets['frozen_network_fee'] > 0:
                     frozen_assets['frozen_network_fee'] -= abs(network_fee)
@@ -874,7 +874,10 @@ class CryptoExchange(Exchange):
         ticker = base+quote
         # canceled = await super().cancel_all_orders(creator, ticker)
         canceled = []
+        self.logger.debug(f'cancel all orders {creator} {ticker}')
         async def cancel_bid(bid, creator):
+            if bid.qty <= 0:
+                return False
             if bid.creator == creator:
                 await self.unfreeze_assets(creator, quote, bid.id, bid.adjusted_total , bid.exchange_fee , bid.remaining_network_fee)
                 canceled.append(bid.id)
@@ -883,6 +886,8 @@ class CryptoExchange(Exchange):
                 return True
             
         async def cancel_ask(ask, creator):
+            if ask.qty <= 0:
+                return False
             if ask.creator == creator:
                 await self.unfreeze_assets(creator, base, ask.id, ask.qty , ask.exchange_fee , ask.remaining_network_fee)
                 canceled.append(ask.id)
@@ -1223,7 +1228,7 @@ class CryptoExchange(Exchange):
         agent_idx = await self.get_agent_index(agent)
         if agent_idx is None:
             return False
-        if asset not  in self.agents[agent_idx]['frozen_assets']:
+        if asset not in self.agents[agent_idx]['frozen_assets']:
             self.logger.warning(agent, 'asset not found', asset)
             return False
         if len(self.agents[agent_idx]['frozen_assets'][asset]) == 0:
