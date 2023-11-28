@@ -1,5 +1,4 @@
 import sys,os
-from decimal import Decimal
 parent_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 sys.path.append(parent_dir)
 
@@ -52,8 +51,8 @@ class TestCryptoRequests(unittest.IsolatedAsyncioTestCase):
     async def test_add_transaction(self):
         txn = await self.requests.add_transaction('USD', '0.1', 1000, 'sender', 'recipient')
         self.assertEqual(txn['asset'], 'USD')
-        self.assertEqual(txn['fee'], '0.100000000000000000')
-        self.assertEqual(txn['amount'], '1000.000000000000000000')
+        self.assertEqual(txn['fee'], '0.10000000')
+        self.assertEqual(txn['amount'], '1000.00000000')
         self.assertEqual(txn['sender'], 'sender')
         self.assertEqual(txn['recipient'], 'recipient')
         self.assertEqual(txn['confirmed'], False)

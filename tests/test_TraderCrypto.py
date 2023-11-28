@@ -120,16 +120,16 @@ class LimitBuyTest(unittest.IsolatedAsyncioTestCase):
         order = await self.trader.limit_buy("BTC", "USD", 100, 1, '0.01')
         self.assertEqual(order['creator'], self.trader.name)
         self.assertEqual(order['ticker'], "BTCUSD")
-        self.assertEqual(order['price'], '100.000000000000000000')
-        self.assertEqual(order['qty'], '1.000000000000000000')
-        self.assertEqual(order['exchange_fee'], '0.100000000000000000')
+        self.assertEqual(order['price'], '100.00')
+        self.assertEqual(order['qty'], '1.00000000')
+        self.assertEqual(order['exchange_fee'], '0.20')
         self.assertEqual(order['type'], 'limit_buy')
         self.assertEqual(order['dt'], '2023-01-01 00:00:00')
 
     async def test_limit_buy_insufficient_funds(self):
         self.trader.cash = 0
         order = await self.trader.limit_buy("BTC", "USD", 100000, 1, '0.01')
-        self.assertEqual(order['limit_buy'], 'insufficient_assets')
+        self.assertEqual(order['limit_buy'], 'insufficient_funds')
 
 class LimitSellTest(unittest.IsolatedAsyncioTestCase):
     async def asyncSetUp(self) -> None:
@@ -151,16 +151,16 @@ class LimitSellTest(unittest.IsolatedAsyncioTestCase):
 
         self.assertEqual(order['creator'], self.trader_registered)
         self.assertEqual(order['ticker'], "BTCUSD")
-        self.assertEqual(order['price'], '100.000000000000000000')
-        self.assertEqual(order['qty'], '1.000000000000000000')
-        self.assertEqual(order['exchange_fee'], '0.002000000000000000')
-        self.assertEqual(order['network_fee'], '0.010000000000000000')
+        self.assertEqual(order['price'], '100.00')
+        self.assertEqual(order['qty'], '1.00000000')
+        self.assertEqual(order['exchange_fee'], '0.00200000')
+        self.assertEqual(order['network_fee'], '0.20000000')
         self.assertEqual(order['type'], 'limit_sell')
         self.assertEqual(order['dt'], '2023-01-01 00:00:00')
     
     async def test_limit_sell_no_position(self):
         order = await self.trader.limit_sell("BTC", "USD", 100, 3, '0.01')
-        self.assertEqual(order['limit_sell'], 'insufficient_assets')
+        self.assertEqual(order['limit_sell'], 'insufficient_funds')
 
 class CancelOrderTest(unittest.IsolatedAsyncioTestCase):
     async def asyncSetUp(self) -> None:
@@ -349,7 +349,7 @@ class GetPositionTest(unittest.IsolatedAsyncioTestCase):
         print(position)
         self.assertIsInstance(position, dict)
         self.assertEqual(position['asset'], "USD")
-        self.assertEqual(position['qty'], '10000.000000000000000000')
+        self.assertEqual(position['qty'], '10000.00')
         self.assertEqual(len(position['enters']), 1)
         self.assertEqual(len(position['exits']), 0)
 

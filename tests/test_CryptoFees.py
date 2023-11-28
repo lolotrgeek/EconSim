@@ -20,7 +20,7 @@ class FeesTests(unittest.TestCase):
     def test_maker_fee(self):
         volume = 1000
         expected_fee = volume * self.fees.maker_fee_rate
-        self.assertEqual(self.fees.maker_fee(volume), expected_fee)
+        self.assertEqual(self.fees.maker_fee(volume, 2), expected_fee)
 
     def test_add_fee(self):
         asset = 'USD'
