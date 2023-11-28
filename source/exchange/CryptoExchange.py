@@ -368,7 +368,11 @@ class CryptoExchange(Exchange):
             if frozen_assets['order_id'] != order_id:
                 continue
             if qty > 0:
-                if frozen_assets['frozen_qty'] > 0:
+                if frozen_assets['frozen_qty'] < abs(qty):
+                    self.logger.error('frozen qty less than qty', frozen_assets['frozen_qty'], qty)
+                    return {'error': 'frozen qty less than qty'}
+                
+                if frozen_assets['frozen_qty']:
                     frozen_assets['frozen_qty'] -= abs(qty)
                     self.agents[agent_idx]['assets'][asset] += abs(qty)
                     status['qty'] = 'unfrozen'
@@ -377,6 +381,10 @@ class CryptoExchange(Exchange):
                     status['qty'] = 'no frozen found'
 
             if exchange_fee > 0:
+                if frozen_assets['frozen_exchange_fee'] < abs(exchange_fee):
+                    self.logger.error('frozen exchange fee less than exchange fee', frozen_assets['frozen_exchange_fee'], exchange_fee)
+                    return {'error': 'frozen exchange fee less than exchange fee'}
+                
                 if frozen_assets['frozen_exchange_fee'] > 0:
                     frozen_assets['frozen_exchange_fee'] -= abs(exchange_fee)   
                     self.agents[agent_idx]['assets'][asset] += abs(exchange_fee)
@@ -386,6 +394,9 @@ class CryptoExchange(Exchange):
                     status['exchange_fee'] = 'no frozen found'
 
             if network_fee > 0:
+                if frozen_assets['frozen_network_fee'] < abs(network_fee):
+                    self.logger.error('frozen network fee less than network fee', frozen_assets['frozen_network_fee'], network_fee)
+                    return {'error': 'frozen network fee less than network fee'}
                 if frozen_assets['frozen_network_fee'] > 0:
                     frozen_assets['frozen_network_fee'] -= abs(network_fee)
                     self.agents[agent_idx]['assets'][asset] += abs(network_fee)
