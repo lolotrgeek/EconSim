@@ -50,13 +50,13 @@ class Government(Agent):
             tax_bill = prec(long_term_tax['amount'] + short_term_tax['amount'], 2)
             if tax_bill > 0:
                 remove = await self.requests.remove_cash(event['agent'], tax_bill, 'taxes')
-            if 'error' in remove:
-                self.back_taxes.append(tax_record)
-                self.logger.error(remove['error'], event['agent'])
-                continue
-            else:
-                self.tax_records.append(tax_record)
-                self.cash += prec(long_term_tax['amount'] + short_term_tax['amount'], 2)
+                if 'error' in remove:
+                    self.back_taxes.append(tax_record)
+                    self.logger.error(remove['error'], event['agent'])
+                    continue
+                else:
+                    self.tax_records.append(tax_record)
+                    self.cash += tax_bill
         self.logger.info("Successfully Collected Taxes")
             
 
