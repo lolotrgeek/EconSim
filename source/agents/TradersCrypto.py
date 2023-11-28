@@ -209,7 +209,6 @@ class NaiveMarketMaker(Trader):
         self.can_sell = {ticker: False for ticker in self.tickers}
         self.logger = Logger('NaiveMarketMaker', level=10)
 
-
     async def make_market(self, ticker, price):
         await self.cancel_all_orders(ticker['base'], ticker['quote'])
         buy_price = prec(price * self.buy_spread, ticker['quote_decimals'])
@@ -289,7 +288,7 @@ class NaiveMarketMaker(Trader):
             if ticker['base'] in self.assets:
                 # Make a market for this ticker
                     await self.make_market(ticker, latest_trade['price'])
-                    sleep(2)
+                    sleep(10)
             else:
                 await self.acquire_assets(ticker)
 

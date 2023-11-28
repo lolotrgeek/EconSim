@@ -1041,8 +1041,8 @@ class GetTradesTestCase(unittest.IsolatedAsyncioTestCase):
 class CancelOrderTestCase(unittest.IsolatedAsyncioTestCase):
     async def asyncSetUp(self) -> None:
         self.exchange = await standard_asyncSetUp(self)
-        agent = await self.exchange.register_agent("buyer1", initial_assets={"BTC": 10000, "USD" : 10000})
-        self.agent = agent['registered_agent']
+        self.agent = (await self.exchange.register_agent("buyer1", initial_assets={"BTC": 10000, "USD" : 10000}))['registered_agent']
+        self.agent2 = (await self.exchange.register_agent("buyer1", initial_assets={"BTC": 10000, "USD" : 10000}))['registered_agent']
 
     async def test_cancel_order(self):
         order = await self.exchange.limit_buy("BTC" , "USD", price=149, qty=2, creator=self.agent, fee='0.02')
@@ -1061,6 +1061,76 @@ class CancelOrderTestCase(unittest.IsolatedAsyncioTestCase):
     async def test_cancel_order_error(self):
         cancel = await self.exchange.cancel_order('BTC', 'USD', "error")
         self.assertEqual(cancel, {"cancelled_order": "order not found"})
+
+    async def test_cancel_partial_order(self):
+        # half of the order gets filled, the other half becomes a maker order
+        buy_qty = 10
+        buy_fee = Decimal('0.01')
+        sell_fee = Decimal('0.001')
+        buy_order = await self.exchange.limit_buy("BTC", "USD", price=130, qty=buy_qty, creator=self.agent, fee=buy_fee)
+        new_order = await self.exchange.limit_sell('BTC', "USD",130, 5, self.agent2, fee=sell_fee)
+        self.mock_requester.responder.cryptos['BTC'].blockchain.mempool.transactions[0].confirmed = True
+        self.mock_requester.responder.cryptos['USD'].blockchain.mempool.transactions[0].confirmed = True
+        await self.exchange.next()
+        self.mock_requester.responder.cryptos['BTC'].blockchain.mempool.transactions[1].confirmed = True
+        self.mock_requester.responder.cryptos['USD'].blockchain.mempool.transactions[1].confirmed = True
+        await self.exchange.next()
+        agent = await self.exchange.get_agent(self.agent)
+        canceled = await self.exchange.cancel_order("BTC", "USD", buy_order.id )
+        print(canceled)    
+
+        self.assertEqual(len(self.exchange.books["BTCUSD"].bids), 0)
+        self.assertEqual(len(self.exchange.books["BTCUSD"].asks), 1)
+        self.assertEqual(canceled['cancelled_order']['id'], buy_order.id)
+        self.assertEqual(agent['frozen_assets']['USD'][0]['frozen_qty'], Decimal('0.00'))
+        self.assertEqual(agent['frozen_assets']['USD'][0]['frozen_exchange_fee'], Decimal('0.00000'))
+        self.assertEqual(agent['frozen_assets']['USD'][0]['frozen_network_fee'], Decimal('0.0000'))
+        self.assertEqual(agent['frozen_assets']['USD'][0]['order_id'], buy_order.id)
+
+        trade_payment_USD = self.exchange.trade_log[2].qty * self.exchange.trade_log[2].price + self.exchange.trade_log[2].network_fee['quote'] + self.exchange.trade_log[2].exchange_fee['quote']
+        self.assertEqual(agent['assets'], {
+            'BTC': Decimal('10004'), 
+            'USD': Decimal('10000') - trade_payment_USD - agent['frozen_assets']['USD'][0]['frozen_qty'] - agent['frozen_assets']['USD'][0]['frozen_exchange_fee'] - agent['frozen_assets']['USD'][0]['frozen_network_fee']
+        })
+
+    async def test_cancel_order_unconfirmed(self):
+        async def get_transaction (asset, id): return {"error": "messaging error, blockchain unreachable"}
+        self.requests.get_transaction = get_transaction
+
+        initial_sell_qty = 5
+        sell_fee = Decimal('0.001')
+        buy_fee = Decimal('0.01')
+        sell_order = await self.exchange.limit_sell("BTC", "USD", price=145, qty=initial_sell_qty, creator=self.agent, fee=sell_fee)
+        new_order = await self.exchange.limit_buy('BTC', 'USD', 150, 2, self.agent2, fee=buy_fee)
+        books = self.exchange.books['BTCUSD']
+        await self.exchange.next()
+        self.mock_requester.responder.cryptos['BTC'].blockchain.mempool.transactions[0].confirmed = True
+        self.mock_requester.responder.cryptos['USD'].blockchain.mempool.transactions[0].confirmed = True
+        await self.exchange.next()
+        self.mock_requester.responder.cryptos['BTC'].blockchain.mempool.transactions[1].confirmed = True
+        self.mock_requester.responder.cryptos['USD'].blockchain.mempool.transactions[1].confirmed = True
+        await self.exchange.next()
+
+        agent = await self.exchange.get_agent(self.agent2)
+        agent_seller = await self.exchange.get_agent(self.agent)
+
+        canceled = await self.exchange.cancel_order("BTC", "USD", sell_order.id )
+
+
+        self.assertEqual(len(self.exchange.pending_transactions), 2)
+        self.assertEqual(len(books.bids), 0) # NOTE: the orders are still going to match even if the transaction cannot be retrieved or confirmed yet
+        self.assertEqual(len(books.asks), 1) 
+        self.assertEqual(canceled['cancelled_order']['id'], sell_order.id)
+
+        #NOTE: assets will stay frozen for unconfirmed taker orders
+        self.assertEqual(agent['frozen_assets']['USD'][0]['order_id'],new_order.id )
+        self.assertEqual(agent['frozen_assets']['USD'][0]['frozen_qty'],new_order.fills[0]['qty'] * new_order.fills[0]['price']) #NOTE: the order will get "filled" it just won't be confirmed yet
+        self.assertEqual(agent['frozen_assets']['USD'][0]['frozen_exchange_fee'], new_order.exchange_fee) #NOTE: because we matched to a "better" trade the difference between placed exchange fee and cheaper exchange fee will be deducted from the frozen assets, so it will be different from the original frozen 
+        self.assertEqual(agent['frozen_assets']['USD'][0]['frozen_network_fee'], 0) # NOTE: the network fee is not frozen the transaction did get sent to the chain and was confirmed, it just can't be retrieved yet
+        self.assertEqual(agent_seller['frozen_assets']['BTC'][0]['order_id'],sell_order.id )
+        self.assertEqual(agent_seller['frozen_assets']['BTC'][0]['frozen_qty'],prec(sell_order.fills[0]['qty'] + sell_order.fills[1]['qty'], 8)) #NOTE: even though the order was cancelled, the filled portion will remain frozen until the transaction is confirmed
+        self.assertEqual(agent_seller['frozen_assets']['BTC'][0]['frozen_exchange_fee'], self.exchange.pending_transactions[0]['exchange_txn'][1]['fee'] + self.exchange.pending_transactions[1]['exchange_txn'][1]['fee'])  #NOTE: even though the order was cancelled, assets are still frozen for pending sell transactions
+        self.assertEqual(agent_seller['frozen_assets']['BTC'][0]['frozen_network_fee'], 0) #NOTE: the network fee will be 0, since we already paid for pending transactions and the rest was cancelled
 
 class CancelAllOrdersTestCase(unittest.IsolatedAsyncioTestCase):
     async def asyncSetUp(self) -> None:
@@ -1086,6 +1156,74 @@ class CancelAllOrdersTestCase(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(agent['frozen_assets']['USD'][0]['frozen_exchange_fee'], Decimal('0.00000'))
         self.assertEqual(agent['frozen_assets']['USD'][0]['frozen_network_fee'], Decimal('0.0000'))
         self.assertEqual(agent['frozen_assets']['USD'][0]['order_id'], order.id)
+
+    async def test_cancel_all_partial_orders(self):
+        # half of the order gets filled, the other half becomes a maker order
+        buy_qty = 10
+        buy_fee = Decimal('0.01')
+        sell_fee = Decimal('0.001')
+        buy_order = await self.exchange.limit_buy("BTC", "USD", price=130, qty=buy_qty, creator=self.agent1, fee=buy_fee)
+        new_order = await self.exchange.limit_sell('BTC', "USD",130, 5, self.agent2, fee=sell_fee)
+        self.mock_requester.responder.cryptos['BTC'].blockchain.mempool.transactions[0].confirmed = True
+        self.mock_requester.responder.cryptos['USD'].blockchain.mempool.transactions[0].confirmed = True
+        await self.exchange.next()
+        self.mock_requester.responder.cryptos['BTC'].blockchain.mempool.transactions[1].confirmed = True
+        self.mock_requester.responder.cryptos['USD'].blockchain.mempool.transactions[1].confirmed = True
+        await self.exchange.next()
+        agent = await self.exchange.get_agent(self.agent1)
+        canceled = await self.exchange.cancel_all_orders("BTC", "USD", self.agent1 )
+        print(canceled)    
+
+        self.assertEqual(len(self.exchange.books["BTCUSD"].bids), 0)
+        self.assertEqual(len(self.exchange.books["BTCUSD"].asks), 1)
+        self.assertEqual(len(canceled['cancelled_orders']), 1)
+        self.assertEqual(agent['frozen_assets']['USD'][0]['frozen_qty'], Decimal('0.00'))
+        self.assertEqual(agent['frozen_assets']['USD'][0]['frozen_exchange_fee'], Decimal('0.00000'))
+        self.assertEqual(agent['frozen_assets']['USD'][0]['frozen_network_fee'], Decimal('0.0000'))
+        self.assertEqual(agent['frozen_assets']['USD'][0]['order_id'], buy_order.id)
+
+        trade_payment_USD = self.exchange.trade_log[2].qty * self.exchange.trade_log[2].price + self.exchange.trade_log[2].network_fee['quote'] + self.exchange.trade_log[2].exchange_fee['quote']
+        self.assertEqual(agent['assets'], {
+            'BTC': Decimal('10004'), 
+            'USD': Decimal('10000') - trade_payment_USD - agent['frozen_assets']['USD'][0]['frozen_qty'] - agent['frozen_assets']['USD'][0]['frozen_exchange_fee'] - agent['frozen_assets']['USD'][0]['frozen_network_fee']
+        })
+
+    async def test_cancel_all_orders_unconfirmed(self):
+        async def get_transaction (asset, id): return {"error": "messaging error, blockchain unreachable"}
+        self.requests.get_transaction = get_transaction
+
+        initial_sell_qty = 5
+        sell_fee = Decimal('0.001')
+        buy_fee = Decimal('0.01')
+        sell_order = await self.exchange.limit_sell("BTC", "USD", price=145, qty=initial_sell_qty, creator=self.agent1, fee=sell_fee)
+        new_order = await self.exchange.limit_buy('BTC', 'USD', 150, 2, self.agent2, fee=buy_fee)
+        books = self.exchange.books['BTCUSD']
+        await self.exchange.next()
+        self.mock_requester.responder.cryptos['BTC'].blockchain.mempool.transactions[0].confirmed = True
+        self.mock_requester.responder.cryptos['USD'].blockchain.mempool.transactions[0].confirmed = True
+        await self.exchange.next()
+        self.mock_requester.responder.cryptos['BTC'].blockchain.mempool.transactions[1].confirmed = True
+        self.mock_requester.responder.cryptos['USD'].blockchain.mempool.transactions[1].confirmed = True
+        await self.exchange.next()
+
+        agent = await self.exchange.get_agent(self.agent2)
+        agent_seller = await self.exchange.get_agent(self.agent1)
+
+        await self.exchange.cancel_all_orders("BTC", "USD", self.agent1 )
+
+        self.assertEqual(len(self.exchange.pending_transactions), 2)
+        self.assertEqual(len(books.bids), 0) # NOTE: the orders are still going to match even if the transaction cannot be retrieved or confirmed yet
+        self.assertEqual(len(books.asks), 1) 
+
+        #NOTE: assets will stay frozen for unconfirmed taker orders
+        self.assertEqual(agent['frozen_assets']['USD'][0]['order_id'],new_order.id )
+        self.assertEqual(agent['frozen_assets']['USD'][0]['frozen_qty'],new_order.fills[0]['qty'] * new_order.fills[0]['price']) #NOTE: the order will get "filled" it just won't be confirmed yet
+        self.assertEqual(agent['frozen_assets']['USD'][0]['frozen_exchange_fee'], new_order.exchange_fee) #NOTE: because we matched to a "better" trade the difference between placed exchange fee and cheaper exchange fee will be deducted from the frozen assets, so it will be different from the original frozen 
+        self.assertEqual(agent['frozen_assets']['USD'][0]['frozen_network_fee'], 0) # NOTE: the network fee is not frozen the transaction did get sent to the chain and was confirmed, it just can't be retrieved yet
+        self.assertEqual(agent_seller['frozen_assets']['BTC'][0]['order_id'],sell_order.id )
+        self.assertEqual(agent_seller['frozen_assets']['BTC'][0]['frozen_qty'],prec(sell_order.fills[0]['qty'] + sell_order.fills[1]['qty'], 8)) #NOTE: even though the order was cancelled, the filled portion will remain frozen until the transaction is confirmed
+        self.assertEqual(agent_seller['frozen_assets']['BTC'][0]['frozen_exchange_fee'], self.exchange.pending_transactions[0]['exchange_txn'][1]['fee'] + self.exchange.pending_transactions[1]['exchange_txn'][1]['fee'])  #NOTE: even though the order was cancelled, assets are still frozen for pending sell transactions
+        self.assertEqual(agent_seller['frozen_assets']['BTC'][0]['frozen_network_fee'], 0) #NOTE: the network fee will be 0, since we already paid for pending transactions and the rest was cancelled
 
 class GetCashTestCase(unittest.IsolatedAsyncioTestCase):
     async def asyncSetUp(self) -> None:

@@ -363,29 +363,39 @@ class CryptoExchange(Exchange):
         if asset not in self.agents[agent_idx]['frozen_assets']:
             self.logger.error('no asset available to unfreeze', asset, qty, agent, order_id)
             return {'error': 'no asset available to unfreeze'}
+        status = {'qty': 'frozen', 'exchange_fee': 'frozen', 'network_fee': 'frozen'}
         for frozen_assets in self.agents[agent_idx]['frozen_assets'][asset]:
             if frozen_assets['order_id'] != order_id:
                 continue
             if qty > 0:
-                if frozen_assets['frozen_qty'] <= 0:
-                    self.logger.error('no qty assets available to unfreeze', asset, qty, agent, order_id)
-                    return {'error': 'no asset available to unfreeze'}
-                frozen_assets['frozen_qty'] -= abs(qty)
-                self.agents[agent_idx]['assets'][asset] += abs(qty)
+                if frozen_assets['frozen_qty'] > 0:
+                    frozen_assets['frozen_qty'] -= abs(qty)
+                    self.agents[agent_idx]['assets'][asset] += abs(qty)
+                    status['qty'] = 'unfrozen'
+                else:
+                    self.logger.warning('no qty assets available to unfreeze', asset, qty, agent, order_id)
+                    status['qty'] = 'no frozen found'
+
             if exchange_fee > 0:
-                if frozen_assets['frozen_exchange_fee'] <= 0:
-                    self.logger.error('no exchange fee assets available to unfreeze', asset, exchange_fee, agent, order_id)
-                    return {'error': 'no asset available to unfreeze'}
-                frozen_assets['frozen_exchange_fee'] -= abs(exchange_fee)
-                self.agents[agent_idx]['assets'][asset] += abs(exchange_fee)
+                if frozen_assets['frozen_exchange_fee'] > 0:
+                    frozen_assets['frozen_exchange_fee'] -= abs(exchange_fee)   
+                    self.agents[agent_idx]['assets'][asset] += abs(exchange_fee)
+                    status['exchange_fee'] = 'unfrozen'                        
+                else:
+                    self.logger.warning('no exchange fee assets available to unfreeze', asset, exchange_fee, agent, order_id)
+                    status['exchange_fee'] = 'no frozen found'
+
             if network_fee > 0:
-                if frozen_assets['frozen_network_fee'] <= 0:
-                    self.logger.error('no network fee assets available to unfreeze', asset, network_fee, agent, order_id)
-                    return {'error': 'no asset available to unfreeze'}
-                frozen_assets['frozen_network_fee'] -= abs(network_fee)
-                self.agents[agent_idx]['assets'][asset] += abs(network_fee)
-            self.logger.debug(f"unfreezing assets {agent} {asset} {order_id} qty {qty} exchange_fee {exchange_fee} network_fee {network_fee}")
-            return {'success': 'assets unfrozen'}
+                if frozen_assets['frozen_network_fee'] > 0:
+                    frozen_assets['frozen_network_fee'] -= abs(network_fee)
+                    self.agents[agent_idx]['assets'][asset] += abs(network_fee)
+                    status['network_fee'] = 'unfrozen'
+                else:
+                    self.logger.warning('no network fee assets available to unfreeze', asset, network_fee, agent, order_id)
+                    status['network_fee'] = 'no frozen found'
+
+            self.logger.debug(f"unfroze assets {agent} {asset} {order_id} qty {qty} exchange_fee {exchange_fee} network_fee {network_fee}")
+            return {'success': status}
         self.logger.error(f'order id {order_id} does not match any frozen order for', asset, qty, agent)
         return {'error': 'order id does not match any frozen order'}
 
@@ -855,7 +865,7 @@ class CryptoExchange(Exchange):
         canceled = []
         async def cancel_bid(bid, creator):
             if bid.creator == creator:
-                await self.unfreeze_assets(creator, quote, bid.id, prec(bid.qty*bid.price, self.assets[quote]['decimals']) , bid.exchange_fee , bid.network_fee)
+                await self.unfreeze_assets(creator, quote, bid.id, bid.adjusted_total , bid.exchange_fee , bid.remaining_network_fee)
                 canceled.append(bid.id)
                 return False
             else:
@@ -863,7 +873,7 @@ class CryptoExchange(Exchange):
             
         async def cancel_ask(ask, creator):
             if ask.creator == creator:
-                await self.unfreeze_assets(creator, base, ask.id, ask.qty , ask.exchange_fee , ask.network_fee)
+                await self.unfreeze_assets(creator, base, ask.id, ask.qty , ask.exchange_fee , ask.remaining_network_fee)
                 canceled.append(ask.id)
                 return False
             else:
