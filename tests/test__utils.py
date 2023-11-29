@@ -66,6 +66,9 @@ class TestUtilsTest(unittest.TestCase):
         self.assertEqual( len(str(prec(max)).split('.')[0]), 18)
         # double prec
         self.assertEqual( prec(prec('0.123456789012345678')) , Decimal('0.123456789012345678'))
-
+        # rounding up
+        self.assertEqual( prec(Decimal('1.10504461') * Decimal('0.97'), 2, 'up') , Decimal('1.08'))
+        # rounding down
+        self.assertEqual( prec(Decimal('1.10504461') * Decimal('0.97'), 2, 'down') , Decimal('1.07'))
 if __name__ == '__main__':
     unittest.main()
