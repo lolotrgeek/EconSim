@@ -268,7 +268,7 @@ class NaiveMarketMaker(Trader):
         total_sell_fee = prec(possible_matches * sell_fee, ticker['base_decimals'])
         base_needed = prec(qty + total_sell_fee, ticker['base_decimals'])
         if base_needed > self.assets[ticker['base']]:
-            self.logger.warning(f' {self.name} not enough assets needs: {base_needed} has {self.tickers[ticker["base"]]}') 
+            self.logger.warning(f' {self.name} not enough assets needs: {base_needed} has {self.assets[ticker["base"]]}') 
             return False
         total_buy_fee = prec(possible_matches * buy_fee, ticker['quote_decimals'])
         cash_needed = prec((qty * buy_price) + total_buy_fee, ticker['quote_decimals'])
