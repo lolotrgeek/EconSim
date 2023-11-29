@@ -96,34 +96,37 @@ class SimpleMarketTaker(Trader):
             self.logger.info(f"{self.name} bought {qty} {ticker['base']} at {latest_trade['price']}")
 
     async def dump_assets(self):
-        for asset in self.assets:
-            if asset == 'USD': continue
-            ticker = [ticker for ticker in self.tickers if ticker.get('base') == asset][0]
-            qty = prec(self.assets[asset] * self.asset_to_trade, ticker['base_decimals'])
-            self.logger.info(f"{self.name}, has {self.assets[asset]} {asset}, dumping {qty}")
-            if qty > 0:
-                min_qty = prec(qty * Decimal(ticker['min_qty_percent']), ticker['base_decimals'])
-                possible_matches = (qty / min_qty)
-                fee = prec('0.00000001', ticker['base_decimals'])
-                total_fee = prec(possible_matches * fee, ticker['base_decimals'])
-                if prec(qty + total_fee, ticker['base_decimals']) > self.assets[asset]:
-                    self.logger.info(f"{self.name} not enough {asset} to sell {qty}")
-                    return False
-                self.logger.info(f"{self.name} selling {qty} {asset}")
-                order = await self.market_sell(asset, 'USD', qty, fee)
-                if order['market_sell'] == "max_pending_transactions_reached":
-                    self.logger.info(order)
-                    return False
-                if order['market_sell'] == "insufficient assets":
-                    self.logger.info(order)
-                    return False
-                if order['market_sell'] == "no fills":
-                    self.logger.info(order)
-                    return False
-                else:
-                    self.last_trade_time = self.current_time
-                    self.logger.info(f"{self.name} sold {order}")
-                    break        
+        asset = random.choice(list(self.assets.keys()))
+        if asset == 'USD': return False
+        asset_ticker = [ticker for ticker in self.tickers if ticker.get('base') == asset]
+        if len(asset_ticker) == 0: 
+            self.logger.info(f"{self.name} no ticker for {asset} in {self.tickers}")
+            return False
+        ticker = asset_ticker[0]
+        qty = prec(self.assets[asset] * self.asset_to_trade, ticker['base_decimals'])
+        self.logger.info(f"{self.name}, has {self.assets[asset]} {asset}, dumping {qty}")
+        if qty > 0:
+            min_qty = prec(qty * Decimal(ticker['min_qty_percent']), ticker['base_decimals'])
+            possible_matches = (qty / min_qty)
+            fee = prec('0.00000001', ticker['base_decimals'])
+            total_fee = prec(possible_matches * fee, ticker['base_decimals'])
+            if prec(qty + total_fee, ticker['base_decimals']) > self.assets[asset]:
+                self.logger.info(f"{self.name} not enough {asset} to sell {qty}")
+                return False
+            self.logger.info(f"{self.name} selling {qty} {asset}")
+            order = await self.market_sell(asset, 'USD', qty, fee)
+            if order['market_sell'] == "max_pending_transactions_reached":
+                self.logger.info(order)
+                return False
+            if order['market_sell'] == "insufficient assets":
+                self.logger.info(order)
+                return False
+            if order['market_sell'] == "no fills":
+                self.logger.info(order)
+                return False
+            else:
+                self.last_trade_time = self.current_time
+                self.logger.info(f"{self.name} sold {order}")
 
     async def next(self) -> bool:
         self.current_time = await self.get_sim_time()
@@ -138,7 +141,7 @@ class SimpleMarketTaker(Trader):
         if len(self.tickers) == 0: return True
         if (await self.has_assets()) == False: return False
 
-        
+        self.logger.info(f"{self.name} has {self.assets} ")
         await self.spend_cash()
         await self.dump_assets()
     
@@ -287,10 +290,9 @@ class NaiveMarketMaker(Trader):
             # check if the ticker base is in the assets
             if ticker['base'] in self.assets:
                 # Make a market for this ticker
-                    await self.make_market(ticker, latest_trade['price'])
-                    sleep(10)
+                await self.make_market(ticker, latest_trade['price'])
             else:
                 await self.acquire_assets(ticker)
-
+        # sleep(1)
         return True
 
