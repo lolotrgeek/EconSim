@@ -12,6 +12,35 @@ from source.exchange.types.LimitOrder import LimitOrder
 from source.exchange.types.OrderSide import OrderSide
 from source.exchange.types.Position import Position
 from source.exchange.types.Transaction import Transaction, Exit
+from source.utils.logger import Null_Logger
+
+class PruneAgentsTestCase(unittest.IsolatedAsyncioTestCase):
+    async def asyncSetUp(self):
+        self.exchange = Exchange(datetime=datetime(2023, 1, 1))
+
+    async def test_prune_agents(self):
+        # Create an instance of the Exchange class
+        exchange = Exchange(datetime=datetime(2023, 1, 1))
+        exchange.logger = Null_Logger(True)
+
+        # Create agents with different scenarios
+        agent1 = {'name': 'agent1', '_transactions': []}
+        agent2 = {'name': 'agent2', '_transactions': [{'dt': datetime(2021, 1, 1)}]}
+        agent3 = {'name': 'agent3', '_transactions': [{'dt': datetime(2022, 1, 1)}, {'dt': datetime(2022, 6, 1)}]}
+        agent4 = {'name': 'agent4', '_transactions': [{'dt': datetime(2022, 1, 1)}, {'dt': datetime(2022, 6, 1)}, {'dt': datetime(2023, 1, 1)}]}
+
+        # Add agents to the exchange
+        exchange.agents = [agent1, agent2, agent3, agent4]
+
+        # Prune agents
+        await exchange.prune_agents()
+
+        # Check that the correct agents were removed
+        self.assertIn(agent1, exchange.agents)
+        self.assertNotIn(agent2, exchange.agents)
+        self.assertIn(agent3, exchange.agents)
+        self.assertIn(agent4, exchange.agents)
+
 
 class CreateAssetTestCase(unittest.IsolatedAsyncioTestCase):
     async def asyncSetUp(self):

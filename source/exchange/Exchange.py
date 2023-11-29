@@ -56,6 +56,23 @@ class Exchange():
             trades_to_prune = int(len(self.trade_log)/2)
             self.trade_log = self.trade_log[trades_to_prune:]
 
+    async def prune_agents(self):
+        '''
+        Removes agents that have not made a trade in over 1 year
+        '''
+        for agent in self.agents:
+            if len(agent['_transactions']) == 0:
+                #TODO: consider adding a time of creation for agents and removing them if they have not made a trade in 1 year
+                # self.agents.remove(agent)
+                # self.logger.info(f'removed agent {agent["name"]} for inactivity')
+                continue
+            # sort transactions by date, newest first
+            agent['_transactions'].sort(key=lambda x: x['dt'], reverse=True)
+            # if the last transaction was more than 1 year ago, remove the agent
+            if agent['_transactions'][0]['dt'] < self.datetime - timedelta(days=365):
+                self.agents.remove(agent)
+                self.logger.info(f'removed agent {agent["name"]} for inactivity')
+                
     async def create_asset(self, ticker: str, asset_type='stock', market_qty=1000, seed_price=100, seed_bid=.99, seed_ask=1.01) -> OrderBook:
         """_summary_
 
