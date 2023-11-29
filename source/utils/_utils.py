@@ -44,15 +44,24 @@ def split_float(num) -> tuple:
         return(0,0)
         # raise TypeError('num must be a float, int, string, or Decimal')
 
-def prec(num, places=18) -> Decimal:
+def prec(num, places=18, rounding='up') -> Decimal:
     """
     Set the precision of a Decimal `num` to a number of `places`.
+    The `rounding` argument can be set to 'up' or 'down' to specify the rounding mode.
     """
     if type(num) is float:
-        raise TypeError('num cannot accept floats, it must be a int, string, or Decimal')
+        raise TypeError('num cannot accept floats, it must be an int, string, or Decimal')
     if type(num) is int:
         num = str(num)
-    return Decimal(num).quantize(Decimal(10) ** -places)
+    
+    if rounding == 'up':
+        rounding_mode = ROUND_UP
+    elif rounding == 'down':
+        rounding_mode = ROUND_DOWN
+    else:
+        raise ValueError("rounding must be set to 'up' or 'down'")
+    
+    return Decimal(num).quantize(Decimal(10) ** -places, rounding=rounding_mode)
 
 def to_sub_unit(self, amount, precision=8) -> int:
     """
