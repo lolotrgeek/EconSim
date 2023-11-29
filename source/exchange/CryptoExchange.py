@@ -612,9 +612,9 @@ class CryptoExchange(Exchange):
                 new_order.exchange_fees_due += taker_fee
                 await self.update_ask(ticker, best_ask, 0, trade_qty, creator)
                 self.books[ticker].asks = [ask for ask in self.books[ticker].asks if ask.qty > 0 and ask.qty > ask.minimum_match_qty]               
-                amount_willing_to_pay = prec(trade_qty * new_order.price, self.assets[quote]['decimals'])
-                amount_actually_paid = prec(trade_qty*best_ask.price, self.assets[quote]['decimals'])
-                deductions = prec( adjusted_total - amount_actually_paid , self.assets[quote]['decimals'])
+                amount_willing_to_pay = non_zero_prec(trade_qty*new_order.price, self.assets[quote]['decimals'])
+                amount_actually_paid = non_zero_prec(trade_qty*best_ask.price, self.assets[quote]['decimals'])
+                deductions = prec(amount_willing_to_pay - amount_actually_paid , self.assets[quote]['decimals'])
                 if deductions > 0:
                     self.logger.info(f'limit buy {new_order.id} got a better total amount of {amount_actually_paid} than expected: {amount_willing_to_pay}')
                     self.logger.debug(f'Unfreezing deductions {deductions} from {creator} {quote} {new_order.id}')
