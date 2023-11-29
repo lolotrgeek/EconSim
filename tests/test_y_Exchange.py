@@ -25,8 +25,8 @@ class PruneAgentsTestCase(unittest.IsolatedAsyncioTestCase):
 
         # Create agents with different scenarios
         agent1 = {'name': 'agent1', '_transactions': []}
-        agent2 = {'name': 'agent2', '_transactions': [{'dt': datetime(2021, 1, 1)}]}
-        agent3 = {'name': 'agent3', '_transactions': [{'dt': datetime(2022, 1, 1)}, {'dt': datetime(2022, 6, 1)}]}
+        agent2 = {'name': 'agent2', '_transactions': [{'dt': datetime(1990, 1, 1)}]}
+        agent3 = {'name': 'agent3', '_transactions': [{'dt': datetime(2021, 1, 1)}, {'dt': datetime(2020, 6, 1)}]}
         agent4 = {'name': 'agent4', '_transactions': [{'dt': datetime(2022, 1, 1)}, {'dt': datetime(2022, 6, 1)}, {'dt': datetime(2023, 1, 1)}]}
 
         # Add agents to the exchange

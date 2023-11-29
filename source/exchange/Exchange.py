@@ -56,9 +56,9 @@ class Exchange():
             trades_to_prune = int(len(self.trade_log)/2)
             self.trade_log = self.trade_log[trades_to_prune:]
 
-    async def prune_agents(self):
+    async def prune_agents(self, years=5):
         '''
-        Removes agents that have not made a trade in over 1 year
+        Removes agents that have not made a trade in x year
         '''
         for agent in self.agents:
             if len(agent['_transactions']) == 0:
@@ -69,7 +69,7 @@ class Exchange():
             # sort transactions by date, newest first
             agent['_transactions'].sort(key=lambda x: x['dt'], reverse=True)
             # if the last transaction was more than 1 year ago, remove the agent
-            if agent['_transactions'][0]['dt'] < self.datetime - timedelta(days=365):
+            if agent['_transactions'][0]['dt'] < self.datetime - timedelta(days=(365*years)):
                 self.agents.remove(agent)
                 self.logger.info(f'removed agent {agent["name"]} for inactivity')
                 
