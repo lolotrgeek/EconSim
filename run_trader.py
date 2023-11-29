@@ -23,9 +23,9 @@ async def run_trader() -> None:
         if picker == 0:
             trader =  NaiveMarketMaker(name='market_maker', aum=1_000_000, spread_pct='0.005', requests=(exchange_requests, crypto_requests))
         elif picker == 1:
-            trader = SimpleMarketTaker(name='market_taker', aum=1_000, requests=(exchange_requests, crypto_requests))
+            trader = SimpleMarketTaker(name='poor_taker', aum=1_000, requests=(exchange_requests, crypto_requests))
         elif picker == 2:
-            trader = SimpleMarketTaker(name='market_taker', aum=10_000, requests=(exchange_requests, crypto_requests))
+            trader = SimpleMarketTaker(name='rich_taker', aum=10_000, requests=(exchange_requests, crypto_requests))
 
         registered = await trader.register()
         if registered is None:

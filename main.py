@@ -12,8 +12,9 @@ files = [
     parent_dir+'\\EconSim\\run_clock.py',
 ]
 traders = [
-    parent_dir+'\\EconSim\\run_trader_maker.py',
-    parent_dir+'\\EconSim\\run_trader_taker.py',
+    parent_dir+'\\EconSim\\run_traders.py',
+    # parent_dir+'\\EconSim\\run_trader_maker.py',
+    # parent_dir+'\\EconSim\\run_trader_taker.py',
 ]
 api = [
     parent_dir+'\\EconSim\\source\\api\crypto_exchange_api.js',
@@ -41,7 +42,7 @@ if __name__ == '__main__':
             process = subprocess.Popen(['node', file])
             processes.append(process)
 
-        sleep(5)
+        sleep(3)
 
         for trader in traders:
             process = subprocess.Popen(['python', trader])
