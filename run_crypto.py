@@ -9,16 +9,27 @@ from source.utils._utils import dumps, string_to_time
 from Channels import Channels
 from random import random
 
-names = ['BTC', 'ETH', 'LTC']
-
-async def generate_cryptos(names, requester, time) -> dict:
+async def generate_cryptos(requester, time) -> dict:
     # create the default currency chain
-    cryptos = {"USD": CryptoCurrency("USD", time, decimals=2, requester=requester)}
-    for name in names:
-        crypto = CryptoCurrency(name, time, requester=requester)
-        cryptos[crypto.symbol] = crypto
-        await crypto.issue_coins([{'asset': 'USD' ,'market_qty':1000 ,'seed_price':str(random()) ,'seed_bid':'.99', 'seed_ask':'1.01'}], 1_000_000_000)
-    return cryptos
+    fiat = {
+        "USD": CryptoCurrency("USD", time, decimals=2, requester=requester)
+    }
+    cryptos = {
+        "ETH": CryptoCurrency("ETH", time, decimals=18, requester=requester),
+        "BTC": CryptoCurrency("BTC", time, decimals=8, requester=requester),
+        "LTC": CryptoCurrency("LTC", time, decimals=8, requester=requester),
+    }
+    for crypto in cryptos:
+        if crypto == 'ETH':
+            pairs = [{'asset': 'USD' ,'market_qty':1000 ,'seed_price':str(random()) ,'seed_bid':'.99', 'seed_ask':'1.01'}]
+        else:
+            pairs = [{'asset': 'USD' ,'market_qty':1000 ,'seed_price':str(random()) ,'seed_bid':'.99', 'seed_ask':'1.01'}, 
+                     {'asset': 'ETH' ,'market_qty':1000 ,'seed_price':str(random()) ,'seed_bid':'.99', 'seed_ask':'1.01'}
+                    ]
+        await cryptos[crypto].issue_coins(pairs, 1_000_000_000)
+
+    currencies = {**fiat, **cryptos}
+    return currencies
 
 async def run_crypto() -> None:
     try:
@@ -39,7 +50,7 @@ async def run_crypto() -> None:
                 return string_to_time(clock) 
 
         time = get_time()
-        cryptos = await generate_cryptos(names, CryptoExchangeRequests(requester), time)
+        cryptos = await generate_cryptos(CryptoExchangeRequests(requester), time)
 
         async def callback(msg):
             if 'asset' in msg:
