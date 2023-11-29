@@ -95,6 +95,46 @@ class SimpleMarketTaker(Trader):
             self.last_trade_time = self.current_time
             self.logger.info(f"{self.name} bought {qty} {ticker['base']} at {latest_trade['price']}")
 
+    async def spend_asset(self):
+        ticker = random.choice(self.tickers)
+        if ticker['quote'] not in self.assets:
+            self.logger.info(f"{self.name} no {ticker['quote']} to spend in {self.assets}")
+            return False
+        latest_trade = await self.get_latest_trade(ticker['base'], ticker['quote'])
+        self.logger.info(f"{self.name} latest trade: {latest_trade}")
+        if latest_trade is None or 'price' not in latest_trade or latest_trade['price'] <= 0:
+            return False
+        asset_to_trade = prec(self.asset_to_trade * self.assets[ticker['quote']], ticker['quote_decimals'])
+        if asset_to_trade <= 0:
+            self.logger.info(f'Simple Market Taker {self.name} not enough asset to trade: {asset_to_trade}') 
+            return False
+        qty = prec(str((asset_to_trade) / latest_trade['price']), ticker['base_decimals'])
+        fee = prec(Decimal('0.000000000000000001') * qty, ticker['quote_decimals'])
+        min_qty = prec(qty * Decimal(ticker['min_qty_percent']), ticker['base_decimals'])
+        possible_matches = (qty / min_qty)
+        total_fee = prec(possible_matches * fee, ticker['quote_decimals'])
+        if qty <= 0:
+            self.logger.info(f'Simple Market Taker {self.name} {qty} below 0') 
+            return False
+        total_cost = prec((qty * latest_trade['price'])+ total_fee, ticker['quote_decimals'])
+        if total_cost > self.assets[ticker['quote']]:
+            self.logger.info(f"{self.name} not enough cash {self.assets[ticker['quote']]} to buy {total_cost} of {ticker['base']} {qty}@{latest_trade['price']}")
+            return False            
+        self.logger.info(f"{self.name} buying {qty} {ticker['base']} at {latest_trade['price']}")
+        order = await self.market_buy(ticker['base'], ticker['quote'], qty, fee )
+        if order['market_buy'] == "max_pending_transactions_reached":
+            self.logger.info(order)
+            return False
+        if order['market_buy'] == "insufficient assets":
+            self.logger.info(order)
+            return False
+        if order['market_buy'] == "no fills":
+            self.logger.info(order)
+            return False        
+        else:
+            self.last_trade_time = self.current_time
+            self.logger.info(f"{self.name} bought {qty} {ticker['base']} at {latest_trade['price']}")
+
     async def dump_assets(self):
         asset = random.choice(list(self.assets.keys()))
         if asset == 'USD': return False
@@ -108,7 +148,7 @@ class SimpleMarketTaker(Trader):
         if qty > 0:
             min_qty = prec(qty * Decimal(ticker['min_qty_percent']), ticker['base_decimals'])
             possible_matches = (qty / min_qty)
-            fee = prec('0.00000001', ticker['base_decimals'])
+            fee = prec('0.000000000000000001', ticker['base_decimals'])
             total_fee = prec(possible_matches * fee, ticker['base_decimals'])
             if prec(qty + total_fee, ticker['base_decimals']) > self.assets[asset]:
                 self.logger.info(f"{self.name} not enough {asset} to sell {qty}")
@@ -143,6 +183,7 @@ class SimpleMarketTaker(Trader):
 
         self.logger.info(f"{self.name} has {self.assets} ")
         await self.spend_cash()
+        await self.spend_asset()
         await self.dump_assets()
     
         return True    

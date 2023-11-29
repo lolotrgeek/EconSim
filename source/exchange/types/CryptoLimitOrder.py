@@ -47,10 +47,10 @@ class CryptoLimitOrder():
         }
     
     def to_dict_full(self) -> dict:
-        if self.status == 'error' and self.type == OrderSide.BUY: 
-            return {'limit_buy': self.accounting, 'id': self.id, 'creator': self.creator}
-        elif self.status == 'error' and self.type == OrderSide.SELL:
-            return {'limit_sell': self.accounting, 'id': self.id, 'creator': self.creator}
+        # if self.status == 'error' and self.type == OrderSide.BUY: 
+        #     return {'limit_buy': self.accounting, 'id': self.id, 'creator': self.creator}
+        # elif self.status == 'error' and self.type == OrderSide.SELL:
+        #     return {'limit_sell': self.accounting, 'id': self.id, 'creator': self.creator}
         return {
             'id': self.id,
             'ticker': self.ticker,
