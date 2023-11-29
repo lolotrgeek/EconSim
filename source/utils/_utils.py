@@ -63,6 +63,18 @@ def prec(num, places=18, rounding='up') -> Decimal:
     
     return Decimal(num).quantize(Decimal(10) ** -places, rounding=rounding_mode)
 
+def non_zero_prec(num, places=18) -> Decimal:
+    """
+    Set the precision of a Decimal `num` to a number of `places`.
+     
+    Always round down first.
+    If rounding down will result in zero, round up instead.
+    """
+    result = prec(num, places, rounding='down')
+    if result == 0:
+        result = prec(num, places, rounding='up')
+    return result
+
 def to_sub_unit(self, amount, precision=8) -> int:
     """
     Converts primary units to subunits i.e. `BTC -> sats` , `ETH -> wei`
