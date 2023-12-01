@@ -167,7 +167,7 @@ class LimitBuyTest(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(order['qty'], '2.00000000')
         self.assertEqual(order['creator'], self.mock_requester.responder.agent)
         self.assertEqual(order['network_fee'], '0.20')
-        self.assertEqual(order['exchange_fee'], '0.40')
+        self.assertEqual(order['exchange_fee'], '0.20')
         self.assertEqual(order['status'], 'open')
 
 class LimitSellTest(unittest.IsolatedAsyncioTestCase):
@@ -273,11 +273,10 @@ class MarketBuyTest(unittest.IsolatedAsyncioTestCase):
 
     async def test_market_buy(self):
         response = await self.requests.make_request('market_buy', {'base': "BTC", 'quote': "USD", 'qty': 1, 'buyer': self.mock_requester.responder.agent, 'fee': '0.001'}, self.mock_requester)
-        print(response)
-        self.assertEqual(response['market_buy'] , 'BTCUSD')
-        self.assertEqual(response['buyer'], self.mock_requester.responder.agent)
-        self.assertEqual(response['qty'], Decimal('1.00000000'))
-        self.assertEqual(response['fills'], [{'qty': Decimal('1.00000000'), 'price': Decimal('151.50'), 'fee': Decimal('0.31')}])
+        self.assertEqual(response['ticker'] , 'BTCUSD')
+        self.assertEqual(response['creator'], self.mock_requester.responder.agent)
+        self.assertEqual(response['qty'], '1.00000000')
+        self.assertEqual(response['fills'], [{'qty': '1.00000000', 'price': '151.50', 'fee': '0.30', 'creator': 'init_seed_BTCUSD'}])
 
 class MarketSellTest(unittest.IsolatedAsyncioTestCase):
     async def asyncSetUp(self) -> None:
@@ -288,10 +287,10 @@ class MarketSellTest(unittest.IsolatedAsyncioTestCase):
     async def test_market_sell(self):
         response = await self.requests.make_request('market_sell', {'base': "BTC", 'quote': "USD", 'qty': 1, 'seller': self.mock_requester.responder.agent, 'fee': '0.00000001'}, self.mock_requester)
         print(response)
-        self.assertEqual(response['market_sell'] , 'BTCUSD')
-        self.assertEqual(response['seller'], self.mock_requester.responder.agent)
-        self.assertEqual(response['qty'], Decimal('1.00000000'))
-        self.assertEqual(response['fills'], [{'qty': Decimal('1.00000000'), 'price': Decimal('148.50'), 'fee': Decimal('0.00200000')}])
+        self.assertEqual(response['ticker'] , 'BTCUSD')
+        self.assertEqual(response['creator'], self.mock_requester.responder.agent)
+        self.assertEqual(response['qty'], '1.00000000')
+        self.assertEqual(response['fills'], [{'qty': '1.00000000', 'price': '148.50', 'fee': '0.00200000', 'creator': 'init_seed_BTCUSD'}])
 
 class GetAgentTest(unittest.IsolatedAsyncioTestCase):
     async def asyncSetUp(self):

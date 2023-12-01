@@ -1,6 +1,6 @@
 import pandas as pd
 from typing import List
-from .CryptoLimitOrder import CryptoLimitOrder
+from .CryptoOrder import CryptoOrder
 
 class CryptoOrderBook():
     """An OrderBook contains all the relevant trading data of a given asset. It contains the list of bids and asks, ordered by their place in the queue.
@@ -12,8 +12,8 @@ class CryptoOrderBook():
             ticker (str): the corresponding asset that is going to be traded in the OrderBook.
         """
         self.ticker = ticker
-        self.bids: List[CryptoLimitOrder] = []
-        self.asks: List[CryptoLimitOrder] = []
+        self.bids: List[CryptoOrder] = []
+        self.asks: List[CryptoOrder] = []
 
     def __repr__(self) -> str:
         return f'<OrderBook: {self.ticker}>'

@@ -1,7 +1,7 @@
 from decimal import Decimal
 import os
 parent_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-from source.utils._utils import prec
+from source.utils._utils import prec, non_zero_prec
 
 class Fees():
     def __init__(self):
@@ -14,13 +14,13 @@ class Fees():
     def taker_fee(self, volume, decimal) -> Decimal:
         if self.waive_fees:
             return 0
-        return prec(volume * self.taker_fee_rate, decimal)
+        return non_zero_prec(volume * self.taker_fee_rate, decimal)
 
     
     def maker_fee(self, volume, decimal) -> Decimal:
         if self.waive_fees:
             return 0
-        return prec(volume * self.maker_fee_rate, decimal)
+        return non_zero_prec(volume * self.maker_fee_rate, decimal)
         
     def add_fee(self, asset: str, fee: Decimal) -> dict:
         if asset in self.fees_collected: 
