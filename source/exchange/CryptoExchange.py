@@ -25,7 +25,7 @@ class CryptoExchange(Exchange):
         self.archiver = archiver
         self.requester = requester
         self.default_currency = {'name': 'US Dollar', 'symbol': 'USD', 'id': str(UUID()), 'decimals': 2}
-        self.assets = {self.default_currency['symbol']: {'type': 'crypto', 'id' : self.default_currency['id'], 'decimals': self.default_currency['decimals'], 'min_qty_percent': Decimal('0.05')}}        
+        self.assets = {self.default_currency['symbol']: {'type': 'crypto', 'id' : self.default_currency['id'], 'decimals': self.default_currency['decimals'], 'min_qty': Decimal('0.01'), 'min_qty_percent': Decimal('0.05')}}        
         self.pairs = []
         self.wallets = {}
         self.agents_archive = Archive('crypto_agents')
@@ -167,7 +167,7 @@ class CryptoExchange(Exchange):
                 'frozen_assets': {}
             })
 
-            self.assets[symbol] = {'type': 'crypto', 'id' : str(UUID()), 'decimals': decimals, 'min_qty_percent': Decimal(min_qty_percent)}
+            self.assets[symbol] = {'type': 'crypto', 'id' : str(UUID()), 'decimals': decimals, 'min_qty': minimum, 'min_qty_percent': Decimal(min_qty_percent)}
 
             await self.list_asset(symbol, pair, decimals, minimum, Decimal(min_qty_percent))
 
@@ -471,7 +471,7 @@ class CryptoExchange(Exchange):
         elif speed == 'fast':
             return fees['fast']
         elif speed == 'rush':
-            return prec(fees['fast'] + (fees['fast'] * (price/100)), self.assets[asset]['decimals'])
+            return prec(fees['fast'] + (fees['fast'] * (price/100)), self.assets[asset]['decimals'])    
 
     async def create_new_order(self, base, quote, price, qty, creator, order_type, side, fee, tif=None, position_id=None, min_qty=0) -> CryptoOrder:
         if len(self.pending_transactions) >= self.max_pending_transactions:
@@ -479,6 +479,7 @@ class CryptoExchange(Exchange):
         
         qty = prec(qty, self.assets[base]['decimals'])
         price = prec(price, self.assets[quote]['decimals'])
+        min_qty = prec(min_qty, self.assets[base]['decimals'])
         if qty <= 0:
             return CryptoOrder(base, quote, 0, 0, creator, order_type, side, self.datetime, status='error', accounting='qty_must_be_greater_than_zero') 
         if order_type == OrderType.LIMIT:
@@ -489,18 +490,31 @@ class CryptoExchange(Exchange):
             if side == OrderSide.SELL and len(self.books[base+quote].asks) >= self.max_asks:
                 return CryptoOrder(base, quote, 0, 0, creator, order_type, side, self.datetime, status='error', accounting='max_ask_depth_reached')
 
+        if min_qty > 0:
+            minimum_match_qty = min_qty
+        else:
+            minimum_match_qty = prec(qty * self.assets[base]['min_qty_percent'], self.assets[base]['decimals']) 
+        total_possible_matches = qty / minimum_match_qty 
+
         if side == OrderSide.BUY:
             decimals = self.assets[quote]['decimals']
-            new_order = CryptoOrder(base, quote, price, qty, creator, order_type, OrderSide.BUY, self.datetime, exchange_fee=self.fees.taker_fee(prec(qty*price,decimals), decimals), position_id=position_id, fills=[])
+            new_order = CryptoOrder(base, quote, price, qty, creator, order_type, OrderSide.BUY, self.datetime, position_id=position_id, fills=[])
+            new_order.min_price_per_match = prec(minimum_match_qty * new_order.price, decimals)
+            # this is used when the minimum match qty is set and allows for the order to be partially filled, so we need to adjust the total price willing to pay so it can be frozen
+            new_order.total_price = prec(total_possible_matches * new_order.min_price_per_match, self.assets[new_order.quote]['decimals'])            
+            new_order.exchange_fee = self.fees.taker_fee(new_order.total_price, decimals)
         else:
             decimals = self.assets[base]['decimals']
-            new_order = CryptoOrder(base, quote, price, qty, creator, order_type, OrderSide.SELL, self.datetime, exchange_fee=self.fees.taker_fee(qty, decimals), position_id=position_id, fills=[])
+            new_order = CryptoOrder(base, quote, price, qty, creator, order_type, OrderSide.SELL, self.datetime, position_id=position_id, fills=[])
+            new_order.exchange_fee = self.fees.taker_fee(qty, decimals)
 
-        if prec(min_qty, self.assets[base]['decimals']) <= 0:
-            new_order.minimum_match_qty = prec(qty * self.assets[base]['min_qty_percent'], self.assets[base]['decimals'])
-        else:
-            new_order.minimum_match_qty = prec(min_qty, self.assets[base]['decimals'])
-        new_order.total_possible_matches = qty / new_order.minimum_match_qty
+        if new_order.exchange_fee < 0:
+            new_order.status='error'
+            new_order.accounting ='exchange_fee_cannot_be_negative'
+            return new_order
+
+        new_order.total_possible_matches = total_possible_matches
+        new_order.minimum_match_qty = minimum_match_qty
 
         fee = prec(fee, decimals)
         new_order.network_fee = prec(new_order.total_possible_matches * fee, decimals)
@@ -512,21 +526,17 @@ class CryptoExchange(Exchange):
             new_order.accounting ='fee_must_be_greater_than_zero'
             return new_order
 
-         # this is used when the minimum match qty is set and allows for the order to be partially filled, so we need to adjust the total price willing to pay so it can be frozen
-        new_order.min_price_per_match = prec(new_order.minimum_match_qty * new_order.price, self.assets[new_order.quote]['decimals'])
-        new_order.total_price = prec(new_order.total_possible_matches * new_order.min_price_per_match, self.assets[new_order.quote]['decimals'])
-
-        self.logger.info(f'created new order: {new_order.id} {new_order.type} {new_order.side} {new_order.base}/{new_order.quote} qty:{new_order.qty} price: {new_order.price} {new_order.fills}')
+        self.logger.info(f'created new order: {new_order.id} {new_order.type} {new_order.side} {new_order.base}/{new_order.quote} {new_order.qty}@{new_order.price} total: {new_order.total_price} {new_order.fills}')
         return new_order
 
     async def convert_to_maker(self, order: CryptoOrder, asset:str, decimals:int, buffer=0) -> CryptoOrder:
         self.logger.info(f'converting to maker: {order.id} amount {order.unfilled_qty} unfreezing exchange fee {order.exchange_fee}')
         await self.unfreeze_assets(order.creator, asset, order.id, exchange_fee=order.exchange_fee)
         order.qty = order.unfilled_qty
-        min_amount_per_order = prec(order.minimum_match_qty * order.price, decimals)
-        total_possible_matches = order.qty / order.minimum_match_qty
-        order.exchange_fee_per_txn = self.fees.maker_fee(min_amount_per_order, decimals)
-        order.exchange_fee = prec( order.exchange_fee_per_txn * total_possible_matches, decimals)
+        if order.side == OrderSide.BUY:
+            order.exchange_fee = self.fees.maker_fee(order.qty * order.price, decimals)
+        if order.side == OrderSide.SELL:
+            order.exchange_fee = self.fees.maker_fee(order.qty, decimals)
         self.logger.info(f'maker order {order.id} freezing new fee {order.exchange_fee}')                
         await self.freeze_assets(order.creator, asset, order.id, qty=buffer, exchange_fee=order.exchange_fee)
         return order        
@@ -556,20 +566,20 @@ class CryptoExchange(Exchange):
         self.logger.info(f'{order.type} {order.side} filled {order.id} {order.qty}@{order.price} {order.fills}')        
         return order
 
-    async def update_ask(self, ticker, ask, index, trade_qty, buyer ) -> None:
-            self.books[ticker].asks[index].fills.append({'qty': trade_qty, 'price': ask.price, 'fee': ask.exchange_fee_per_txn, 'creator': buyer})
-            self.books[ticker].asks[index].qty -= trade_qty
+    async def update_ask(self, ticker: str, ask: CryptoOrder, index: int, matched_order: CryptoMatchedOrder, buyer:str ) -> None:
+            self.books[ticker].asks[index].fills.append({'qty': matched_order.trade_qty, 'price': ask.price, 'fee': matched_order.maker_fee, 'creator': buyer})
+            self.books[ticker].asks[index].qty -= matched_order.trade_qty
             self.books[ticker].asks[index].remaining_network_fee -= ask.network_fee_per_txn
-            self.books[ticker].asks[index].exchange_fees_due += ask.exchange_fee_per_txn
-            self.books[ticker].asks[index].exchange_fee -= ask.exchange_fee_per_txn
+            self.books[ticker].asks[index].exchange_fees_due += matched_order.maker_fee
+            self.books[ticker].asks[index].exchange_fee -= matched_order.maker_fee
 
-    async def update_bid(self, ticker, bid, index, trade_qty, seller, trade_price ) -> None:
-            self.books[ticker].bids[index].fills.append({'qty': trade_qty, 'price': bid.price, 'fee': bid.exchange_fee_per_txn, 'creator': seller})
-            self.books[ticker].bids[index].qty -= trade_qty
-            self.books[ticker].bids[index].exchange_fee -= bid.exchange_fee_per_txn
-            self.books[ticker].bids[index].exchange_fees_due += bid.exchange_fee_per_txn
+    async def update_bid(self, ticker:str, bid: CryptoOrder, index: int, matched_order: CryptoMatchedOrder, seller: str ) -> None:
+            self.books[ticker].bids[index].fills.append({'qty': matched_order.trade_qty, 'price': bid.price, 'fee': matched_order.maker_fee, 'creator': seller})
+            self.books[ticker].bids[index].qty -= matched_order.trade_qty
+            self.books[ticker].bids[index].exchange_fee -= matched_order.maker_fee
+            self.books[ticker].bids[index].exchange_fees_due += matched_order.maker_fee
             self.books[ticker].bids[index].remaining_network_fee -= bid.network_fee_per_txn
-            self.books[ticker].bids[index].total_filled_price += trade_price
+            self.books[ticker].bids[index].total_filled_price += matched_order.total_price
 
     async def update_asks(self, ticker:str) -> None:
         self.books[ticker].asks = [ask for ask in self.books[ticker].asks if ask.qty > 0 and ask.qty > ask.minimum_match_qty]
@@ -600,16 +610,22 @@ class CryptoExchange(Exchange):
             return False
  
     async def valid_match(self, matched_order: CryptoMatchedOrder) -> bool:
-        if matched_order.trade_qty < matched_order.order.minimum_match_qty:
-            self.logger.debug(f'Invalid match {matched_order.order.id} with {matched_order.book_order.id} because trade qty {matched_order.trade_qty} < order min qty {matched_order.order.minimum_match_qty}  ')
-            return False
-        if matched_order.trade_qty > matched_order.book_order.qty:
+        if matched_order.book_order.qty < matched_order.trade_qty:
             self.logger.debug(f'Invalid match {matched_order.order.id} with {matched_order.book_order.id} because book qty {matched_order.book_order.qty} < trade qty {matched_order.order.qty}')
-            return False        
-        if matched_order.order.qty < matched_order.book_order.minimum_match_qty:
-            self.logger.debug(f'Invalid match {matched_order.order.id} with {matched_order.book_order.id} because order qty {matched_order.order.qty} < book min qty {matched_order.book_order.minimum_match_qty}')
-            return False        
-
+            return False
+        if matched_order.order.qty < matched_order.trade_qty:
+            self.logger.debug(f'Invalid match {matched_order.order.id} with {matched_order.book_order.id} because order qty {matched_order.book_order.qty} < trade qty {matched_order.order.qty}')
+            return False           
+        if matched_order.trade_qty < self.assets[matched_order.order.base]['min_qty']:
+            self.logger.debug(f'Invalid match {matched_order.order.id} with {matched_order.book_order.id} because trade qty {matched_order.order.base} {matched_order.trade_qty} < min qty {self.assets[matched_order.order.base]["min_qty"]}')
+            return False
+        if matched_order.total_price < self.assets[matched_order.order.quote]['min_qty']:
+            self.logger.debug(f'Invalid match {matched_order.order.id} with {matched_order.book_order.id} because total price {matched_order.order.quote} {matched_order.total_price} <  min price {self.assets[matched_order.order.quote]["min_qty"]}')
+            return False
+        if matched_order.trade_qty < matched_order.book_order.minimum_match_qty:
+            self.logger.debug(f'Invalid match {matched_order.order.id} with {matched_order.book_order.id} because trade qty {matched_order.trade_qty} < min match qty {matched_order.book_order.minimum_match_qty}')
+            return False
+                   
     async def limit_buy(self, base: str, quote:str, price: float, qty: int, creator: str, fee='0.0', tif='GTC', position_id=UUID(), min_qty=0) -> CryptoOrder:
         """
         Creates a limit buy order for a given asset
@@ -656,7 +672,7 @@ class CryptoExchange(Exchange):
                 if('error' in processed):
                     break #NOTE: instead of canceling, unfreezing assets, and attempting to handle a partial fill, push the rest of this order into the book
                 new_order = await self.update_order(matched_order.trade_qty, matched_order.total_price, matched_order.taker_fee, new_order, best_ask)
-                await self.update_ask(ticker, best_ask, 0, matched_order.trade_qty, creator)
+                await self.update_ask(ticker, best_ask, 0, matched_order, creator)
                 await self.update_asks(ticker)
                 # amount_expected_to_pay = non_zero_prec(new_order.price*matched_order.trade_qty, self.assets[quote]['decimals'])
                 # await self.apply_deductions(new_order, amount_expected_to_pay, matched_order.total_price)
@@ -699,7 +715,7 @@ class CryptoExchange(Exchange):
                 if('error' in processed):
                     break #NOTE: instead of canceling, unfreezing assets, and attempting to handle a partial fill, push the rest of this order into the book
                 new_order = await self.update_order(matched_order.trade_qty,matched_order.total_price, matched_order.taker_fee, new_order, best_bid)    
-                await self.update_bid(ticker, best_bid, 0, matched_order.trade_qty, creator, matched_order.total_price)
+                await self.update_bid(ticker, best_bid, 0, matched_order, creator)
                 await self.update_bids(ticker)
             else:
                 break
@@ -750,7 +766,7 @@ class CryptoExchange(Exchange):
                 await self.unfreeze_assets(buyer, quote, new_order.id, matched_order.total_price, matched_order.taker_fee)
                 continue
             new_order = await self.update_order(matched_order.trade_qty,matched_order.total_price, matched_order.taker_fee, new_order, ask)
-            await self.update_ask(new_order.ticker, ask, idx, matched_order.trade_qty, ask.creator)
+            await self.update_ask(new_order.ticker, ask, idx, matched_order, buyer)
             if new_order.unfilled_qty == 0:
                 break
         await self.update_asks(new_order.ticker)
@@ -793,14 +809,14 @@ class CryptoExchange(Exchange):
                 await self.unfreeze_assets(seller, base, new_order.id, exchange_fee=matched_order.taker_fee)
                 continue
             new_order = await self.update_order(matched_order.trade_qty,matched_order.total_price, matched_order.taker_fee, new_order, bid)
-            await self.update_bid(new_order.ticker, bid, idx, matched_order.trade_qty, seller, matched_order.total_price)
+            await self.update_bid(new_order.ticker, bid, idx, matched_order, seller)
             if new_order.unfilled_qty == 0:
                 break
         await self.update_bids(new_order.ticker)
         if new_order.fills == []:
             new_order.status='error'
             new_order.accounting='no_fills'
-            await self.unfreeze_assets(seller, base, new_order.id, qty=qty, network_fee=new_order.network_fee)
+            await self.unfreeze_assets(seller, base, new_order.id, qty=new_order.qty, network_fee=new_order.network_fee)
             return new_order
         filled_order = await self.filled_order(new_order)
         return filled_order
@@ -1004,7 +1020,6 @@ class CryptoExchange(Exchange):
                             # chain basis and update if needed
                             # e.g. USD (exit, set basis) -> BTC (enter, consume basis) -> BTC (exit, retain basis) -> ETH (enter, pass basis and adjust to ETH)
                             cost_basis_per_unit = prec((enter['basis']['basis_per_unit'] * abs(side['quote_flow'])) / abs(side['qty']), self.assets[side['quote']]['decimals'])
-                            self.logger.info(f"cost_basis_per_unit: {cost_basis_per_unit:.16f}")
                             exit['basis']['basis_per_unit'] = cost_basis_per_unit
 
                     if enter['qty'] >= exit_transaction['qty']:

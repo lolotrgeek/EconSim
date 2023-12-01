@@ -29,6 +29,8 @@ class CreateAssetTestCase(unittest.IsolatedAsyncioTestCase):
         asset = await self.exchange.create_asset("BTC", pairs=[{'asset': 'USD','market_qty':50000 ,'seed_price':100 ,'seed_bid':'.99', 'seed_ask':'1.01'}])
         self.assertEqual("BTC" in self.exchange.assets, True )
         self.assertEqual(self.exchange.assets['BTC']['type'], "crypto")
+        self.assertEqual(self.exchange.assets['BTC']['min_qty'], Decimal('0.00000001'))
+
         book = self.exchange.books["BTCUSD"]
         self.assertEqual(book.bids[0].price, Decimal('99.0'))
         self.assertEqual(book.asks[0].price, 101)
@@ -217,7 +219,7 @@ class LimitBuyTestCase(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(new_order.qty, 3)
         self.assertEqual(new_order.creator, self.buyer)
         self.assertEqual(agent['frozen_assets']['USD'][0]['order_id'],new_order.id )
-        self.assertEqual(agent['frozen_assets']['USD'][0]['frozen_qty'],new_order.qty * new_order.price)
+        self.assertEqual(agent['frozen_assets']['USD'][0]['frozen_qty'],new_order.total_price)
         self.assertEqual(agent['frozen_assets']['USD'][0]['frozen_exchange_fee'], new_order.exchange_fee)
         self.assertEqual(agent['frozen_assets']['USD'][0]['frozen_network_fee'], new_order.network_fee)
         
@@ -897,8 +899,7 @@ class MarketMatchingTestCase(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(agent['frozen_assets']['USD'][0]['frozen_network_fee'], Decimal('0.00'))
 
     async def test_buy_multi_fill(self):
-        hoard = await self.exchange.market_buy("BTC", "USD", qty=999, buyer=self.hoarder, fee='9.99')
-        print("hoard order", hoard)
+        hoard = await self.exchange.market_buy("BTC", "USD", qty=999, buyer=self.hoarder, fee='0.01')
         self.mock_requester.responder.cryptos['BTC'].blockchain.mempool.transactions[0].confirmed = True
         self.mock_requester.responder.cryptos['USD'].blockchain.mempool.transactions[0].confirmed = True
         await self.exchange.next()
@@ -2032,9 +2033,9 @@ class getAgentsSimpleTest(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(result[0]['frozen_assets']['BTC'][0]['frozen_exchange_fee'], Decimal('0.0'))
         self.assertEqual(result[0]['frozen_assets']['BTC'][0]['frozen_network_fee'], Decimal('1000.00000000'))
         self.assertEqual(result[0]['frozen_assets']['USD'][0]['order_id'], 'init_seed_BTCUSD')
-        self.assertEqual(result[0]['frozen_assets']['USD'][0]['frozen_qty'], Decimal('149'))
+        self.assertEqual(result[0]['frozen_assets']['USD'][0]['frozen_qty'], Decimal('149.00'))
         self.assertEqual(result[0]['frozen_assets']['USD'][0]['frozen_exchange_fee'], Decimal('0.0'))
-        self.assertEqual(result[0]['frozen_assets']['USD'][0]['frozen_network_fee'], Decimal('1.00'))
+        self.assertEqual(result[0]['frozen_assets']['USD'][0]['frozen_network_fee'], Decimal('1'))
 
         self.assertEqual(result[1], {'agent': self.agent1, 'assets': { 'BTC': Decimal('10000'), 'USD': Decimal('10000')}, 'frozen_assets': {}})
         self.assertEqual(result[2], {'agent': self.agent2, 'assets': { 'BTC': Decimal('10000'), 'USD': Decimal('10000')}, 'frozen_assets': {}})
