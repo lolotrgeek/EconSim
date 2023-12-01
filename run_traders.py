@@ -9,7 +9,7 @@ print(file)
 
 if __name__ == '__main__':
     try:
-        num_traders = 6
+        num_traders = 12
         traders = []
 
         for i in range(num_traders):

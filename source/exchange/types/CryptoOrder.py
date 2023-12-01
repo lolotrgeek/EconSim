@@ -3,6 +3,7 @@ import os
 parent_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 from datetime import datetime
 from decimal import Decimal
+from enum import Enum
 from .OrderSide import OrderSide
 from .OrderType import OrderType
 from source.utils._utils import get_random_string
@@ -16,7 +17,7 @@ class CryptoOrder():
         self.quote: str = quote   
         self.ticker: str = base+quote
         self.side: OrderSide = side
-        self.type:OrderType = order_type        
+        self.type: OrderType = order_type        
         self.price: Decimal = price
         self.qty: Decimal = qty
         self.minimum_match_qty: Decimal = 0
@@ -42,8 +43,8 @@ class CryptoOrder():
             'ticker': self.ticker,
             'price': self.price,
             'qty': self.qty,
-            'type': self.type,
-            'side': self.side,
+            'type': self.type.value if isinstance(self.type, Enum) else self.type,
+            'side': self.side.value if isinstance(self.side, Enum) else self.side,
             'dt': self.dt,
         }
     
@@ -56,8 +57,8 @@ class CryptoOrder():
             'price': self.price,
             'qty': self.qty,
             'creator': self.creator,
-            'type': self.type.value,
-            'side': self.side.value,
+            'type': self.type.value if isinstance(self.type, Enum) else self.type,
+            'side': self.side.value if isinstance(self.side, Enum) else self.side,
             'dt': self.dt,
             'exchange_fee': self.exchange_fee,
             'network_fee': self.network_fee,

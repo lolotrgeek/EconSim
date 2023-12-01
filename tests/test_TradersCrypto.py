@@ -81,12 +81,11 @@ class TestSimpleMarketTaker(unittest.IsolatedAsyncioTestCase):
         txn = self.mock_requester.responder.exchange.pending_transactions[0]
         base_txn = self.mock_requester.responder.mock_requester.responder.cryptos['BTC'].blockchain.mempool.transactions[0].to_dict()
         quote_txn = self.mock_requester.responder.mock_requester.responder.cryptos['USD'].blockchain.mempool.transactions[0].to_dict()
-        # await self.mock_requester.responder.exchange._complete_trade(txn, base_txn, quote_txn)
         await self.mock_requester.responder.exchange.next()
 
         assets_before = self.simple_taker.assets['BTC']
 
-        await self.mock_requester.responder.exchange.limit_buy("BTC", "USD", price=151, qty=500, fee='0.0001', creator=self.mock_requester.responder.agent)
+        buy = await self.mock_requester.responder.exchange.limit_buy("BTC", "USD", price=151, qty=500, fee='0.0001', creator=self.mock_requester.responder.agent)
              
         
         print(self.mock_requester.responder.exchange.books['BTCUSD'].bids)
@@ -94,9 +93,9 @@ class TestSimpleMarketTaker(unittest.IsolatedAsyncioTestCase):
 
         self.mock_requester.responder.mock_requester.responder.cryptos['BTC'].blockchain.mempool.transactions[1].confirmed = True
         self.mock_requester.responder.mock_requester.responder.cryptos['USD'].blockchain.mempool.transactions[1].confirmed = True
-        txn = self.mock_requester.responder.exchange.pending_transactions[0]
-        base_txn = self.mock_requester.responder.mock_requester.responder.cryptos['BTC'].blockchain.mempool.transactions[1].to_dict()
-        quote_txn = self.mock_requester.responder.mock_requester.responder.cryptos['USD'].blockchain.mempool.transactions[1].to_dict()
+        # txn = self.mock_requester.responder.exchange.pending_transactions[0]
+        # base_txn = self.mock_requester.responder.mock_requester.responder.cryptos['BTC'].blockchain.mempool.transactions[1].to_dict()
+        # quote_txn = self.mock_requester.responder.mock_requester.responder.cryptos['USD'].blockchain.mempool.transactions[1].to_dict()
         # await self.mock_requester.responder.exchange._complete_trade(txn, base_txn, quote_txn)
         await self.mock_requester.responder.exchange.next()
         print(self.mock_requester.responder.exchange.books['BTCUSD'].bids)
