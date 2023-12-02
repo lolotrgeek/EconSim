@@ -20,14 +20,12 @@ class CryptoMatchedOrder():
 
         if order.side == OrderSide.BUY:
             self.taker_fee = self.fees.taker_fee(self.total_price, quote_decimals)
-            self.maker_fee = self.fees.maker_fee(self.trade_qty, base_decimals)
-            self.exchange_fee = {'quote': self.taker_fee, 'base': self.maker_fee}
+            self.exchange_fee = {'quote': self.taker_fee, 'base': book_order.exchange_fee_per_txn}
             self.network_fee = {'quote': order.network_fee_per_txn, 'base': book_order.network_fee_per_txn}
 
         if order.side == OrderSide.SELL:
             self.taker_fee = self.fees.taker_fee(self.trade_qty, base_decimals)
-            self.maker_fee = self.fees.maker_fee(self.total_price, quote_decimals)
-            self.exchange_fee = {'quote': self.maker_fee, 'base': self.taker_fee}
+            self.exchange_fee = {'quote': book_order.exchange_fee_per_txn, 'base': self.taker_fee}
             self.network_fee = {'quote': book_order.network_fee_per_txn, 'base': order.network_fee_per_txn}
 
         logger.debug(f'{order.type.value} {order.side.value} {order.id}/{book_order.id} exchange fees: {self.exchange_fee}')

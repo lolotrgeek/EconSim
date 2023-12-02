@@ -533,10 +533,15 @@ class CryptoExchange(Exchange):
         self.logger.info(f'converting to maker: {order.id} amount {order.unfilled_qty} unfreezing exchange fee {order.exchange_fee}')
         await self.unfreeze_assets(order.creator, asset, order.id, exchange_fee=order.exchange_fee)
         order.qty = order.unfilled_qty
+        order.unfilled_qty = 0
+        order.minimum_match_qty = prec(order.qty * self.assets[order.base]['min_qty_percent'], self.assets[order.base]['decimals']) 
+        order.total_possible_matches = order.qty / order.minimum_match_qty
         if order.side == OrderSide.BUY:
-            order.exchange_fee = self.fees.maker_fee(order.qty * order.price, decimals)
+            maker_fee = self.fees.maker_fee(order.qty * order.price, decimals)
         if order.side == OrderSide.SELL:
-            order.exchange_fee = self.fees.maker_fee(order.qty, decimals)
+            maker_fee = self.fees.maker_fee(order.qty, decimals)
+        order.exchange_fee_per_txn = prec(maker_fee / order.total_possible_matches, decimals)
+        order.exchange_fee = prec(order.exchange_fee_per_txn * order.total_possible_matches, decimals)            
         self.logger.info(f'maker order {order.id} freezing new fee {order.exchange_fee}')                
         await self.freeze_assets(order.creator, asset, order.id, qty=buffer, exchange_fee=order.exchange_fee)
         return order        
@@ -1006,7 +1011,7 @@ class CryptoExchange(Exchange):
                         'enter_id': enter['id'],
                     }
                     if asset == self.default_currency['symbol']:
-                        # if this is exiting a quote currency, we calculate it's basis...
+                        # if this is exiting to the default quote currency, we calculate it's basis...
                         exit['basis'] = {
                             'basis_initial_unit': side['quote'],
                             'basis_per_unit': abs(exit_transaction['price']),
@@ -1019,6 +1024,7 @@ class CryptoExchange(Exchange):
                         if exit['basis']['basis_initial_unit'] != side['quote']:
                             # chain basis and update if needed
                             # e.g. USD (exit, set basis) -> BTC (enter, consume basis) -> BTC (exit, retain basis) -> ETH (enter, pass basis and adjust to ETH)
+                            #REFACTOR: we may only need to caclulate this at time of exit... not every time we make an exit
                             cost_basis_per_unit = prec((enter['basis']['basis_per_unit'] * abs(side['quote_flow'])) / abs(side['qty']), self.assets[side['quote']]['decimals'])
                             exit['basis']['basis_per_unit'] = cost_basis_per_unit
 
