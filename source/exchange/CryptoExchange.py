@@ -515,6 +515,7 @@ class CryptoExchange(Exchange):
 
         new_order.total_possible_matches = total_possible_matches
         new_order.minimum_match_qty = minimum_match_qty
+        new_order.min_qty = min_qty
 
         fee = prec(fee, decimals)
         new_order.network_fee = prec(new_order.total_possible_matches * fee, decimals)
@@ -534,7 +535,10 @@ class CryptoExchange(Exchange):
         await self.unfreeze_assets(order.creator, asset, order.id, exchange_fee=order.exchange_fee)
         order.qty = order.unfilled_qty
         order.unfilled_qty = 0
-        order.minimum_match_qty = prec(order.qty * self.assets[order.base]['min_qty_percent'], self.assets[order.base]['decimals']) 
+        if order.min_qty > 0:
+            order.minimum_match_qty = order.min_qty
+        else:
+            order.minimum_match_qty = prec(order.qty * self.assets[order.base]['min_qty_percent'], self.assets[order.base]['decimals'])  
         order.total_possible_matches = order.qty / order.minimum_match_qty
         if order.side == OrderSide.BUY:
             maker_fee = self.fees.maker_fee(order.qty * order.price, decimals)
@@ -572,17 +576,17 @@ class CryptoExchange(Exchange):
         return order
 
     async def update_ask(self, ticker: str, ask: CryptoOrder, index: int, matched_order: CryptoMatchedOrder, buyer:str ) -> None:
-        self.books[ticker].asks[index].fills.append({'qty': matched_order.trade_qty, 'price': ask.price, 'fee': matched_order.maker_fee, 'creator': buyer})
+        self.books[ticker].asks[index].fills.append({'qty': matched_order.trade_qty, 'price': ask.price, 'fee': ask.exchange_fee_per_txn, 'creator': buyer})
         self.books[ticker].asks[index].qty -= matched_order.trade_qty
         self.books[ticker].asks[index].remaining_network_fee -= ask.network_fee_per_txn
-        self.books[ticker].asks[index].exchange_fees_due += matched_order.maker_fee
-        self.books[ticker].asks[index].exchange_fee -= matched_order.maker_fee
+        self.books[ticker].asks[index].exchange_fees_due += ask.exchange_fee_per_txn
+        self.books[ticker].asks[index].exchange_fee -= ask.exchange_fee_per_txn
 
     async def update_bid(self, ticker:str, bid: CryptoOrder, index: int, matched_order: CryptoMatchedOrder, seller: str ) -> None:
-        self.books[ticker].bids[index].fills.append({'qty': matched_order.trade_qty, 'price': bid.price, 'fee': matched_order.maker_fee, 'creator': seller})
+        self.books[ticker].bids[index].fills.append({'qty': matched_order.trade_qty, 'price': bid.price, 'fee': bid.exchange_fee_per_txn, 'creator': seller})
         self.books[ticker].bids[index].qty -= matched_order.trade_qty
-        self.books[ticker].bids[index].exchange_fee -= matched_order.maker_fee
-        self.books[ticker].bids[index].exchange_fees_due += matched_order.maker_fee
+        self.books[ticker].bids[index].exchange_fee -= bid.exchange_fee_per_txn
+        self.books[ticker].bids[index].exchange_fees_due += bid.exchange_fee_per_txn
         self.books[ticker].bids[index].remaining_network_fee -= bid.network_fee_per_txn
         self.books[ticker].bids[index].total_filled_price += matched_order.total_price
 
@@ -1043,6 +1047,7 @@ class CryptoExchange(Exchange):
                     elif enter['qty'] > 0:
                         # partial exit
                         exit_transaction['qty'] -= prec(enter['qty'], self.assets[asset]['decimals'])
+                        exit_transaction['quote_flow'] -= prec(enter['qty'] * exit_transaction['price'], self.assets[side['quote']]['decimals'])
                         exit['qty'] = prec(enter['qty'], self.assets[asset]['decimals'])
                         enter['qty'] = 0
                         position['qty'] -= prec(enter['qty'], self.assets[asset]['decimals'])
