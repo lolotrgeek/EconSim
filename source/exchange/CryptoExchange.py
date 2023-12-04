@@ -572,19 +572,19 @@ class CryptoExchange(Exchange):
         return order
 
     async def update_ask(self, ticker: str, ask: CryptoOrder, index: int, matched_order: CryptoMatchedOrder, buyer:str ) -> None:
-            self.books[ticker].asks[index].fills.append({'qty': matched_order.trade_qty, 'price': ask.price, 'fee': matched_order.maker_fee, 'creator': buyer})
-            self.books[ticker].asks[index].qty -= matched_order.trade_qty
-            self.books[ticker].asks[index].remaining_network_fee -= ask.network_fee_per_txn
-            self.books[ticker].asks[index].exchange_fees_due += matched_order.maker_fee
-            self.books[ticker].asks[index].exchange_fee -= matched_order.maker_fee
+        self.books[ticker].asks[index].fills.append({'qty': matched_order.trade_qty, 'price': ask.price, 'fee': matched_order.maker_fee, 'creator': buyer})
+        self.books[ticker].asks[index].qty -= matched_order.trade_qty
+        self.books[ticker].asks[index].remaining_network_fee -= ask.network_fee_per_txn
+        self.books[ticker].asks[index].exchange_fees_due += matched_order.maker_fee
+        self.books[ticker].asks[index].exchange_fee -= matched_order.maker_fee
 
     async def update_bid(self, ticker:str, bid: CryptoOrder, index: int, matched_order: CryptoMatchedOrder, seller: str ) -> None:
-            self.books[ticker].bids[index].fills.append({'qty': matched_order.trade_qty, 'price': bid.price, 'fee': matched_order.maker_fee, 'creator': seller})
-            self.books[ticker].bids[index].qty -= matched_order.trade_qty
-            self.books[ticker].bids[index].exchange_fee -= matched_order.maker_fee
-            self.books[ticker].bids[index].exchange_fees_due += matched_order.maker_fee
-            self.books[ticker].bids[index].remaining_network_fee -= bid.network_fee_per_txn
-            self.books[ticker].bids[index].total_filled_price += matched_order.total_price
+        self.books[ticker].bids[index].fills.append({'qty': matched_order.trade_qty, 'price': bid.price, 'fee': matched_order.maker_fee, 'creator': seller})
+        self.books[ticker].bids[index].qty -= matched_order.trade_qty
+        self.books[ticker].bids[index].exchange_fee -= matched_order.maker_fee
+        self.books[ticker].bids[index].exchange_fees_due += matched_order.maker_fee
+        self.books[ticker].bids[index].remaining_network_fee -= bid.network_fee_per_txn
+        self.books[ticker].bids[index].total_filled_price += matched_order.total_price
 
     async def update_asks(self, ticker:str) -> None:
         self.books[ticker].asks = [ask for ask in self.books[ticker].asks if ask.qty > 0 and ask.qty > ask.minimum_match_qty]
@@ -910,7 +910,7 @@ class CryptoExchange(Exchange):
             }
             basis ={
                 'basis_initial_unit': self.default_currency['symbol'],
-                'basis_per_unit': 0,
+                'basis_total': 0,
                 'basis_txn_id': 'seed',
                 'basis_date': self.datetime
             }
@@ -1011,22 +1011,25 @@ class CryptoExchange(Exchange):
                         'enter_id': enter['id'],
                     }
                     if asset == self.default_currency['symbol']:
-                        # if this is exiting to the default quote currency, we calculate it's basis...
+                        # if this is exiting the default quote currency (i.e. USD is default quote, so buying BTC with USD is exiting USD for BTC) then we calculate the basis...
                         exit['basis'] = {
                             'basis_initial_unit': side['quote'],
-                            'basis_per_unit': abs(exit_transaction['price']),
+                            'basis_total': prec(abs(side['quote_flow']), self.assets[side['quote']]['decimals']),
                             'basis_txn_id': exit_transaction['id'], #NOTE this txn is stored here -> self.agents[agent_idx]['_transactions']
                             'basis_date': exit['dt']
                         }
+                        self.logger.debug(f"Exit default quote: {side['quote']}, initial basis {exit['basis']['basis_total']}")
+                    elif side['quote'] == self.default_currency['symbol']:
+                        # ...if the quote is the default currency (i.e. USD is default quote, so selling BTC for USD is exiting BTC for USD), this is potentially a taxable event
+                        basis_per_unit = prec(str(enter['basis']['basis_total'] / abs(exit_transaction['qty'])), self.assets[side['quote']]['decimals'])
+                        basis_amount = prec(basis_per_unit * abs(exit_transaction['qty']), self.assets[side['quote']]['decimals'])
+                        self.logger.debug(f"Exit potentially taxable: {side['quote']}, initial basis {enter['basis']['basis_total']}, exit basis per unit {basis_per_unit} total {basis_amount}")
+                        await self.taxable_event(agent, side['quote_flow'], side['dt'], basis_amount, enter['basis']['basis_date'])
+                        exit['basis'] = enter['basis']
+                        exit['basis']['basis_total'] = prec(enter['basis']['basis_total'] - basis_amount, self.assets[side['quote']]['decimals'])
                     else:
                         # ...otherwise, pass the enter basis along
                         exit['basis'] = enter['basis']
-                        if exit['basis']['basis_initial_unit'] != side['quote']:
-                            # chain basis and update if needed
-                            # e.g. USD (exit, set basis) -> BTC (enter, consume basis) -> BTC (exit, retain basis) -> ETH (enter, pass basis and adjust to ETH)
-                            #REFACTOR: we may only need to caclulate this at time of exit... not every time we make an exit
-                            cost_basis_per_unit = prec((enter['basis']['basis_per_unit'] * abs(side['quote_flow'])) / abs(side['qty']), self.assets[side['quote']]['decimals'])
-                            exit['basis']['basis_per_unit'] = cost_basis_per_unit
 
                     if enter['qty'] >= exit_transaction['qty']:
                         exit['qty'] = prec(exit_transaction['qty'], self.assets[asset]['decimals'])
@@ -1143,12 +1146,6 @@ class CryptoExchange(Exchange):
                 if 'error' in exit:
                     return {'update_agents': 'unable to exit position'}
                 enter = await self.enter_position(side, side['quote'], side['quote_flow'], agent_idx, None, basis=exit['exit_position']['basis'])
-                if side['quote'] == self.default_currency['symbol']:
-                    #NOTE: basis represents the initial default quote currency amount (quote_flow) traded for the first enter in the chain
-                    # consider the following trade chain:
-                    # USD (exit, basis) -> BTC (enter, consume basis) -> BTC (exit, retain basis) -> ETH (enter, passed basis)
-                    basis_amount = abs(side['qty']) * exit['exit_position']['basis']['basis_per_unit']
-                    await self.taxable_event(self.agents[agent_idx], side['quote_flow'], side['dt'], basis_amount, exit['exit_position']['basis']['basis_date'])
             else:
                 self.logger.error('side type not recognized', side['type'])
                 return {'update_agents': 'side type not recognized'}
