@@ -14,7 +14,7 @@ async def standard_asyncSetUp(self):
     self.mock_requester = MockRequester()
     self.requests = Requests(self.mock_requester)
     self.exchange = Exchange(datetime=datetime(2023, 1, 1), requester=self.requests)
-    self.exchange.logger = Null_Logger(debug_print=True)
+    # self.exchange.logger = Null_Logger(debug_print=True)
     await self.exchange.create_asset("BTC", pairs=[{'asset': 'USD','market_qty':1000 ,'seed_price':150 ,'seed_bid':'.99', 'seed_ask':'1.01'}])
     await self.exchange.next()
     return self.exchange      
@@ -979,7 +979,7 @@ class FractionalOrdersTestCase(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(agent['frozen_assets']['ETH'][0]['frozen_network_fee'], Decimal('0.0000'))
 
     async def test_fractional_price(self):
-        generous = await self.exchange.market_buy("ETH", "BTC", qty=999, buyer=self.generous, fee='.01')
+        generous = await self.exchange.market_buy("ETH", "BTC", qty=1000, buyer=self.generous, fee='.01')
         self.mock_requester.responder.cryptos['BTC'].blockchain.mempool.transactions[0].confirmed = True
         self.mock_requester.responder.cryptos['ETH'].blockchain.mempool.transactions[0].confirmed = True
         await self.exchange.next()        
@@ -999,7 +999,6 @@ class FractionalOrdersTestCase(unittest.IsolatedAsyncioTestCase):
         await self.exchange.next()
         books = self.exchange.books["ETHBTC"]
         agent = await self.exchange.get_agent(self.buyer1)
-        print('buy single', buy_single.to_dict_full())
         self.assertEqual(books.asks[0].price, Decimal('0.00005'))
         ETH_traded = prec(self.exchange.trade_log[5].qty + self.exchange.trade_log[6].qty, 18)
         trade_1 = prec(self.exchange.trade_log[5].qty*self.exchange.trade_log[5].price + self.exchange.trade_log[5].exchange_fee['quote'] + self.exchange.trade_log[5].network_fee['quote'], 8)
@@ -1428,12 +1427,12 @@ class EnterPositionTestCase(unittest.IsolatedAsyncioTestCase):
     async def test_enter_position_with_basis(self):
         transaction1 = {'agent': self.agent, 'quote_flow': -30, 'price': 15, 'base': 'BTC', 'quote': "ETH", 'initial_qty': 2, 'qty': 2, 'dt': self.exchange.datetime, 'type': 'buy'}
         agent_idx = await self.exchange.get_agent_index(self.agent)
-        await self.exchange.enter_position(transaction1, transaction1['base'], transaction1['qty'], agent_idx, None, basis={'basis_initial_unit': 'ETH', 'basis_per_unit': 0.1, 'basis_date': self.exchange.datetime})
+        await self.exchange.enter_position(transaction1, transaction1['base'], transaction1['qty'], agent_idx, None, basis={'basis_initial_unit': 'ETH', 'basis_total': 0.1, 'basis_date': self.exchange.datetime})
         self.assertEqual(len(self.exchange.agents[agent_idx]['positions']), 2)
         self.assertEqual(self.exchange.agents[agent_idx]['positions'][1]['asset'], "BTC")
         self.assertEqual(self.exchange.agents[agent_idx]['positions'][1]['qty'], 2)
         self.assertEqual(self.exchange.agents[agent_idx]['positions'][1]['enters'][0]['agent'], self.agent )
-        self.assertEqual(self.exchange.agents[agent_idx]['positions'][1]['enters'][0]['basis'], {'basis_initial_unit': 'ETH', 'basis_per_unit': 0.1, 'basis_date': self.exchange.datetime})
+        self.assertEqual(self.exchange.agents[agent_idx]['positions'][1]['enters'][0]['basis'], {'basis_initial_unit': 'ETH', 'basis_total': 0.1, 'basis_date': self.exchange.datetime})
         self.assertEqual(self.exchange.agents[agent_idx]['positions'][1]['enters'][0]['asset'], "BTC")
         self.assertEqual(self.exchange.agents[agent_idx]['positions'][1]['enters'][0]['initial_qty'], 2)
         self.assertEqual(self.exchange.agents[agent_idx]['positions'][1]['enters'][0]['qty'], 2)
@@ -1461,7 +1460,7 @@ class ExitPositionTestCase(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(self.exchange.agents[agent_idx]['positions'][0]['qty'], 9999)
         self.assertEqual(self.exchange.agents[agent_idx]['positions'][0]['enters'][0]['agent'], self.agent )
         self.assertEqual(self.exchange.agents[agent_idx]['positions'][0]['enters'][0]['basis']['basis_initial_unit'] , 'USD')
-        self.assertEqual(self.exchange.agents[agent_idx]['positions'][0]['enters'][0]['basis']['basis_per_unit'], 0)
+        self.assertEqual(self.exchange.agents[agent_idx]['positions'][0]['enters'][0]['basis']['basis_total'], 0) 
         self.assertEqual(self.exchange.agents[agent_idx]['positions'][0]['enters'][0]['basis']['basis_date'], datetime(2023, 1, 1))
         self.assertEqual(self.exchange.agents[agent_idx]['positions'][0]['enters'][0]['asset'], "BTC")
         self.assertEqual(self.exchange.agents[agent_idx]['positions'][0]['enters'][0]['qty'], 9999)
@@ -1469,7 +1468,7 @@ class ExitPositionTestCase(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(self.exchange.agents[agent_idx]['positions'][0]['enters'][0]['dt'], datetime(2023, 1, 1))
         self.assertEqual(self.exchange.agents[agent_idx]['positions'][0]['exits'][0]['agent'], self.agent)
         self.assertEqual(self.exchange.agents[agent_idx]['positions'][0]['exits'][0]['basis']['basis_initial_unit'] , 'USD')
-        self.assertEqual(self.exchange.agents[agent_idx]['positions'][0]['exits'][0]['basis']['basis_per_unit'], 0)
+        self.assertEqual(self.exchange.agents[agent_idx]['positions'][0]['exits'][0]['basis']['basis_total'], 0)
         self.assertEqual(self.exchange.agents[agent_idx]['positions'][0]['exits'][0]['basis']['basis_date'], datetime(2023, 1, 1))
         self.assertEqual(self.exchange.agents[agent_idx]['positions'][0]['exits'][0]['asset'], "BTC")
         self.assertEqual(self.exchange.agents[agent_idx]['positions'][0]['exits'][0]['qty'], 1)
@@ -1481,8 +1480,8 @@ class ExitPositionTestCase(unittest.IsolatedAsyncioTestCase):
         transaction1 = {'agent': self.agent2, 'quote_flow': -300, 'price': 150, 'base': 'BTC', 'quote': 'USD', 'qty': 2, 'dt': self.exchange.datetime, 'type': 'buy'}
         transaction2 = {'agent': self.agent2, 'quote_flow': -1200, 'price': 200, 'base': 'BTC', 'quote': 'USD', 'qty': 6, 'dt': self.exchange.datetime, 'type': 'buy'}
         agent_idx = await self.exchange.get_agent_index(self.agent2)
-        basis1 = {'basis_initial_unit': 'USD', 'basis_per_unit': 150, 'basis_date': self.exchange.datetime}
-        basis2 = {'basis_initial_unit': 'USD', 'basis_per_unit': 200, 'basis_date': self.exchange.datetime}
+        basis1 = {'basis_initial_unit': 'USD', 'basis_total': 300, 'basis_date': self.exchange.datetime}
+        basis2 = {'basis_initial_unit': 'USD', 'basis_total': 1200, 'basis_date': self.exchange.datetime}
         await self.exchange.enter_position(transaction1, transaction1['base'], transaction1['qty'], agent_idx, None, basis1)
         await self.exchange.enter_position(transaction2, transaction2['base'], transaction2['qty'], agent_idx, None, basis2)
         exit_side = {'agent': self.agent2, 'quote_flow': 2500, 'price': 500, 'base': 'BTC', 'quote': 'USD',  'qty': -5, 'dt': self.exchange.datetime, 'type': 'sell'}
@@ -1492,23 +1491,23 @@ class ExitPositionTestCase(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(self.exchange.agents[agent_idx]['positions'][1]['asset'], "BTC")
         self.assertEqual(self.exchange.agents[agent_idx]['positions'][1]['qty'], 5)
         self.assertEqual(self.exchange.agents[agent_idx]['positions'][1]['enters'][0]['agent'], self.agent2 )
-        self.assertEqual(self.exchange.agents[agent_idx]['positions'][1]['enters'][0]['basis']['basis_per_unit'], 150)
+        self.assertEqual(self.exchange.agents[agent_idx]['positions'][1]['enters'][0]['basis']['basis_total'], 0) #NOTE: the intial basis enter basis when gets "closed" when exiting the position so this is 0
         self.assertEqual(self.exchange.agents[agent_idx]['positions'][1]['enters'][0]['asset'], "BTC")
         self.assertEqual(self.exchange.agents[agent_idx]['positions'][1]['enters'][0]['qty'], 0)
         self.assertEqual(self.exchange.agents[agent_idx]['positions'][1]['enters'][0]['initial_qty'], 2)
         self.assertEqual(self.exchange.agents[agent_idx]['positions'][1]['enters'][1]['agent'], self.agent2 )
-        self.assertEqual(self.exchange.agents[agent_idx]['positions'][1]['enters'][1]['basis']['basis_per_unit'], 200)
+        self.assertEqual(self.exchange.agents[agent_idx]['positions'][1]['enters'][1]['basis']['basis_total'], 600)  #NOTE: this enter still has qty that could be exited, it is not "closed" so a basis remains
         self.assertEqual(self.exchange.agents[agent_idx]['positions'][1]['enters'][1]['asset'], "BTC")
         self.assertEqual(self.exchange.agents[agent_idx]['positions'][1]['enters'][1]['qty'], 3)
         self.assertEqual(self.exchange.agents[agent_idx]['positions'][1]['enters'][1]['initial_qty'], 6)
         self.assertEqual(self.exchange.agents[agent_idx]['positions'][1]['exits'][0]['agent'], self.agent2)
-        self.assertEqual(self.exchange.agents[agent_idx]['positions'][1]['exits'][0]['basis']['basis_per_unit'], 150)
+        self.assertEqual(self.exchange.agents[agent_idx]['positions'][1]['exits'][0]['basis']['basis_total'], 300) #NOTE: this takes the basis of the enter that this exited
         self.assertEqual(self.exchange.agents[agent_idx]['positions'][1]['exits'][0]['asset'], "BTC")
         self.assertEqual(self.exchange.agents[agent_idx]['positions'][1]['exits'][0]['qty'], 2)
         self.assertEqual(self.exchange.agents[agent_idx]['positions'][1]['exits'][0]['dt'], datetime(2023, 1, 1))
         self.assertEqual(self.exchange.agents[agent_idx]['positions'][1]['exits'][0]['enter_id'], self.exchange.agents[agent_idx]['positions'][1]['enters'][0]['id'])
         self.assertEqual(self.exchange.agents[agent_idx]['positions'][1]['exits'][1]['agent'], self.agent2)
-        self.assertEqual(self.exchange.agents[agent_idx]['positions'][1]['exits'][1]['basis']['basis_per_unit'], 200)
+        self.assertEqual(self.exchange.agents[agent_idx]['positions'][1]['exits'][1]['basis']['basis_total'], 600) #NOTE: this takes the basis of the enter that this exited
         self.assertEqual(self.exchange.agents[agent_idx]['positions'][1]['exits'][1]['asset'], "BTC")
         self.assertEqual(self.exchange.agents[agent_idx]['positions'][1]['exits'][1]['qty'], 3)
         self.assertEqual(self.exchange.agents[agent_idx]['positions'][1]['exits'][1]['dt'], datetime(2023, 1, 1))
@@ -1656,7 +1655,7 @@ class getPositionsTest(unittest.IsolatedAsyncioTestCase):
 class getTaxableEventsTest(unittest.IsolatedAsyncioTestCase):
     async def asyncSetUp(self) -> None:
         self.exchange = await standard_asyncSetUp(self)
-        self.agent = (await self.exchange.register_agent("agent23", initial_assets={ "USD" : 10000}))['registered_agent']
+        self.agent = (await self.exchange.register_agent("agent23", initial_assets={ "USD" : 500}))['registered_agent']
         self.agent_high_buyer = (await self.exchange.register_agent("agent_high_buyer", initial_assets={ "USD" : 10_000_000}))['registered_agent']
 
     async def test_get_taxable_events(self):
@@ -1676,7 +1675,7 @@ class getTaxableEventsTest(unittest.IsolatedAsyncioTestCase):
         self.mock_requester.responder.cryptos['BTC'].blockchain.mempool.transactions[2].confirmed = True
         self.mock_requester.responder.cryptos['USD'].blockchain.mempool.transactions[2].confirmed = True
         await self.exchange.next()   
-        agent = await self.exchange.get_agent_index(self.agent)
+        agent = await self.exchange.get_agent(self.agent)
         result = await self.exchange.get_taxable_events(self.agent)
         self.assertEqual(result[0]['agent'], self.agent)
         self.assertEqual(len(result[0]['taxable_events']), 1)
@@ -1702,6 +1701,7 @@ class getTaxableEventsTest(unittest.IsolatedAsyncioTestCase):
         high_sell = await self.exchange.market_sell("BTC", "USD", qty=2, seller=self.agent, fee='0.00001')
         self.mock_requester.responder.cryptos['BTC'].blockchain.mempool.transactions[2].confirmed = True
         self.mock_requester.responder.cryptos['USD'].blockchain.mempool.transactions[2].confirmed = True
+        #TODO: make another order or two from different agents to test multiple taxable events
         await self.exchange.next()
         print(high_sell)   
         result = await self.exchange.get_taxable_events()
@@ -1710,7 +1710,7 @@ class getTaxableEventsTest(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(len(result), 1)
         self.assertEqual(result[0]['taxable_events'][0]['enter_date'], datetime(2023, 1, 1, 0, 0))
         self.assertEqual(result[0]['taxable_events'][0]['exit_date'], datetime(2023, 1, 1, 0, 0))
-        self.assertEqual(result[0]['taxable_events'][0]['pnl'], Decimal('297.00'))
+        self.assertEqual(result[0]['taxable_events'][0]['pnl'], Decimal('297'))
         self.assertEqual(result[0]['taxable_events'][0]['type'], 'capital_gains')        
 
     async def test_basis_chaining(self):
@@ -1742,7 +1742,6 @@ class getTaxableEventsTest(unittest.IsolatedAsyncioTestCase):
         print('change asset', change_asset)
         print('assets after change asset', self.exchange.agents[agent]['assets'])
         
-
         buyup = await self.exchange.limit_buy("ETH" , "USD", price=155, qty=9998, creator=self.agent_high_buyer, fee='.01')
         self.mock_requester.responder.cryptos['ETH'].blockchain.mempool.transactions[1].confirmed = True
         self.mock_requester.responder.cryptos['USD'].blockchain.mempool.transactions[1].confirmed = True
@@ -1754,8 +1753,6 @@ class getTaxableEventsTest(unittest.IsolatedAsyncioTestCase):
         self.mock_requester.responder.cryptos['USD'].blockchain.mempool.transactions[2].confirmed = True
         await self.exchange.next()
        
-        print(self.exchange.pending_transactions)
-
         result = await self.exchange.get_taxable_events()
         self.assertIsInstance(result, list)
         
@@ -1763,7 +1760,7 @@ class getTaxableEventsTest(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(result[0]['agent'], self.agent)
         self.assertEqual(result[0]['taxable_events'][0]['enter_date'], datetime(2023, 1, 1, 0, 0))
         self.assertEqual(result[0]['taxable_events'][0]['exit_date'], datetime(2023, 1, 1, 0, 0))
-        self.assertEqual(result[0]['taxable_events'][0]['pnl'], Decimal('446.98500'))
+        self.assertEqual(result[0]['taxable_events'][0]['pnl'], Decimal('295.48')) #NOTE: calculate per unit basis at time of exit using a qty ratio
         self.assertEqual(result[0]['taxable_events'][0]['type'], 'capital_gains')        
 
 class addAssetTest(unittest.IsolatedAsyncioTestCase):

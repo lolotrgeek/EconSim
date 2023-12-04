@@ -993,6 +993,7 @@ class CryptoExchange(Exchange):
         #NOTE: this should be refactored, the logic is too complex and the use of asset and qty is confusing on the buy side exits, since qty is referring to amount of the quote asset or "quote_flow"
         self.logger.debug(f"exit position {side['agent']} {asset} {qty} {side['type']}")
         exit_transaction['qty'] = abs(qty)
+        exit_transaction['quote_flow'] = abs(side['quote_flow'])
         while exit_transaction['qty'] > 0:
             if len(positions) == 0: break
             self.logger.debug(f"number of positions: {len(positions)}")
@@ -1014,44 +1015,66 @@ class CryptoExchange(Exchange):
                         'dt': exit_transaction['dt'],
                         'enter_id': enter['id'],
                     }
-                    if asset == self.default_currency['symbol']:
+
+                    if side['quote'] == self.default_currency['symbol'] and asset == self.default_currency['symbol']:
                         # if this is exiting the default quote currency (i.e. USD is default quote, so buying BTC with USD is exiting USD for BTC) then we calculate the basis...
                         exit['basis'] = {
-                            'basis_initial_unit': side['quote'],
+                            'basis_initial_unit': side['base'],
                             'basis_total': prec(abs(side['quote_flow']), self.assets[side['quote']]['decimals']),
+                            'basis_per_unit': prec(side['price'], self.assets[side['quote']]['decimals']),
                             'basis_txn_id': exit_transaction['id'], #NOTE this txn is stored here -> self.agents[agent_idx]['_transactions']
                             'basis_date': exit['dt']
                         }
-                        self.logger.debug(f"Exit default quote: {side['quote']}, initial basis {exit['basis']['basis_total']}")
-                    elif side['quote'] == self.default_currency['symbol']:
-                        # ...if the quote is the default currency (i.e. USD is default quote, so selling BTC for USD is exiting BTC for USD), this is potentially a taxable event
-                        basis_per_unit = prec(str(enter['basis']['basis_total'] / abs(exit_transaction['qty'])), self.assets[side['quote']]['decimals'])
-                        basis_amount = prec(basis_per_unit * abs(exit_transaction['qty']), self.assets[side['quote']]['decimals'])
-                        self.logger.debug(f"Exit potentially taxable: {side['quote']}, initial basis {enter['basis']['basis_total']}, exit basis per unit {basis_per_unit} total {basis_amount}")
-                        await self.taxable_event(agent, side['quote_flow'], side['dt'], basis_amount, enter['basis']['basis_date'])
-                        exit['basis'] = enter['basis']
-                        exit['basis']['basis_total'] = prec(enter['basis']['basis_total'] - basis_amount, self.assets[side['quote']]['decimals'])
-                    else:
-                        # ...otherwise, pass the enter basis along
-                        exit['basis'] = enter['basis']
+
+                        if enter['basis']['basis_txn_id'] == 'seed':
+                            enter['basis'] = exit['basis'].copy()
+                        self.logger.debug(f"Setting Enter basis: {side['quote']}, initial basis {exit['basis']['basis_total']} for {agent['name']}")
 
                     if enter['qty'] >= exit_transaction['qty']:
+                        if side['quote'] == self.default_currency['symbol'] and asset != self.default_currency['symbol']:
+                            # if this is entering the default quote currency (i.e. USD is default quote, so selling BTC for USD is entering USD for BTC) then this is a potentially taxable event...
+                            
+                            if enter['basis']['basis_initial_unit'] == side['base']:
+                                basis_amount = prec(enter['basis']['basis_per_unit'] * exit_transaction['qty'], self.assets[side['quote']]['decimals'])
+                                self.logger.debug(f"Exit potentially taxable: {side['quote']}, initial basis {enter['basis']['basis_total']}, basis per unit {enter['basis']['basis_per_unit']} total {basis_amount}")
+                            else:
+                                enter_to_exit_qty_ratio = prec(str(abs(exit_transaction['qty'] / abs(enter['qty']))), self.assets[side['quote']]['decimals'])
+                                basis_amount = prec(enter_to_exit_qty_ratio * enter['basis']['basis_total'], self.assets[side['quote']]['decimals'])
+                                self.logger.debug(f"Exit potentially taxable: {side['quote']}, initial basis {enter['basis']['basis_total']}, exit to enter qty {enter_to_exit_qty_ratio} total {basis_amount}")
+                            amount = prec(enter['qty'] * side['price'], self.assets[side['quote']]['decimals'])
+                            await self.taxable_event(agent, exit_transaction['quote_flow'], side['dt'], basis_amount, enter['basis']['basis_date'])
+                            exit['basis'] = enter['basis'].copy()
+                            exit['basis']['basis_total'] = basis_amount
+                            enter['basis']['basis_total'] = prec(enter['basis']['basis_total'] - basis_amount, self.assets[side['quote']]['decimals'])
+                        else:
+                            # ...otherwise, pass the enter basis along
+                            exit['basis'] = enter['basis']                               
                         exit['qty'] = prec(exit_transaction['qty'], self.assets[asset]['decimals'])
                         enter['qty'] -= prec(exit_transaction['qty'], self.assets[asset]['decimals'])
                         position['qty'] -= prec(exit_transaction['qty'], self.assets[asset]['decimals'])
-                        self.logger.info(f'full exit, {position["id"]}: {exit["qty"]} remaining {position["qty"]}')
+                        self.logger.info(f'full exit, {position["id"]}: {exit["qty"]} remaining in enter position: {position["qty"]}')
                         exit_transaction['qty'] = 0
                         position['exits'].append(exit)
                         return {'exit_position': exit}
                     
                     elif enter['qty'] > 0:
                         # partial exit
+                        if side['quote'] == self.default_currency['symbol'] and asset != self.default_currency['symbol']:
+                            # if this is entering the default quote currency (i.e. USD is default quote, so selling BTC for USD is entering USD for BTC) then this is a potentially taxable event...
+                            amount = prec(enter['qty'] * side['price'], self.assets[side['quote']]['decimals'])
+                            self.logger.debug(f"Exit potentially taxable: {side['quote']}, initial basis {enter['basis']['basis_total']}, exiting entire enter basis total {enter['basis']['basis_total']}")
+                            await self.taxable_event(agent, amount, side['dt'], enter['basis']['basis_total'], enter['basis']['basis_date'])                            
+                            exit['basis'] = enter['basis'].copy()
+                            enter['basis']['basis_total'] = 0
+                        else:
+                            # ...otherwise, pass the enter basis along
+                            exit['basis'] = enter['basis']                            
                         exit_transaction['qty'] -= prec(enter['qty'], self.assets[asset]['decimals'])
-                        exit_transaction['quote_flow'] -= prec(enter['qty'] * exit_transaction['price'], self.assets[side['quote']]['decimals'])
+                        exit_transaction['quote_flow'] -= prec(enter['qty'] * side['price'], self.assets[side['quote']]['decimals'])
                         exit['qty'] = prec(enter['qty'], self.assets[asset]['decimals'])
                         enter['qty'] = 0
                         position['qty'] -= prec(enter['qty'], self.assets[asset]['decimals'])
-                        self.logger.info(f'partial exit, {position["id"]}: {exit["qty"]} remaining {position["qty"]}')
+                        self.logger.info(f'partial exit, {position["id"]}: {exit["qty"]} remaining {exit_transaction["qty"]}')
                         position['exits'].append(exit)
 
             self.logger.error(f"no positions to exit for {side['agent']} {side['order_id']} {asset} {qty} {side['type']}")        
