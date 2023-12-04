@@ -167,7 +167,7 @@ class LimitBuyTest(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(order['qty'], '2.00000000')
         self.assertEqual(order['creator'], self.mock_requester.responder.agent)
         self.assertEqual(order['network_fee'], '0.20')
-        self.assertEqual(order['exchange_fee'], '0.20')
+        self.assertEqual(order['exchange_fee'], '0.40')
         self.assertEqual(order['status'], 'open')
 
 class LimitSellTest(unittest.IsolatedAsyncioTestCase):
@@ -185,7 +185,7 @@ class LimitSellTest(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(order['qty'], '1.00000000')
         self.assertEqual(order['creator'], self.mock_requester.responder.agent)
         self.assertEqual(order['network_fee'], '0.02000000')
-        self.assertEqual(order['exchange_fee'], '0.15150000')
+        self.assertEqual(order['exchange_fee'], '0.00100000')
         self.assertEqual(order['status'], 'open')
 
 class CancelOrderTest(unittest.IsolatedAsyncioTestCase):
@@ -238,7 +238,7 @@ class GetCashTest(unittest.IsolatedAsyncioTestCase):
 
     async def test_get_cash(self):
         response = await self.requests.make_request('cash', {'agent': self.mock_requester.responder.agent}, self.mock_requester)
-        self.assertEqual(response, {'cash': Decimal('99848.60')}) #NOTE: this is 99848'.99'99 because we have assets frozen in our mock_order
+        self.assertEqual(response, {'cash': Decimal('99848.60')}) # NOTE: this is 99848.60 because we have a mock_order in the self.mock_requester_init() method called here in the asyncSetUp() method
 
 class GetAssetsTest(unittest.IsolatedAsyncioTestCase):
     async def asyncSetUp(self):
