@@ -136,6 +136,45 @@ class SimpleMarketTaker(Trader):
             self.logger.info(f"{self.name} bought {qty} {ticker['base']} at {latest_trade['price']}")
 
     async def dump_assets(self):
+        # selling assets for other assets
+        ticker = random.choice(self.tickers)
+        if ticker['base'] not in self.assets:
+            self.logger.info(f"{self.name} no {ticker['base']} to sell in {self.assets}")
+            return False
+        if ticker['quote'] == 'USD': return False
+        assets = self.assets.copy()
+        asset_found = [asset for asset in assets if asset == ticker['base']]
+        if len(asset_found) == 0: 
+            self.logger.info(f"{self.name} no asset for {ticker} in {assets}")
+            return False
+        asset = asset_found[0]
+        if asset == 'USD': return False
+        qty = prec(self.assets[asset] * self.asset_to_trade, ticker['base_decimals'])
+        self.logger.info(f"{self.name}, has {self.assets[asset]} {asset}, dumping {qty} for {ticker['quote']}")
+        if qty > 0:
+            min_qty = prec(qty * Decimal(ticker['min_qty_percent']), ticker['base_decimals'])
+            possible_matches = (qty / min_qty)
+            fee = prec('0.000000000000000001', ticker['base_decimals'])
+            total_fee = prec(possible_matches * fee, ticker['base_decimals'])
+            if prec(qty + total_fee, ticker['base_decimals']) > self.assets[asset]:
+                self.logger.info(f"{self.name} not enough {asset} to sell {qty}")
+                return False
+            self.logger.info(f"{self.name} selling {qty} {asset}")
+            order = await self.market_sell(asset, ticker['quote'], qty, fee)
+            if order['accounting'] == "max_pending_transactions_reached":
+                self.logger.info(order)
+                return False
+            if order['accounting'] == "insufficient_funds":
+                self.logger.info(order)
+                return False
+            if order['accounting'] == "no_fills":
+                self.logger.info(order)
+                return False
+            else:
+                self.last_trade_time = self.current_time
+                self.logger.info(f"{self.name} sold {order}")
+
+    async def dump_to_cash(self):
         assets = self.assets.copy()
         if 'USD' in assets: del assets['USD']
         asset_choices = list(assets.keys())
@@ -189,6 +228,7 @@ class SimpleMarketTaker(Trader):
         await self.spend_cash()
         await self.spend_asset()
         await self.dump_assets()
+        await self.dump_to_cash()
     
         return True    
 
