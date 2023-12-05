@@ -20,6 +20,7 @@ class CryptoOrder():
         self.type: OrderType = order_type        
         self.price: Decimal = price
         self.qty: Decimal = qty
+        self.min_qty: Decimal = 0 # the set minimum qty to be filled, may be the same or different than minimum_match_qty which is used to determine the minimum qty to be matched
         self.minimum_match_qty: Decimal = 0
         self.total_possible_matches: Decimal = 0
         self.total_price: Decimal = 0
