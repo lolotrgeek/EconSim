@@ -301,8 +301,8 @@ class NaiveMarketMaker(Trader):
         await self.cancel_all_orders(ticker['base'], ticker['quote'])
         buy_price = prec(price * self.buy_spread, ticker['quote_decimals'])
         sell_price = prec(price * self.sell_spread, ticker['quote_decimals'])
-        buy_fee = prec('0.01', ticker['quote_decimals'])
-        sell_fee = prec('0.00000001', ticker['base_decimals'])
+        buy_fee = prec(Decimal('0.000000000000000001'), ticker['quote_decimals'])
+        sell_fee = prec(Decimal('0.000000000000000001'), ticker['base_decimals'])
         qty = prec(str(self.assets[ticker['base']] * self.qty_pct_per_order), ticker['base_decimals'])
         if qty <= 0:
             self.logger.error(f'Naive Market Maker {self.name} {qty} below 0') 
