@@ -39,7 +39,7 @@ class CryptoExchange(Exchange):
         self.pending_transactions = []
         self.max_pending_transactions = 1_000_000
         self.max_pairs = 10000
-        self.logger = Logger('CryptoExchange', 10)
+        self.logger = Logger('CryptoExchange', 30)
         self.minimum = Decimal('0.00000000000000000001')
         
     async def next(self):
@@ -387,7 +387,7 @@ class CryptoExchange(Exchange):
 
             if exchange_fee > 0:
                 if frozen_assets['frozen_exchange_fee'] < abs(exchange_fee):
-                    self.logger.error('frozen exchange fee less than exchange fee', order_id, frozen_assets['frozen_exchange_fee'], exchange_fee)
+                    self.logger.error(f'frozen exchange fee less than exchange fee {order_id} has {frozen_assets["frozen_exchange_fee"]} needs {exchange_fee}')
                     return {'error': 'frozen exchange fee less than exchange fee'}
                 
                 if frozen_assets['frozen_exchange_fee'] > 0:
@@ -532,7 +532,10 @@ class CryptoExchange(Exchange):
 
     async def convert_to_maker(self, order: CryptoOrder, asset:str, decimals:int, buffer=0) -> CryptoOrder:
         self.logger.info(f'converting to maker: {order.id} amount {order.unfilled_qty} unfreezing exchange fee {order.exchange_fee}')
-        await self.unfreeze_assets(order.creator, asset, order.id, exchange_fee=order.exchange_fee)
+        freeing_exchange_fee = await self.unfreeze_assets(order.creator, asset, order.id, exchange_fee=order.exchange_fee)
+        if 'error' in freeing_exchange_fee:
+            self.logger.warning(f'error unfreezing exchange fee {order.exchange_fee} for order {order.id} {order.side} {order.type}')
+            return order
         order.qty = order.unfilled_qty
         order.unfilled_qty = 0
         if order.min_qty > 0:
@@ -565,8 +568,15 @@ class CryptoExchange(Exchange):
             asset = order.base
             if order.type == OrderType.MARKET:
                 await self.unfreeze_assets(order.creator, asset, order.id, qty=order.unfilled_qty)
-        if order.exchange_fee > 0:
-            await self.unfreeze_assets(order.creator, asset, order.id, exchange_fee=order.exchange_fee)
+
+        frozen_assets = await self.get_frozen_assets(order.creator, asset, order.id)
+
+        if frozen_assets['frozen_exchange_fee'] > order.exchange_fees_due:
+            unfreeze_exchange_fee = await self.unfreeze_assets(order.creator, asset, order.id, exchange_fee=order.exchange_fee)
+            if 'error' in unfreeze_exchange_fee:
+                self.logger.warning(f'error unfreezing exchange fee {order.exchange_fee} for order {order.id} {order.side} {order.type}')
+                return order
+            
         if order.remaining_network_fee > 0:
             await self.unfreeze_assets(order.creator, asset, order.id, network_fee=order.remaining_network_fee)
         order.exchange_fee = order.exchange_fees_due
