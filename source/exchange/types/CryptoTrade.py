@@ -1,31 +1,34 @@
 from datetime import datetime
+from Fee import Fee
+from decimal import Decimal
 
 class CryptoTrade():
-    def __init__(self, base, quote, qty, price, buyer, seller, dt=None, network_fee=0.0, exchange_fee=0.0):
-        self.base = base
-        self.quote = quote
-        self.ticker=base+quote
-        self.qty = qty
-        self.price = price
-        self.buyer = buyer
-        self.seller = seller
-        self.dt = dt
-        self.network_fee = network_fee
-        self.exchange_fee = exchange_fee
+    def __init__(self, base: str, quote: str, qty: Decimal, price: Decimal, buyer: str, seller: str, dt:datetime=None, network_fee=Fee('',0,0), exchange_fee=Fee('',0,0)):
+        self.base: str = base
+        self.quote: str = quote
+        self.qty: Decimal = qty
+        self.price: Decimal = price
+        self.buyer: str = buyer
+        self.seller: str = seller
+        self.dt: datetime = dt
+        self.network_fee: Fee = network_fee
+        self.exchange_fee: Fee = exchange_fee
 
     def __repr__(self) -> str:
-        return f'<CryptoTrade: {self.base}/{self.quote} {self.qty}@{self.price} {self.dt}>'
-
+        return f"CryptoTrade({self.base}, {self.quote}, {self.qty}, {self.price}, {self.buyer}, {self.seller}, {self.dt}, {self.network_fee}, {self.exchange_fee})"
+    
+    def __str__(self) -> str:
+        return f"<CryptoTrade {self.base}/{self.quote} {self.qty} @ {self.price}>"
+    
     def to_dict(self) -> dict:
         return {
-            'dt': self.dt,
             'base': self.base,
             'quote': self.quote,
             'qty': self.qty,
             'price': self.price,
             'buyer': self.buyer,
             'seller': self.seller,
-            'network_fee': self.network_fee,
-            'exchange_fee': self.exchange_fee,
+            'dt': self.dt,
+            'network_fee': self.network_fee.to_dict(),
+            'exchange_fee': self.exchange_fee.to_dict(),
         }
-

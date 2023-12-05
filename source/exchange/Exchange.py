@@ -615,7 +615,7 @@ class Exchange():
     async def get_agent(self, agent_name)  -> dict:
         return next((d for (index, d) in enumerate(self.agents) if d['name'] == agent_name), {'error': 'agent not found'})
 
-    async def get_agent_index(self,agent_name) -> dict:
+    async def get_agent_index(self,agent_name: str) -> dict:
         return next((index for (index, d) in enumerate(self.agents) if d['name'] == agent_name), None)
     
     async def get_agents(self) -> dict:
