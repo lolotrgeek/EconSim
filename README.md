@@ -7,6 +7,7 @@ Train agents to develop strategies of resource acquisition and allocation via in
 ## UNDER DEVELOPMENT
 -- version 0.4 -- 
 - Quality of life improvements
+- Refactoring, Classifying
 
 ## Next Features
 - Banks
