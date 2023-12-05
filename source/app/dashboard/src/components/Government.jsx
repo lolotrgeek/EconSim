@@ -9,7 +9,7 @@ const Government = () => {
   useEffect(() => {
     const fetchData = async () => {
       try {
-        const taxResponse = await fetch('http://localhost:5001/api/v1/get_taxes_collected')
+        const taxResponse = await fetch('http://localhost:5580/api/v1/get_taxes_collected')
         const taxDataJson = await taxResponse.json()
         const parsedTaxData = parse(taxDataJson)
         // reduce the parsed data to accumulate the total of short-term and long-term taxes collected
@@ -21,13 +21,15 @@ const Government = () => {
         reducedTaxData.year = parsedTaxData[0].tax_year
         setTaxData(reducedTaxData)
 
-        const cashResponse = await fetch('http://localhost:5001/api/v1/get_cash')
+        const cashResponse = await fetch('http://localhost:5580/api/v1/get_cash')
         const cashData = await cashResponse.json()
-        setCashData(cashData)
+        const new_cash_data = parse(cashData)
+        setCashData(new_cash_data)
 
-        const backTaxesResponse = await fetch('http://localhost:5001/api/v1/get_back_taxes')
+        const backTaxesResponse = await fetch('http://localhost:5580/api/v1/get_back_taxes')
         const backTaxesData = await backTaxesResponse.json()
-        setBackTaxes(backTaxesData)
+        const new_back_taxes = parse(backTaxesData)
+        setBackTaxes(new_back_taxes)
       } catch (error) {
         console.error('Error fetching data:', error)
       }
