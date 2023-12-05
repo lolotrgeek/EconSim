@@ -70,6 +70,8 @@ class TestUtilsTest(unittest.TestCase):
         self.assertEqual( prec(Decimal('1.10504461') * Decimal('0.97'), 2, 'up') , Decimal('1.08'))
         # rounding down
         self.assertEqual( prec(Decimal('1.10504461') * Decimal('0.97'), 2, 'down') , Decimal('1.07'))
+        # to minimum
+        self.assertEqual( prec(Decimal('0.00000000000000000001'), 2, 'up') , Decimal('0.01'))
 
     def test_non_zero_prec(self):
         self.assertEqual(prec((Decimal('0.009366410557787348') * Decimal('0.52')), 2, 'down'), Decimal('0.00'))

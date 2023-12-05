@@ -4,7 +4,7 @@ import json
 from decimal import *
 
 context = getcontext()
-context.prec = 36
+context.prec = 128
 context.rounding = ROUND_UP
 
 def dumps(data):
