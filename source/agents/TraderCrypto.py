@@ -142,7 +142,7 @@ class CryptoTrader(Trader):
         if 'registered_agent' in agent:
             self.name = agent['registered_agent']
             if logger == True:
-                self.logger = Logger(agent['registered_agent'], 0)
+                self.logger = Logger(agent['registered_agent'], 20)
             return agent
         else:
             return 'UnRegistered Agent'

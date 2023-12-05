@@ -27,7 +27,7 @@ async def run_trader() -> None:
         elif picker == 2:
             trader = SimpleMarketTaker(name='rich_taker', aum=10_000, requests=(exchange_requests, crypto_requests))
 
-        registered = await trader.register()
+        registered = await trader.register(logger=True)
         if registered is None:
             raise Exception("Trader not registered")
         while True:

@@ -46,21 +46,21 @@ class RandomMarketTaker(Trader):
             qty = (await self.get_assets())['assets'][ticker['base']]
             order = await self.market_sell(ticker['base'],ticker['quote'], qty, '0.01')
             self.logger.info(f"Random Market Taker {self.name} sold {qty} {ticker['base']} with {order['market_sell']}")
-            if order is None or order['market_sell'] == "insufficient assets":
+            if order is None or order['market_sell'] == "insufficient_funds":
                 return False
         return True
     
 class SimpleMarketTaker(Trader):
     def __init__(self,name , aum=10000, requests=()):
         Trader.__init__(self, name, aum, exchange_requests=requests[0], crypto_requests=requests[1])
-        self.asset_to_trade = prec('0.2')
+        self.asset_to_trade = prec('0.1')
         self.last_trade_time = None
         self.current_time = None
-        self.logger = Logger('SimpleMarketTaker', mode='w')
+        # self.logger = Logger('SimpleMarketTaker', mode='w')
 
     async def spend_cash(self):
         ticker = random.choice(self.tickers)
-        latest_trade = await self.get_latest_trade(ticker['base'], ticker['quote'])
+        latest_trade = await self.get_latest_trade(ticker['base'], 'USD')
         self.logger.info(f"{self.name} latest trade: {latest_trade}")
         if latest_trade is None or 'price' not in latest_trade or latest_trade['price'] <= 0:
             return False
@@ -80,15 +80,15 @@ class SimpleMarketTaker(Trader):
         if total_cost > self.assets['USD']:
             self.logger.info(f"{self.name} not enough cash {self.assets['USD']} to buy {total_cost} of {ticker['base']} {qty}@{latest_trade['price']}")
             return False            
-        self.logger.info(f"{self.name} buying {qty} {ticker['base']} at {latest_trade['price']}")
+        self.logger.info(f"{self.name} buying {qty} {ticker['base']} at {latest_trade['price']} with USD")
         order = await self.market_buy(ticker['base'], 'USD', qty, fee )
         if order['accounting'] == "max_pending_transactions_reached":
             self.logger.info(order)
             return False
-        if order['accounting'] == "insufficient assets":
+        if order['accounting'] == "insufficient_funds":
             self.logger.info(order)
             return False
-        if order['accounting'] == "no fills":
+        if order['accounting'] == "no_fills":
             self.logger.info(order)
             return False        
         else:
@@ -118,17 +118,17 @@ class SimpleMarketTaker(Trader):
             return False
         total_cost = prec((qty * latest_trade['price'])+ total_fee, ticker['quote_decimals'])
         if total_cost > self.assets[ticker['quote']]:
-            self.logger.info(f"{self.name} not enough cash {self.assets[ticker['quote']]} to buy {total_cost} of {ticker['base']} {qty}@{latest_trade['price']}")
+            self.logger.info(f"{self.name} not enough asset {self.assets[ticker['quote']]} to buy {total_cost} of {ticker['base']} {qty}@{latest_trade['price']}")
             return False            
-        self.logger.info(f"{self.name} buying {qty} {ticker['base']} at {latest_trade['price']}")
+        self.logger.info(f"{self.name} buying {qty} {ticker['base']} at {latest_trade['price']} with {ticker['quote']}")
         order = await self.market_buy(ticker['base'], ticker['quote'], qty, fee )
         if order['accounting'] == "max_pending_transactions_reached":
             self.logger.info(order)
             return False
-        if order['accounting'] == "insufficient assets":
+        if order['accounting'] == "insufficient_funds":
             self.logger.info(order)
             return False
-        if order['accounting'] == "no fills":
+        if order['accounting'] == "no_fills":
             self.logger.info(order)
             return False        
         else:
@@ -138,7 +138,9 @@ class SimpleMarketTaker(Trader):
     async def dump_assets(self):
         assets = self.assets.copy()
         if 'USD' in assets: del assets['USD']
-        asset = random.choice(list(assets.keys()))
+        asset_choices = list(assets.keys())
+        if len(asset_choices) == 0: return False
+        asset = random.choice(asset_choices)
         if asset == 'USD': return False
         asset_ticker = [ticker for ticker in self.tickers if ticker.get('base') == asset]
         if len(asset_ticker) == 0: 
@@ -160,10 +162,10 @@ class SimpleMarketTaker(Trader):
             if order['accounting'] == "max_pending_transactions_reached":
                 self.logger.info(order)
                 return False
-            if order['accounting'] == "insufficient assets":
+            if order['accounting'] == "insufficient_funds":
                 self.logger.info(order)
                 return False
-            if order['accounting'] == "no fills":
+            if order['accounting'] == "no_fills":
                 self.logger.info(order)
                 return False
             else:
