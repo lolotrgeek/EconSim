@@ -2,7 +2,7 @@ import sys, os
 parent_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 sys.path.append(parent_dir)
 from uuid import uuid4 as UUID
-from typing import List
+from typing import List, Dict
 import random, string
 from datetime import datetime
 from decimal import Decimal
@@ -42,7 +42,7 @@ class CryptoExchange(Exchange):
         self.assets = {self.default_currency.symbol: self.default_currency}
         self.agents: List[Agent] = []
         self.trade_log: List[CryptoTrade] = []
-        self.books = {}        
+        self.books: Dict[str, CryptoOrderBook] = {}        
         self.pairs = []
         self.wallets = {}
         self.agents_archive = Archive('crypto_agents')
@@ -347,7 +347,6 @@ class CryptoExchange(Exchange):
             self.agents[agent_idx].assets[asset] -= abs(exchange_fee)
         if network_fee > 0:
             self.agents[agent_idx].assets[asset] -= abs(network_fee)
-
         frozen_assets = FrozenAssets(order_id, abs(qty), exchange_fee, network_fee)
         if asset not in self.agents[agent_idx].frozen_assets:
             self.agents[agent_idx].frozen_assets[asset] = [frozen_assets]

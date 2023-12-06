@@ -14,7 +14,7 @@ class Agent():
         self.positions: List[Position] = positions
         self.assets: Dict[str, Asset] = assets
         self.wallets: Dict[str, str] = wallets
-        self.frozen_assets: Dict[str, FrozenAssets] = frozen_assets
+        self.frozen_assets: Dict[str, List[FrozenAssets]] = frozen_assets
         self.taxable_events: List[TaxableEvent] = taxable_events
         self._transactions: List[Side] = _transactions
 
@@ -30,8 +30,7 @@ class Agent():
             'positions': [position.to_dict() for position in self.positions],
             'assets': {asset: asset.to_dict() for asset, asset in self.assets.items() },
             'wallets': self.wallets,
-            'frozen_assets': {asset: frozen_asset.to_dict() for asset, frozen_asset in self.frozen_assets.items()},
+            'frozen_assets': {asset: [frozen_asset.to_dict() for frozen_asset in frozen_assets] for asset, frozen_assets in self.frozen_assets.items()},
             'taxable_events': [taxable_event.to_dict() for taxable_event in self.taxable_events],
             '_transactions': [transaction.to_dict() for transaction in self._transactions],
         }
-        
