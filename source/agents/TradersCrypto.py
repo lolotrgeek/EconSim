@@ -43,7 +43,7 @@ class RandomMarketTaker(Trader):
                 return False
 
         elif action == 'close':
-            qty = (await self.get_assets())['assets'][ticker['base']]
+            qty = prec((await self.get_assets())['assets'][ticker['base']], ticker['base_decimals'])
             order = await self.market_sell(ticker['base'],ticker['quote'], qty, '0.01')
             self.logger.info(f"Random Market Taker {self.name} sold {qty} {ticker['base']} with {order['market_sell']}")
             if order is None or order['market_sell'] == "insufficient_funds":

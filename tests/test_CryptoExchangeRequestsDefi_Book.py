@@ -4,12 +4,14 @@ parent_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 sys.path.append(parent_dir)
 
 import unittest
+from datetime import datetime
 from source.exchange.CryptoExchangeRequests import CryptoExchangeRequests as Requests
+from source.exchange.CryptoExchange_DeFi_Book import CryptoExchange as Exchange
 from .MockRequesterCrypto import MockRequesterCryptoExchange as MockRequester
 
 class getTickersTest(unittest.IsolatedAsyncioTestCase):
     async def asyncSetUp(self) -> None:
-        self.mock_requester = MockRequester()
+        self.mock_requester = MockRequester(Exchange)
         self.requests = Requests(self.mock_requester)
         await self.mock_requester.init()
 
@@ -28,7 +30,7 @@ class getTickersTest(unittest.IsolatedAsyncioTestCase):
 
 class CreateAssetTest(unittest.IsolatedAsyncioTestCase):
     async def asyncSetUp(self):
-        self.mock_requester = MockRequester()
+        self.mock_requester = MockRequester(Exchange)
         await self.mock_requester.init()
         self.requests = Requests(self.mock_requester)
 
@@ -54,7 +56,7 @@ class CreateAssetTest(unittest.IsolatedAsyncioTestCase):
 
 class GetOrderBookTest(unittest.IsolatedAsyncioTestCase):
     async def asyncSetUp(self):
-        self.mock_requester = MockRequester()
+        self.mock_requester = MockRequester(Exchange)
         await self.mock_requester.init()
         self.requests = Requests(self.mock_requester)
 
@@ -71,7 +73,7 @@ class GetOrderBookTest(unittest.IsolatedAsyncioTestCase):
 
 class GetLatestTradeTest(unittest.IsolatedAsyncioTestCase):
     async def asyncSetUp(self):
-        self.mock_requester = MockRequester()
+        self.mock_requester = MockRequester(Exchange)
         await self.mock_requester.init()
         self.requests = Requests(self.mock_requester)
 
@@ -86,7 +88,7 @@ class GetLatestTradeTest(unittest.IsolatedAsyncioTestCase):
 
 class GetTradesTest(unittest.IsolatedAsyncioTestCase):
     async def asyncSetUp(self):
-        self.mock_requester = MockRequester()
+        self.mock_requester = MockRequester(Exchange)
         await self.mock_requester.init()
         self.requests = Requests(self.mock_requester)
 
@@ -103,7 +105,7 @@ class GetTradesTest(unittest.IsolatedAsyncioTestCase):
 
 class GetQuotesTest(unittest.IsolatedAsyncioTestCase):
     async def asyncSetUp(self):
-        self.mock_requester = MockRequester()
+        self.mock_requester = MockRequester(Exchange)
         await self.mock_requester.init()
         self.requests = Requests(self.mock_requester)
 
@@ -118,7 +120,7 @@ class GetQuotesTest(unittest.IsolatedAsyncioTestCase):
 
 class GetBestBidTest(unittest.IsolatedAsyncioTestCase):
     async def asyncSetUp(self):
-        self.mock_requester = MockRequester()
+        self.mock_requester = MockRequester(Exchange)
         await self.mock_requester.init()
         self.requests = Requests(self.mock_requester)
 
@@ -131,7 +133,7 @@ class GetBestBidTest(unittest.IsolatedAsyncioTestCase):
 
 class GetBestAskTest(unittest.IsolatedAsyncioTestCase):
     async def asyncSetUp(self):
-        self.mock_requester = MockRequester()
+        self.mock_requester = MockRequester(Exchange)
         await self.mock_requester.init()
         self.requests = Requests(self.mock_requester)
 
@@ -144,7 +146,7 @@ class GetBestAskTest(unittest.IsolatedAsyncioTestCase):
 
 class GetMidPriceTest(unittest.IsolatedAsyncioTestCase):
     async def asyncSetUp(self):
-        self.mock_requester = MockRequester()
+        self.mock_requester = MockRequester(Exchange)
         await self.mock_requester.init()
         self.requests = Requests(self.mock_requester)
 
@@ -155,7 +157,7 @@ class GetMidPriceTest(unittest.IsolatedAsyncioTestCase):
 
 class LimitBuyTest(unittest.IsolatedAsyncioTestCase):
     async def asyncSetUp(self):
-        self.mock_requester = MockRequester()
+        self.mock_requester = MockRequester(Exchange)
         await self.mock_requester.init()
         self.requests = Requests(self.mock_requester)
 
@@ -166,12 +168,13 @@ class LimitBuyTest(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(order['price'], '149.00')
         self.assertEqual(order['qty'], '2.00000000')
         self.assertEqual(order['creator'], self.mock_requester.responder.agent)
+        self.assertEqual(order['network_fee'], '0.20')
         self.assertEqual(order['exchange_fee'], '0.40')
         self.assertEqual(order['status'], 'open')
 
 class LimitSellTest(unittest.IsolatedAsyncioTestCase):
     async def asyncSetUp(self):
-        self.mock_requester = MockRequester()
+        self.mock_requester = MockRequester(Exchange)
         await self.mock_requester.init()
         self.requests = Requests(self.mock_requester)
 
@@ -183,12 +186,13 @@ class LimitSellTest(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(order['price'], '151.50')
         self.assertEqual(order['qty'], '1.00000000')
         self.assertEqual(order['creator'], self.mock_requester.responder.agent)
+        self.assertEqual(order['network_fee'], '0.02000000')
         self.assertEqual(order['exchange_fee'], '0.00100000')
         self.assertEqual(order['status'], 'open')
 
 class CancelOrderTest(unittest.IsolatedAsyncioTestCase):
     async def asyncSetUp(self):
-        self.mock_requester = MockRequester()
+        self.mock_requester = MockRequester(Exchange)
         await self.mock_requester.init()
         self.requests = Requests(self.mock_requester)
 
@@ -201,7 +205,7 @@ class CancelOrderTest(unittest.IsolatedAsyncioTestCase):
 
 class CancelAllOrdersTest(unittest.IsolatedAsyncioTestCase):
     async def asyncSetUp(self):
-        self.mock_requester = MockRequester()
+        self.mock_requester = MockRequester(Exchange)
         await self.mock_requester.init()
         self.requests = Requests(self.mock_requester)
 
@@ -212,7 +216,7 @@ class CancelAllOrdersTest(unittest.IsolatedAsyncioTestCase):
 
 class GetPriceBarsTest(unittest.IsolatedAsyncioTestCase):
     async def asyncSetUp(self):
-        self.mock_requester = MockRequester()
+        self.mock_requester = MockRequester(Exchange)
         await self.mock_requester.init()
         self.requests = Requests(self.mock_requester)
 
@@ -230,30 +234,31 @@ class GetPriceBarsTest(unittest.IsolatedAsyncioTestCase):
 
 class GetCashTest(unittest.IsolatedAsyncioTestCase):
     async def asyncSetUp(self):
-        self.mock_requester = MockRequester()
+        self.mock_requester = MockRequester(Exchange)
         await self.mock_requester.init()
         self.requests = Requests(self.mock_requester)
 
     async def test_get_cash(self):
         response = await self.requests.make_request('cash', {'agent': self.mock_requester.responder.agent}, self.mock_requester)
-        self.assertEqual(response, {'cash': Decimal('99848.80')}) # NOTE: this is 99848.80 because we have a mock_order in the self.mock_requester_init() method called here in the asyncSetUp() method
+        self.assertEqual(response, {'cash': Decimal('99848.60')}) # NOTE: this is 99848.60 because we have a mock_order in the self.mock_requester_init() method called here in the asyncSetUp() method
 
 class GetAssetsTest(unittest.IsolatedAsyncioTestCase):
     async def asyncSetUp(self):
-        self.mock_requester = MockRequester()
+        self.mock_requester = MockRequester(Exchange)
         await self.mock_requester.init()
         self.requests = Requests(self.mock_requester)
 
     async def test_get_assets(self):
         response = await self.requests.make_request('assets', {'agent': self.mock_requester.responder.agent}, self.mock_requester)
         self.assertEqual(response['assets']['BTC'], Decimal('2'))
-        self.assertEqual(response['assets']['USD'], Decimal('99848.80'))
+        self.assertEqual(response['assets']['USD'], Decimal('99848.60'))
         self.assertEqual(response['frozen_assets']['USD'][0]['frozen_qty'], 151)
         self.assertEqual(response['frozen_assets']['USD'][0]['frozen_exchange_fee'], Decimal('0.20'))
+        self.assertEqual(response['frozen_assets']['USD'][0]['frozen_network_fee'], Decimal('0.20'))
 
 class RegisterAgentTest(unittest.IsolatedAsyncioTestCase):
     async def asyncSetUp(self):
-        self.mock_requester = MockRequester()
+        self.mock_requester = MockRequester(Exchange)
         await self.mock_requester.init()
         self.requests = Requests(self.mock_requester)
 
@@ -264,7 +269,7 @@ class RegisterAgentTest(unittest.IsolatedAsyncioTestCase):
 
 class MarketBuyTest(unittest.IsolatedAsyncioTestCase):
     async def asyncSetUp(self):
-        self.mock_requester = MockRequester()
+        self.mock_requester = MockRequester(Exchange)
         await self.mock_requester.init()
         self.requests = Requests(self.mock_requester)
 
@@ -277,7 +282,7 @@ class MarketBuyTest(unittest.IsolatedAsyncioTestCase):
 
 class MarketSellTest(unittest.IsolatedAsyncioTestCase):
     async def asyncSetUp(self) -> None:
-        self.mock_requester = MockRequester()
+        self.mock_requester = MockRequester(Exchange)
         await self.mock_requester.init()
         self.requests = Requests(self.mock_requester)
 
@@ -291,7 +296,7 @@ class MarketSellTest(unittest.IsolatedAsyncioTestCase):
 
 class GetAgentTest(unittest.IsolatedAsyncioTestCase):
     async def asyncSetUp(self):
-        self.mock_requester = MockRequester()
+        self.mock_requester = MockRequester(Exchange)
         await self.mock_requester.init()
         self.requests = Requests(self.mock_requester)
 
@@ -316,11 +321,12 @@ class GetAgentTest(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(response['positions'][1]['exits'], [])
         self.assertEqual(response['frozen_assets']['USD'][0]['frozen_qty'], '151.00')
         self.assertEqual(response['frozen_assets']['USD'][0]['frozen_exchange_fee'], '0.20')
+        self.assertEqual(response['frozen_assets']['USD'][0]['frozen_network_fee'], '0.20')
         self.assertEqual(response['_transactions'], [])
 
 class GetAgentsTest(unittest.IsolatedAsyncioTestCase):
     async def asyncSetUp(self):
-        self.mock_requester = MockRequester()
+        self.mock_requester = MockRequester(Exchange)
         await self.mock_requester.init()
         self.requests = Requests(self.mock_requester)
 
@@ -329,31 +335,31 @@ class GetAgentsTest(unittest.IsolatedAsyncioTestCase):
         print(response)
         self.assertEqual(response[0]['name'], 'init_seed_BTCUSD')
         self.assertEqual(len(response[0]['_transactions']), 0)
-        self.assertEqual(response[1]['assets'], {'BTC': '2.00000000', 'USD': '99848.80'})
+        self.assertEqual(response[1]['assets'], {'BTC': '2.00000000', 'USD': '99848.60'})
 
 class AddCashTest(unittest.IsolatedAsyncioTestCase):
     async def asyncSetUp(self) -> None:
-        self.mock_requester = MockRequester()
+        self.mock_requester = MockRequester(Exchange)
         await self.mock_requester.init()
         self.requests = Requests(self.mock_requester)
 
     async def test_add_cash(self):
         response = await self.requests.make_request('add_cash', {'agent': self.mock_requester.responder.agent, 'amount': 1000, 'note': 'test'}, self.mock_requester)
-        self.assertEqual(response, {'USD': '100848.80'})
+        self.assertEqual(response, {'USD': '100848.60'})
 
 class RemoveCashTest(unittest.IsolatedAsyncioTestCase):
     async def asyncSetUp(self) -> None:
-        self.mock_requester = MockRequester()
+        self.mock_requester = MockRequester(Exchange)
         await self.mock_requester.init()
         self.requests = Requests(self.mock_requester)
 
     async def test_remove_cash(self):
         response = await self.requests.make_request('remove_cash', {'agent': self.mock_requester.responder.agent, 'amount': 1000}, self.mock_requester)
-        self.assertEqual(response, {'USD': '98848.80'})
+        self.assertEqual(response, {'USD': '98848.60'})
 
 class GetAgentsHoldingTest(unittest.IsolatedAsyncioTestCase):
     async def asyncSetUp(self) -> None:
-        self.mock_requester = MockRequester()
+        self.mock_requester = MockRequester(Exchange)
         await self.mock_requester.init()
         self.requests = Requests(self.mock_requester)
 
@@ -366,7 +372,7 @@ class GetAgentsHoldingTest(unittest.IsolatedAsyncioTestCase):
 
 class GetAgentsPositionsTest(unittest.IsolatedAsyncioTestCase):
     async def asyncSetUp(self) -> None:
-        self.mock_requester = MockRequester()
+        self.mock_requester = MockRequester(Exchange)
         await self.mock_requester.init()
         self.requests = Requests(self.mock_requester)
 
@@ -378,12 +384,12 @@ class GetAgentsPositionsTest(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(len(result[0]['positions']), 2)
         self.assertEqual(result[0]['agent'], 'init_seed_BTCUSD')
         self.assertEqual(result[0]['positions'][0]['asset'], 'BTC')
-        self.assertEqual(result[0]['positions'][0]['qty'], '151000.00000000')
+        self.assertEqual(result[0]['positions'][0]['qty'], '152000.00000000')
         self.assertEqual(result[0]['positions'][0]['dt'], '2023-01-01 00:00:00')
         self.assertEqual(len(result[0]['positions'][0]['enters']), 1)
         self.assertEqual(result[0]['positions'][0]['exits'], [])
         self.assertEqual(result[0]['positions'][1]['asset'], 'USD')
-        self.assertEqual(result[0]['positions'][1]['qty'], '149.00')
+        self.assertEqual(result[0]['positions'][1]['qty'], '150.00')
         self.assertEqual(result[0]['positions'][1]['dt'], '2023-01-01 00:00:00')
         self.assertEqual(len(result[0]['positions'][1]['enters']), 1)
         self.assertEqual(result[1]['agent'], self.mock_requester.responder.agent)
@@ -401,7 +407,7 @@ class GetAgentsPositionsTest(unittest.IsolatedAsyncioTestCase):
 
 class GetAgentSimpleTest(unittest.IsolatedAsyncioTestCase):
     async def asyncSetUp(self) -> None:
-        self.mock_requester = MockRequester()
+        self.mock_requester = MockRequester(Exchange)
         await self.mock_requester.init()
         self.requests = Requests(self.mock_requester)
     
@@ -412,15 +418,17 @@ class GetAgentSimpleTest(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(len(result[0]['frozen_assets']['BTC']), 1)
         self.assertEqual(result[0]['frozen_assets']['BTC'][0]['frozen_qty'], '1000.00')
         self.assertEqual(result[0]['frozen_assets']['BTC'][0]['frozen_exchange_fee'], 0)
+        self.assertEqual(result[0]['frozen_assets']['BTC'][0]['frozen_network_fee'], '1000.00000000')
         self.assertEqual(result[1]['agent'], self.mock_requester.responder.agent)
-        self.assertEqual(result[1]['assets'], {'BTC': '2.00000000', 'USD': '99848.80'})
+        self.assertEqual(result[1]['assets'], {'BTC': '2.00000000', 'USD': '99848.60'})
         self.assertEqual(len(result[1]['frozen_assets']['USD']), 1)
         self.assertEqual(result[1]['frozen_assets']['USD'][0]['frozen_qty'], '151.00')
         self.assertEqual(result[1]['frozen_assets']['USD'][0]['frozen_exchange_fee'], '0.20')
+        self.assertEqual(result[1]['frozen_assets']['USD'][0]['frozen_network_fee'], '0.20')
 
 class getTaxableEventsTest(unittest.IsolatedAsyncioTestCase):
     async def asyncSetUp(self) -> None:
-        self.mock_requester = MockRequester()
+        self.mock_requester = MockRequester(Exchange)
         await self.mock_requester.init()
         self.requests = Requests(self.mock_requester)
 
@@ -431,7 +439,7 @@ class getTaxableEventsTest(unittest.IsolatedAsyncioTestCase):
 
 class GetPositionsTest(unittest.IsolatedAsyncioTestCase):
     async def asyncSetUp(self) -> None:
-        self.mock_requester = MockRequester()
+        self.mock_requester = MockRequester(Exchange)
         await self.mock_requester.init()
         self.requests = Requests(self.mock_requester)
 

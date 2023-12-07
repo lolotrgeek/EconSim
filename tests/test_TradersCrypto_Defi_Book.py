@@ -10,13 +10,14 @@ from source.utils.logger import Logger
 from source.agents.TraderCrypto import CryptoTrader as Trader
 from source.agents.TradersCrypto import RandomMarketTaker, NaiveMarketMaker, SimpleMarketTaker, LowBidder
 from source.exchange.CryptoExchangeRequests import CryptoExchangeRequests as ExchangeRequests
+from source.exchange.CryptoExchange_DeFi_Book import CryptoExchange as Exchange
 from source.crypto.CryptoCurrencyRequests import CryptoCurrencyRequests
 from .MockRequesterCrypto import MockRequesterCryptoExchange as MockRequester
 
 class TestRandomMarketTaker(unittest.IsolatedAsyncioTestCase):
     async def asyncSetUp(self):
         self.trader_name = "RandomMarketTaker"
-        self.mock_requester = MockRequester()
+        self.mock_requester = MockRequester(Exchange)
         self.requests = (ExchangeRequests(self.mock_requester), CryptoCurrencyRequests(self.mock_requester))
         self.aum = 10000
         
@@ -37,7 +38,7 @@ class TestRandomMarketTaker(unittest.IsolatedAsyncioTestCase):
 class TestSimpleMarketTaker(unittest.IsolatedAsyncioTestCase):
     async def asyncSetUp(self):
         self.trader_name = "SimpleMarketTaker"
-        self.mock_requester = MockRequester()
+        self.mock_requester = MockRequester(Exchange)
         self.requests = (ExchangeRequests(self.mock_requester), CryptoCurrencyRequests(self.mock_requester))
         self.aum = 10000
         
@@ -57,7 +58,14 @@ class TestSimpleMarketTaker(unittest.IsolatedAsyncioTestCase):
         self.simple_taker.cash = self.simple_taker.assets['USD']
         cash_before = self.simple_taker.cash    
         await self.simple_taker.spend_cash()
-    
+        
+        self.mock_requester.responder.mock_requester.responder.cryptos['BTC'].blockchain.mempool.transactions[0].confirmed = True
+        self.mock_requester.responder.mock_requester.responder.cryptos['USD'].blockchain.mempool.transactions[0].confirmed = True
+        txn = self.mock_requester.responder.exchange.pending_transactions[0]
+        base_txn = self.mock_requester.responder.mock_requester.responder.cryptos['BTC'].blockchain.mempool.transactions[0].to_dict()
+        quote_txn = self.mock_requester.responder.mock_requester.responder.cryptos['USD'].blockchain.mempool.transactions[0].to_dict()
+        await self.mock_requester.responder.exchange._complete_trade(txn, base_txn, quote_txn)
+
         assets = (await self.simple_taker.get_assets())['assets']
         self.assertTrue(cash_before > self.simple_taker.assets['USD'])
         self.assertTrue('BTC' in assets)
@@ -69,14 +77,34 @@ class TestSimpleMarketTaker(unittest.IsolatedAsyncioTestCase):
         self.simple_taker.cash = self.simple_taker.assets['USD']
         await self.simple_taker.spend_cash()
         
+        self.mock_requester.responder.mock_requester.responder.cryptos['BTC'].blockchain.mempool.transactions[0].confirmed = True
+        self.mock_requester.responder.mock_requester.responder.cryptos['USD'].blockchain.mempool.transactions[0].confirmed = True
+        txn = self.mock_requester.responder.exchange.pending_transactions[0]
+        base_txn = self.mock_requester.responder.mock_requester.responder.cryptos['BTC'].blockchain.mempool.transactions[0].to_dict()
+        quote_txn = self.mock_requester.responder.mock_requester.responder.cryptos['USD'].blockchain.mempool.transactions[0].to_dict()
+        await self.mock_requester.responder.exchange.next()
+
         assets_before = self.simple_taker.assets['BTC']
+
         buy = await self.mock_requester.responder.exchange.limit_buy("BTC", "USD", price=151, qty=500, fee='0.0001', creator=self.mock_requester.responder.agent)
+             
         
+        print(self.mock_requester.responder.exchange.books['BTCUSD'].bids)
         await self.simple_taker.dump_to_cash()
+
+        self.mock_requester.responder.mock_requester.responder.cryptos['BTC'].blockchain.mempool.transactions[1].confirmed = True
+        self.mock_requester.responder.mock_requester.responder.cryptos['USD'].blockchain.mempool.transactions[1].confirmed = True
+        # txn = self.mock_requester.responder.exchange.pending_transactions[0]
+        # base_txn = self.mock_requester.responder.mock_requester.responder.cryptos['BTC'].blockchain.mempool.transactions[1].to_dict()
+        # quote_txn = self.mock_requester.responder.mock_requester.responder.cryptos['USD'].blockchain.mempool.transactions[1].to_dict()
+        # await self.mock_requester.responder.exchange._complete_trade(txn, base_txn, quote_txn)
+        await self.mock_requester.responder.exchange.next()
+        print(self.mock_requester.responder.exchange.books['BTCUSD'].bids)
+
         assets = (await self.simple_taker.get_assets())['assets']
-        if 'BTC' in assets: assets['BTC'] = prec(assets['BTC'], 8)
         self.assertEqual(assets_before > assets['BTC'], True)
         
+
     async def test_take_action(self):
         # Test that the market taker buys or sells an asset
         has_traded = await self.simple_taker.next()
@@ -85,7 +113,7 @@ class TestSimpleMarketTaker(unittest.IsolatedAsyncioTestCase):
 class TestLowBidder(unittest.IsolatedAsyncioTestCase):
     async def asyncSetUp(self):
         self.trader_name = "LowBidder"
-        self.mock_requester = MockRequester()
+        self.mock_requester = MockRequester(Exchange)
         self.requests = (ExchangeRequests(self.mock_requester), CryptoCurrencyRequests(self.mock_requester))
         self.aum = 10000
         
@@ -106,14 +134,24 @@ class TestLowBidder(unittest.IsolatedAsyncioTestCase):
 class TestNaiveMarketMaker(unittest.IsolatedAsyncioTestCase):
     async def asyncSetUp(self):
         self.trader_name = "NaiveMarketMaker"
-        self.mock_requester = MockRequester()
+        self.mock_requester = MockRequester(Exchange)
         self.requests = (ExchangeRequests(self.mock_requester), CryptoCurrencyRequests(self.mock_requester))
         self.aum = 10000
         
         await self.mock_requester.init()
         self.market_maker = NaiveMarketMaker(self.trader_name, self.aum, requests=self.requests)
         self.market_maker.logger = Logger('NaiveMarketMaker', debug_print=True, level=10)
-        await self.market_maker.register()     
+        await self.market_maker.register()
+
+    async def complete_trade(self):
+        print(self.mock_requester.responder.exchange.books['BTCUSD'].bids)
+        print(self.mock_requester.responder.exchange.books['BTCUSD'].asks)
+        self.mock_requester.responder.mock_requester.responder.cryptos['BTC'].blockchain.mempool.transactions[0].confirmed = True
+        self.mock_requester.responder.mock_requester.responder.cryptos['USD'].blockchain.mempool.transactions[0].confirmed = True
+        txn = self.mock_requester.responder.exchange.pending_transactions[0]
+        base_txn = self.mock_requester.responder.mock_requester.responder.cryptos['BTC'].blockchain.mempool.transactions[0].to_dict()
+        quote_txn = self.mock_requester.responder.mock_requester.responder.cryptos['USD'].blockchain.mempool.transactions[0].to_dict()
+        await self.mock_requester.responder.exchange._complete_trade(txn, base_txn, quote_txn)        
 
     async def test_init(self):
         self.assertEqual(self.market_maker.name[:16], self.trader_name)
@@ -133,6 +171,7 @@ class TestNaiveMarketMaker(unittest.IsolatedAsyncioTestCase):
         ticker = self.market_maker.tickers[0]['base']+self.market_maker.tickers[0]['quote']
         
         acquired = await self.market_maker.acquire_assets(self.market_maker.tickers[0])
+        await self.complete_trade()
 
         get_assets = await self.market_maker.get_assets()
         self.market_maker.assets = get_assets['assets']
@@ -157,6 +196,12 @@ class TestNaiveMarketMaker(unittest.IsolatedAsyncioTestCase):
     async def test_market_make(self):
         # Test that the market maker buys an asset
         await self.market_maker.next()
+        self.mock_requester.responder.mock_requester.responder.cryptos['BTC'].blockchain.mempool.transactions[0].confirmed = True
+        self.mock_requester.responder.mock_requester.responder.cryptos['USD'].blockchain.mempool.transactions[0].confirmed = True
+        txn = self.mock_requester.responder.exchange.pending_transactions[0]
+        base_txn = self.mock_requester.responder.mock_requester.responder.cryptos['BTC'].blockchain.mempool.transactions[0].to_dict()
+        quote_txn = self.mock_requester.responder.mock_requester.responder.cryptos['USD'].blockchain.mempool.transactions[0].to_dict()
+        await self.mock_requester.responder.exchange._complete_trade(txn, base_txn, quote_txn)
 
         get_assets = await self.market_maker.get_assets()
         order_qty = prec(str(self.market_maker.assets['BTC'] * self.market_maker.qty_pct_per_order), 8)

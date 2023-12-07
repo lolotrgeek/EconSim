@@ -5,6 +5,7 @@ from decimal import Decimal
 parent_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 sys.path.append(parent_dir)
 from source.agents.TraderCrypto import CryptoTrader as Trader
+from source.exchange.CryptoExchange_DeFi_Book import CryptoExchange as Exchange
 from source.exchange.CryptoExchangeRequests import CryptoExchangeRequests as ExchangeRequests
 from source.crypto.CryptoCurrencyRequests import CryptoCurrencyRequests
 from .MockRequesterCrypto import MockRequesterCryptoExchange as MockRequester
@@ -12,7 +13,7 @@ from .MockRequesterCrypto import MockRequesterCryptoExchange as MockRequester
 class TestTrader(unittest.IsolatedAsyncioTestCase):
     async def asyncSetUp(self):
         self.trader_name = "TestTrader"
-        self.mock_requester = MockRequester()
+        self.mock_requester = MockRequester(Exchange)
         self.requests = (ExchangeRequests(self.mock_requester), CryptoCurrencyRequests(self.mock_requester))
         self.aum = 10000
         
@@ -27,7 +28,7 @@ class TestTrader(unittest.IsolatedAsyncioTestCase):
 class RegisterTraderTest(unittest.IsolatedAsyncioTestCase):
     async def asyncSetUp(self):
         self.trader_name = "TestTrader"
-        self.mock_requester = MockRequester()
+        self.mock_requester = MockRequester(Exchange)
         self.requests = (ExchangeRequests(self.mock_requester), CryptoCurrencyRequests(self.mock_requester))
         
         self.aum = 10000
@@ -48,7 +49,7 @@ class RegisterTraderTest(unittest.IsolatedAsyncioTestCase):
 class GetLatestTradeTest(unittest.IsolatedAsyncioTestCase):
     async def asyncSetUp(self) -> None:
         self.trader_name = "TestTrader"
-        self.mock_requester = MockRequester()
+        self.mock_requester = MockRequester(Exchange)
         self.requests = (ExchangeRequests(self.mock_requester), CryptoCurrencyRequests(self.mock_requester))
         
         self.aum = 10000
@@ -65,7 +66,7 @@ class GetLatestTradeTest(unittest.IsolatedAsyncioTestCase):
 class GetBestBidTest(unittest.IsolatedAsyncioTestCase):
     async def asyncSetUp(self) -> None:
         self.trader_name = "TestTrader"
-        self.mock_requester = MockRequester()
+        self.mock_requester = MockRequester(Exchange)
         self.requests = (ExchangeRequests(self.mock_requester), CryptoCurrencyRequests(self.mock_requester))
         
         self.aum = 10000
@@ -79,7 +80,7 @@ class GetBestBidTest(unittest.IsolatedAsyncioTestCase):
 class GetBestAskTest(unittest.IsolatedAsyncioTestCase):
     async def asyncSetUp(self) -> None:
         self.trader_name = "TestTrader"
-        self.mock_requester = MockRequester()
+        self.mock_requester = MockRequester(Exchange)
         self.requests = (ExchangeRequests(self.mock_requester), CryptoCurrencyRequests(self.mock_requester))
         
         self.aum = 10000
@@ -93,7 +94,7 @@ class GetBestAskTest(unittest.IsolatedAsyncioTestCase):
 class GetMidpriceTest(unittest.IsolatedAsyncioTestCase):
     async def asyncSetUp(self) -> None:
         self.trader_name = "TestTrader"
-        self.mock_requester = MockRequester()
+        self.mock_requester = MockRequester(Exchange)
         self.requests = (ExchangeRequests(self.mock_requester), CryptoCurrencyRequests(self.mock_requester))
         
         self.aum = 10000
@@ -107,7 +108,7 @@ class GetMidpriceTest(unittest.IsolatedAsyncioTestCase):
 class LimitBuyTest(unittest.IsolatedAsyncioTestCase):
     async def asyncSetUp(self) -> None:
         self.trader_name = "TestTrader"
-        self.mock_requester = MockRequester()
+        self.mock_requester = MockRequester(Exchange)
         self.requests = (ExchangeRequests(self.mock_requester), CryptoCurrencyRequests(self.mock_requester))
         
         self.aum = 10000
@@ -134,7 +135,7 @@ class LimitBuyTest(unittest.IsolatedAsyncioTestCase):
 class LimitSellTest(unittest.IsolatedAsyncioTestCase):
     async def asyncSetUp(self) -> None:
         self.trader_name = "TestTrader"
-        self.mock_requester = MockRequester()
+        self.mock_requester = MockRequester(Exchange)
         self.requests = (ExchangeRequests(self.mock_requester), CryptoCurrencyRequests(self.mock_requester))
         
         self.aum = 10000
@@ -148,11 +149,13 @@ class LimitSellTest(unittest.IsolatedAsyncioTestCase):
 
     async def test_limit_sell(self):
         order = await self.trader.limit_sell("BTC", "USD", 100, 1, '.01')
+
         self.assertEqual(order['creator'], self.trader_registered)
         self.assertEqual(order['ticker'], "BTCUSD")
         self.assertEqual(order['price'], '100.00')
         self.assertEqual(order['qty'], '1.00000000')
         self.assertEqual(order['exchange_fee'], '0.00200000')
+        self.assertEqual(order['network_fee'], '0.20000000')
         self.assertEqual(order['side'], 'sell')
         self.assertEqual(order['dt'], '2023-01-01 00:00:00')
     
@@ -163,7 +166,7 @@ class LimitSellTest(unittest.IsolatedAsyncioTestCase):
 class CancelOrderTest(unittest.IsolatedAsyncioTestCase):
     async def asyncSetUp(self) -> None:
         self.trader_name = "TestTrader"
-        self.mock_requester = MockRequester()
+        self.mock_requester = MockRequester(Exchange)
         self.requests = (ExchangeRequests(self.mock_requester), CryptoCurrencyRequests(self.mock_requester))
         
         self.aum = 10000
@@ -182,7 +185,7 @@ class CancelOrderTest(unittest.IsolatedAsyncioTestCase):
 class CancelAllOrdersTest(unittest.IsolatedAsyncioTestCase):
     async def asyncSetUp(self) -> None:
         self.trader_name = "TestTrader"
-        self.mock_requester = MockRequester()
+        self.mock_requester = MockRequester(Exchange)
         self.requests = (ExchangeRequests(self.mock_requester), CryptoCurrencyRequests(self.mock_requester))
         
         self.aum = 10000
@@ -197,7 +200,7 @@ class CancelAllOrdersTest(unittest.IsolatedAsyncioTestCase):
 class GetPriceBarsTest(unittest.IsolatedAsyncioTestCase):
     async def asyncSetUp(self) -> None:
         self.trader_name = "TestTrader"
-        self.mock_requester = MockRequester()
+        self.mock_requester = MockRequester(Exchange)
         self.requests = (ExchangeRequests(self.mock_requester), CryptoCurrencyRequests(self.mock_requester))
         
         self.aum = 10000
@@ -216,7 +219,7 @@ class GetPriceBarsTest(unittest.IsolatedAsyncioTestCase):
 class GetOrderBookTest(unittest.IsolatedAsyncioTestCase):
     async def asyncSetUp(self) -> None:
         self.trader_name = "TestTrader"
-        self.mock_requester = MockRequester()
+        self.mock_requester = MockRequester(Exchange)
         self.requests = (ExchangeRequests(self.mock_requester), CryptoCurrencyRequests(self.mock_requester))
         
         self.limit = 1
@@ -232,7 +235,7 @@ class GetOrderBookTest(unittest.IsolatedAsyncioTestCase):
 class GetTradesTest(unittest.IsolatedAsyncioTestCase):
     async def asyncSetUp(self) -> None:
         self.trader_name = "TestTrader"
-        self.mock_requester = MockRequester()
+        self.mock_requester = MockRequester(Exchange)
         self.requests = (ExchangeRequests(self.mock_requester), CryptoCurrencyRequests(self.mock_requester))
         
         self.limit = 1
@@ -248,7 +251,7 @@ class GetTradesTest(unittest.IsolatedAsyncioTestCase):
 class GetQuotesTest(unittest.IsolatedAsyncioTestCase):
     async def asyncSetUp(self) -> None:
         self.trader_name = "TestTrader"
-        self.mock_requester = MockRequester()
+        self.mock_requester = MockRequester(Exchange)
         self.requests = (ExchangeRequests(self.mock_requester), CryptoCurrencyRequests(self.mock_requester))
         
         self.limit = 1
@@ -264,7 +267,7 @@ class GetQuotesTest(unittest.IsolatedAsyncioTestCase):
 class MarketBuyTest(unittest.IsolatedAsyncioTestCase):
     async def asyncSetUp(self) -> None:
         self.trader_name = "TestTrader"
-        self.mock_requester = MockRequester()
+        self.mock_requester = MockRequester(Exchange)
         self.requests = (ExchangeRequests(self.mock_requester), CryptoCurrencyRequests(self.mock_requester))
                 
         await self.mock_requester.init()
@@ -277,7 +280,7 @@ class MarketBuyTest(unittest.IsolatedAsyncioTestCase):
 class MarketSellTest(unittest.IsolatedAsyncioTestCase):
     async def asyncSetUp(self) -> None:
         self.trader_name = "TestTrader"
-        self.mock_requester = MockRequester()
+        self.mock_requester = MockRequester(Exchange)
         self.requests = (ExchangeRequests(self.mock_requester), CryptoCurrencyRequests(self.mock_requester))
                 
         await self.mock_requester.init()
@@ -290,7 +293,7 @@ class MarketSellTest(unittest.IsolatedAsyncioTestCase):
 class GetCashTest(unittest.IsolatedAsyncioTestCase):
     async def asyncSetUp(self) -> None:
         self.trader_name = "TestTrader"
-        self.mock_requester = MockRequester()
+        self.mock_requester = MockRequester(Exchange)
         self.requests = (ExchangeRequests(self.mock_requester), CryptoCurrencyRequests(self.mock_requester))
         
         # self.aum = 10000
@@ -306,7 +309,7 @@ class GetCashTest(unittest.IsolatedAsyncioTestCase):
 class GetPositionSimpleTest(unittest.IsolatedAsyncioTestCase):
     async def asyncSetUp(self) -> None:
         self.trader_name = "TestTrader"
-        self.mock_requester = MockRequester()
+        self.mock_requester = MockRequester(Exchange)
         self.requests = (ExchangeRequests(self.mock_requester), CryptoCurrencyRequests(self.mock_requester))
         
         await self.mock_requester.init()
@@ -334,7 +337,7 @@ class GetPositionSimpleTest(unittest.IsolatedAsyncioTestCase):
 class GetPositionTest(unittest.IsolatedAsyncioTestCase):
     async def asyncSetUp(self) -> None:
         self.trader_name = "TestTrader"
-        self.mock_requester = MockRequester()
+        self.mock_requester = MockRequester(Exchange)
         self.requests = (ExchangeRequests(self.mock_requester), CryptoCurrencyRequests(self.mock_requester))
         
         await self.mock_requester.init()
@@ -354,7 +357,7 @@ class GetPositionTest(unittest.IsolatedAsyncioTestCase):
 class GetAssetsTest(unittest.IsolatedAsyncioTestCase):
     async def asyncSetUp(self) -> None:
         self.trader_name = "TestTrader"
-        self.mock_requester = MockRequester()
+        self.mock_requester = MockRequester(Exchange)
         self.requests = (ExchangeRequests(self.mock_requester), CryptoCurrencyRequests(self.mock_requester))
         
         await self.mock_requester.init()
@@ -367,7 +370,7 @@ class GetAssetsTest(unittest.IsolatedAsyncioTestCase):
 class GetMemPool(unittest.IsolatedAsyncioTestCase):
     async def asyncSetUp(self) -> None:
         self.trader_name = "TestTrader"
-        self.mock_requester = MockRequester()
+        self.mock_requester = MockRequester(Exchange)
         self.requests = (ExchangeRequests(self.mock_requester), CryptoCurrencyRequests(self.mock_requester))
         
         await self.mock_requester.init()
@@ -380,7 +383,7 @@ class GetMemPool(unittest.IsolatedAsyncioTestCase):
 class GetTransactions(unittest.IsolatedAsyncioTestCase):
     async def asyncSetUp(self) -> None:
         self.trader_name = "TestTrader"
-        self.mock_requester = MockRequester()
+        self.mock_requester = MockRequester(Exchange)
         
         self.requests = (ExchangeRequests(self.mock_requester), CryptoCurrencyRequests(self.mock_requester))
         
@@ -394,7 +397,7 @@ class GetTransactions(unittest.IsolatedAsyncioTestCase):
 class GetTransaction(unittest.IsolatedAsyncioTestCase):
     async def asyncSetUp(self) -> None:
         self.trader_name = "TestTrader"
-        self.mock_requester = MockRequester()
+        self.mock_requester = MockRequester(Exchange)
 
         self.requests = (ExchangeRequests(self.mock_requester), CryptoCurrencyRequests(self.mock_requester))
         

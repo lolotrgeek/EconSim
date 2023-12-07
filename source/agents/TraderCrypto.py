@@ -133,8 +133,6 @@ class CryptoTrader(Trader):
         returns: `{assets: {symbol: amount, ...}, frozen_assets: {symbol: amount, ...}}`
         """
         assets = await self.exchange_requests.get_assets(self.name)
-        for asset in assets['assets']:
-            assets['assets'][asset] = prec(assets['assets'][asset])
         return assets
     
     async def register(self, logger=False) -> dict:
