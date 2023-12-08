@@ -16,6 +16,9 @@ class CryptoCurrencyRequests(Requests):
     
     async def add_transaction(self, asset:str, fee:float, amount:float, sender:str, recipient:str) -> str:
         return await self.make_request('add_transaction', {'asset': asset, 'fee': fee, 'amount': amount, 'sender': sender, 'recipient': recipient}, self.requester)
+    
+    async def cancel_transaction(self, asset:str, id:str) -> str:
+        return await self.make_request('cancel_transaction', {'asset': asset, 'id': id}, self.requester)
 
     async def get_mempool(self, asset) -> str:
         return await self.make_request('get_mempool', {'asset': asset}, self.requester)

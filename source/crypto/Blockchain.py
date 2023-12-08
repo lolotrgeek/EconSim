@@ -2,14 +2,14 @@ import sys, os
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 from decimal import Decimal
 from .MemPool import MemPool, MempoolTransaction
-from source.utils._utils import prec
+from source.utils._utils import prec, get_minimum
 from source.Archive import Archive
 import random
 import pandas as pd
 
 class Blockchain():
     def __init__(self, asset="", datetime=None, decimals=8):
-        seed = MempoolTransaction(asset, 0, 0, 'init_seed', 'init_seed', datetime)
+        seed = MempoolTransaction(asset, get_minimum(decimals), 0, 'init_seed', 'init_seed', datetime)
         self.decimals = decimals
         self.no_fee = False
         seed.confirmed = True
@@ -33,12 +33,12 @@ class Blockchain():
         self.chain.append(block)
         return block
     
-    async def add_transaction(self, asset:str, fee:Decimal, amount:Decimal, sender:str, recipient:str) -> MempoolTransaction:
+    async def add_transaction(self, asset:str, fee:Decimal, amount:Decimal, sender:str, recipient:str, transfers=[]) -> MempoolTransaction:
         fee = prec(fee, self.decimals)
         amount = prec(amount, self.decimals)
         if(fee <= 0): return MempoolTransaction(asset, 0, 0, "error", "refusing transaction: no fee", dt=self.datetime)
         self.total_transactions += 1
-        mempool_transaction = MempoolTransaction(asset, fee, amount, sender, recipient, dt=self.datetime)
+        mempool_transaction = MempoolTransaction(asset, fee, amount, sender, recipient, dt=self.datetime, transfers=transfers)
         self.mempool.transactions.append(mempool_transaction)
         return mempool_transaction
     
@@ -82,6 +82,14 @@ class Blockchain():
                 return transaction.to_dict()
         for transaction in self.mempool.transactions:
             if transaction.id == id:
+                return transaction.to_dict()
+        return {"error": "transaction not found"}
+    
+    async def cancel_transaction(self, id:str) -> dict:
+        unconfirmed_transactions = await self.mempool.get_pending_transactions()
+        for transaction in unconfirmed_transactions:
+            if transaction.id == id:
+                unconfirmed_transactions.remove(transaction)
                 return transaction.to_dict()
         return {"error": "transaction not found"}
     

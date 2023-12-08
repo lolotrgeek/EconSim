@@ -1,9 +1,9 @@
-import pandas as pd
 from uuid import uuid4 as UUID
+from typing import List
 
 
 class MempoolTransaction:
-    def __init__(self, asset, fee, amount, sender, recipient, dt=None):
+    def __init__(self, asset, fee, amount, sender, recipient, dt=None, transfers=[]):
         self.id = str(UUID())
         self.asset = asset
         self.fee = fee
@@ -13,6 +13,7 @@ class MempoolTransaction:
         self.confirmed = False
         self.timestamp = None
         self.dt = dt
+        self.transfers = transfers
         
 
     def to_dict(self) -> dict:
@@ -25,19 +26,20 @@ class MempoolTransaction:
             'recipient': self.recipient,
             'confirmed': self.confirmed,
             'timestamp': self.timestamp,
-            'dt': self.dt
+            'dt': self.dt,
+            'transfers': self.transfers
         }
 
 
 class MemPool:
     def __init__(self) :
-        self.transactions = []
+        self.transactions: List[MempoolTransaction] = []
 
-    async def get_pending_transactions(self, to_dicts=False) -> str:
+    async def get_pending_transactions(self, to_dicts=False) -> list:
         if to_dicts: return [transaction.to_dict() for transaction in self.transactions if not transaction.confirmed]
         return [transaction for transaction in self.transactions if not transaction.confirmed]
     
-    async def get_confirmed_transactions(self, to_dicts=False) -> str:
+    async def get_confirmed_transactions(self, to_dicts=False) -> list:
         if to_dicts: return [transaction.to_dict() for transaction in self.transactions if transaction.confirmed]
         return [transaction for transaction in self.transactions if transaction.confirmed]
     
