@@ -1,10 +1,12 @@
+import sys, os
+sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 from uuid import uuid4 as UUID
 from typing import List
-
+from source.utils._utils import generate_address, validate_address
 
 class MempoolTransaction:
-    def __init__(self, asset, fee, amount, sender, recipient, dt=None, transfers=[]):
-        self.id = str(UUID())
+    def __init__(self, asset, fee, amount, sender, recipient, dt=None, id=None, transfers=[]):
+        self.id = id if id and validate_address(id) else generate_address()
         self.asset = asset
         self.fee = fee
         self.amount = amount
@@ -15,7 +17,6 @@ class MempoolTransaction:
         self.dt = dt
         self.transfers = transfers
         
-
     def to_dict(self) -> dict:
         return {
             'id': self.id,
