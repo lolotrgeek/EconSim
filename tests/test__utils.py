@@ -5,7 +5,7 @@ import sys
 import os
 parent_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 sys.path.append(parent_dir)
-from source.utils._utils import dumps, get_pandas_time, get_timedelta, get_datetime_range, get_random_string, format_dataframe_rows_to_dict, prec, non_zero_prec
+from source.utils._utils import *
 
 class TestUtilsTest(unittest.TestCase):
     def test_dumps(self):
@@ -76,6 +76,9 @@ class TestUtilsTest(unittest.TestCase):
     def test_non_zero_prec(self):
         self.assertEqual(prec((Decimal('0.009366410557787348') * Decimal('0.52')), 2, 'down'), Decimal('0.00'))
         self.assertEqual(non_zero_prec((Decimal('0.009366410557787348') * Decimal('0.52')), 2), Decimal('0.01'))
-        
+
+    def test_get_minimum(self):
+        self.assertEqual(get_minimum(18), Decimal('0.000000000000000001'))
+
 if __name__ == '__main__':
     unittest.main()

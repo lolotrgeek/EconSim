@@ -75,6 +75,13 @@ def non_zero_prec(num, places=18) -> Decimal:
         result = prec(num, places, rounding='up')
     return result
 
+def get_minimum(places: int) -> Decimal:
+    """
+    Returns the smallest decimal possible for the given number of places.
+    """
+    smallest_num = Decimal(1) / (10 ** places)
+    return prec(smallest_num, places, rounding='down')
+
 def to_sub_unit(self, amount, precision=8) -> int:
     """
     Converts primary units to subunits i.e. `BTC -> sats` , `ETH -> wei`
@@ -137,6 +144,24 @@ def generate_names(num_to_gen=20) -> list:
         else:
             i -= 1
     return names
+
+def generate_address(self) -> str:
+    """
+    Generates a random string of letters and numbers to represent a wallet address
+    """
+    length = random.randint(26, 35)
+    if not isinstance(length, int) or length < 1:
+        raise ValueError("Length must be a positive integer")
+    characters = string.ascii_letters + string.digits
+    return '0x'+''.join(random.choice(characters) for _ in range(length))    
+
+def validate_address(self, address:str) -> bool:
+    """
+    Validates a wallet address
+    """
+    if not isinstance(address, str):
+        raise TypeError("Address must be a string")
+    return len(address[2:]) > 26 or len(address[2:]) < 35 and address[:2] == '0x'
 
 def convert_sci_to_str(num):
     return "{:f}".format(num)

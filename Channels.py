@@ -13,3 +13,7 @@ class Channels:
 
         self.government_channel = 5580
         self.government_response_channel = 5583
+
+        self.wallet_channel = 5573
+
+        self.defi_channel = 5574

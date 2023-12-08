@@ -58,6 +58,7 @@ class CryptoExchange(Exchange):
     async def archive(self):
         await super().archive()
         self.pairs_archive.store(self.pairs)
+        
     async def list_asset(self, asset, pair, decimals, minimum, min_qty_percent):
         new_pairing = {
                 'base': asset, 

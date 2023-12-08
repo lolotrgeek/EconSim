@@ -342,7 +342,6 @@ class StockExchange(Exchange):
             return {"market_buy": "no fills"}                
         return {"market_buy": ticker, "buyer": buyer, 'qty': qty,  "fills": fills}
 
-
     async def market_sell(self, ticker:str, qty: int, seller: str, fee={'buyer_fee':0, 'seller_fee':0}, accounting='FIFO') -> dict:
         qty = Decimal(str(qty))
         if qty <= 0:
@@ -378,7 +377,6 @@ class StockExchange(Exchange):
         if(fills == []):
             return {"market_sell": "no fills"}                
         return {"market_sell": ticker, "seller": seller, 'qty': qty, "fills": fills }
-
 
     async def register_agent(self, name, initial_assets={}) -> dict:
         """
