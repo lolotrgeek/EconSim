@@ -14,7 +14,7 @@ from source.utils._utils import prec, non_zero_prec, generate_address
 #NOTE: symbols are the letters that represent a given asset, e.g. BTC, ETH, etc.
 #NOTE: tickers are the combination of the symbol and the quote currency, e.g. BTC/USD, ETH/USD, etc.
 
-class CryptoDeFiExchange():
+class DefiExchange():
     """
     A Crypto Exchange that uses an Automated Market Maker (AMM) to match orders.
 

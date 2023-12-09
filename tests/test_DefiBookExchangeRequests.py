@@ -6,7 +6,7 @@ sys.path.append(parent_dir)
 import unittest
 from datetime import datetime
 from source.exchange.CryptoExchangeRequests import CryptoExchangeRequests as Requests
-from source.exchange.CryptoExchange_DeFi_Book import CryptoExchange as Exchange
+from source.exchange.DefiBookExchange import DefiBookExchange as Exchange
 from .MockRequesterCrypto import MockRequesterCryptoExchange as MockRequester
 
 class getTickersTest(unittest.IsolatedAsyncioTestCase):

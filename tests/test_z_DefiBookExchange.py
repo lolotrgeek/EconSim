@@ -6,7 +6,7 @@ parent_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 sys.path.append(parent_dir)
 from source.utils.logger import Null_Logger
 from source.utils._utils import prec
-from source.exchange.CryptoExchange_DeFi_Book import CryptoExchange as Exchange
+from source.exchange.DefiBookExchange import DefiBookExchange as Exchange
 from source.crypto.CryptoCurrencyRequests import CryptoCurrencyRequests as Requests
 from .MockRequesterCrypto import MockRequesterCrypto as MockRequester
 

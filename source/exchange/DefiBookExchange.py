@@ -20,7 +20,7 @@ from source.utils._utils import get_random_string, prec, non_zero_prec
 #NOTE: symbols are the letters that represent a given asset, e.g. BTC, ETH, etc.
 #NOTE: tickers are the combination of the symbol and the quote currency, e.g. BTC/USD, ETH/USD, etc.
 
-class CryptoExchange(Exchange):
+class DefiBookExchange(Exchange):
     """
     A DeFi Crypto Exchange that uses an Order book to match orders and an accounting method to track positions.
 
