@@ -145,7 +145,7 @@ def generate_names(num_to_gen=20) -> list:
             i -= 1
     return names
 
-def generate_address(self) -> str:
+def generate_address() -> str:
     """
     Generates a random string of letters and numbers to represent a wallet address
     """
@@ -155,7 +155,7 @@ def generate_address(self) -> str:
     characters = string.ascii_letters + string.digits
     return '0x'+''.join(random.choice(characters) for _ in range(length))    
 
-def validate_address(self, address:str) -> bool:
+def validate_address(address:str) -> bool:
     """
     Validates a wallet address
     """
