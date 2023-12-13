@@ -5,6 +5,7 @@ from typing import List
 from source.utils._utils import generate_address, validate_address
 
 class MempoolTransaction:
+    __slots__ = ['id', 'asset', 'fee', 'amount', 'sender', 'recipient', 'confirmed', 'timestamp', 'dt', 'transfers']
     def __init__(self, asset, fee, amount, sender, recipient, dt=None, id=None, transfers=[]):
         self.id = id if id and validate_address(id) else generate_address()
         self.asset = asset
