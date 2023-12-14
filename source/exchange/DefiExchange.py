@@ -26,13 +26,14 @@ class DefiExchange():
     There are no limit orders, only market orders called "swaps".
 
     """
-    def __init__(self, datetime= None, crypto_requester=None, wallet_requester=None):
+    def __init__(self, chain = None, datetime= None, crypto_requester=None, wallet_requester=None):
+        self.chain = chain # the blockchain that the exchange is running on
         self.dt = datetime
         self.requester: CryptoCurrencyRequests = crypto_requester
         self.wallet_requester: WalletRequests = wallet_requester
         self.router = generate_address()
-        self.default_currency= Currency('DFY', decimals= 18) #TODO: get this from the crypto_requester
-        self.assets: Dict[Symbol, Asset] = {self.default_currency.symbol: Asset(self.router)}
+        self.default_currency: Currency = None
+        self.assets: Dict[Symbol, Asset] = {}
         self.fee_levels = [Decimal('0.01'), Decimal('0.05'), Decimal('0.25'), Decimal('0.1')]
         self.pools: Dict[Pair, Dict[PoolFee, Pool]] = {}        
         self.swaps = []
@@ -51,7 +52,23 @@ class DefiExchange():
         self.max_pairs = 10000
         self.max_assets = 10000
         self.logger = Logger('DefiExchange', 30)
-        
+
+    async def start(self):
+        self.chain = self.requester.connect(self.chain)
+        if 'error' in self.chain:
+            self.logger.error(f'cannot connect to chain, error: {self.chain["error"]}')
+            return {'error': 'cannot connect to chain'}
+        if self.chain is isinstance(dict): 
+            self.default_currency = Currency(self.chain['symbol'], decimals= self.chain['decimals'])
+            self.assets[self.default_currency.symbol] = Asset(self.router)
+
+        assets = self.requester.get_assets()
+        if 'error' in assets:
+            self.logger.error(f'cannot get assets, error: {assets["error"]}')
+            return {'error': 'cannot get assets'}
+        for asset in assets:
+            await self.list_asset(asset['symbol'], asset['decimals'])
+
     async def next(self):
         for address, pending_liquidity in self.pending_liquidity:
             address: Address = str(address)
@@ -182,19 +199,20 @@ class DefiExchange():
                 return {'collect_fees_rejected': id}
         return {'error': 'transaction not found'}
 
-    async def list_asset(self, symbol: str, decimals=8, min_qty_percent='0.05') -> dict:
+    async def list_asset(self, symbol: str, decimals=8) -> dict:
         if symbol == self.default_currency.symbol:
             return {'error': 'cannot list default_quote_currency'}
         if len(self.assets) >= self.max_assets:
             return {'error': 'cannot list, max_assets_reached'}
         if symbol in self.assets:
             return {'error': 'cannot list, asset already exists'}        
-
         minimum = prec('.00000000000000000001', decimals)
         address = generate_address()
         self.assets[symbol] = Asset(address, decimals, minimum, True) 
-
         return {'asset_listed': symbol}
+
+    async def get_assets(self) -> dict:
+        return self.assets
 
     async def create_pool(self, base:str, quote:str, fee_level=2) -> Pool:
         if base not in self.assets:
@@ -335,20 +353,17 @@ class DefiExchange():
             return {'error': 'agent does not have enough funds'}
             
         #TODO: send a confirmation to agent (not wallet) to confirm the swap
-
-        network_fee = prec((await self.requester.get_last_fee()), self.default_currency.decimals) #TODO: calc on wallet side
-
         transfers = [
             {'asset': base, 'address': self.assets[base]['address'], 'from': agent_wallet, 'to': self.router, 'for': total_amount},
             {'asset': quote, 'address': self.assets[quote]['address'], 'from': self.router, 'to': agent_wallet, 'for': price}
         ]
         swap_address = generate_address()
-        transaction = MempoolTransaction(id=swap_address, asset=self.default_currency.symbol, fee=network_fee, amount=0, sender=agent_wallet, recipient=self.router, transfers=transfers)
+        transaction = MempoolTransaction(id=swap_address, asset=self.default_currency.symbol, fee=0, amount=0, sender=agent_wallet, recipient=self.router, transfers=transfers)
         self.unapproved_swaps[swap_address] = Swap(pool_fee_pct, fee_amount, slippage, transaction)
         await self.wallet_requester.request_signature(agent_wallet, transaction.to_dict())
         return {swap_address: self.unapproved_swaps[swap_address]}
 
-    async def approve_swap(self, swap_address: Address) -> Swap:
+    async def approve_swap(self, swap_address: Address, network_fee:str) -> Swap:
         """
         Approves a swap, if the price is within the slippage range.
         """
@@ -373,6 +388,7 @@ class DefiExchange():
             return {'error': 'slippage, price too high'}
         
         approved_swap.txn.transfers[1]['for'] = price
+        approved_swap.txn.fee = network_fee
         pending_transaction = await self.requester.add_transaction(**approved_swap.txn.to_dict())
         if('error' in pending_transaction or pending_transaction['sender'] == 'error' ):
             self.logger.error('add_transaction_failed', pending_transaction)
@@ -411,13 +427,12 @@ class DefiExchange():
             return {'error': 'agent does not have enough funds'}
         max_price = price * (1 + high_range)
         min_price = price * (1 - low_range)
-        network_fee = prec((await self.requester.get_last_fee()), self.default_currency.decimals)
         transfers = [
             {'asset': base, 'address': self.assets[base]['address'], 'from': agent_wallet, 'to': self.router, 'for': amount},
             {'asset': quote, 'address': self.assets[quote]['address'], 'from': agent_wallet, 'to': self.router, 'for': price},
             {'asset': liquidity_address, 'address': pool.lp_token, 'from': self.router, 'to': agent_wallet, 'for': 0} #LP token, the `asset` is the address to the Liquidity position address so that the wallet has a record of the liquidity position
         ]
-        transaction = MempoolTransaction(id=liquidity_address, asset=self.default_currency.symbol, fee=network_fee, amount=0, sender=agent_wallet, recipient=self.router, transfers=transfers)
+        transaction = MempoolTransaction(id=liquidity_address, asset=self.default_currency.symbol, fee=0, amount=0, sender=agent_wallet, recipient=self.router, transfers=transfers)
         self.unapproved_liquidity[liquidity_address] = Liquidity(liquidity_address, max_price, min_price, pool_fee_pct, transaction) # the `owner` is the address of the liquidity being removed
         return {liquidity_address: self.unapproved_liquidity[liquidity_address]}
     
@@ -454,12 +469,11 @@ class DefiExchange():
             {'asset': base, 'address': self.assets[base]['address'], 'from': self.router, 'to': agent_wallet, 'for': liquidity_to_remove.txn.transfers[0]['for']},
             {'asset': quote, 'address': self.assets[quote]['address'], 'from': self.router, 'to': agent_wallet, 'for': liquidity_to_remove.txn.transfers[1]['for']}
         ]
-        network_fee = prec((await self.requester.get_last_fee()), self.default_currency.decimals)
-        transaction = MempoolTransaction(id=remove_liquidity_address, asset=self.default_currency.symbol, fee=network_fee, amount=0, sender=agent_wallet, recipient=self.router, transfers=transfers)
-        self.unapproved_remove_liquidity[remove_liquidity_address] = Liquidity(agent_wallet, liquidity_to_remove.max_price, liquidity_to_remove.min_price, pool_fee_pct, transaction)
+        transaction = MempoolTransaction(id=remove_liquidity_address, asset=self.default_currency.symbol, fee=0, amount=0, sender=agent_wallet, recipient=self.router, transfers=transfers)
+        self.unapproved_remove_liquidity[remove_liquidity_address] = Liquidity(agent_wallet, liquidity_to_remove.max_price, liquidity_to_remove.min_price, liquidity_to_remove.pool_fee_pct, transaction)
         return {remove_liquidity_address: self.unapproved_remove_liquidity[remove_liquidity_address]}
 
-    async def approve_remove_liquidity(self, remove_liquidity_address:Address):
+    async def approve_remove_liquidity(self, remove_liquidity_address:Address, network_fee: str):
         """
         Approves a remove liquidity transaction.
         """
@@ -467,7 +481,7 @@ class DefiExchange():
         if remove_liquidity_address not in self.unapproved_remove_liquidity:
             return {'error': 'liquidity not found'}
         approved_remove_liquidity = self.unapproved_liquidity.pop(remove_liquidity_address)
-
+        approved_remove_liquidity.txn.fee = network_fee
         pending_transaction = await self.requester.add_transaction(**approved_remove_liquidity.txn.to_dict())
         if('error' in pending_transaction or pending_transaction['sender'] == 'error' ):
             self.logger.error('add_transaction_failed', pending_transaction, pending_transaction)
@@ -522,13 +536,11 @@ class DefiExchange():
             {'asset': base, 'address': self.assets[base]['address'], 'from': self.router, 'to': agent_wallet, 'for': liquidity.base_fee},
             {'asset': quote, 'address': self.assets[quote]['address'], 'from': self.router, 'to': agent_wallet, 'for': liquidity.quote_fee}
         ]
-        #TODO: network fee in wallet...
-        network_fee = prec((await self.requester.get_last_fee()), self.default_currency.decimals)
-        transaction = MempoolTransaction(id=collect_fees_addess, asset=self.default_currency.symbol, fee=network_fee, amount=0, sender=agent_wallet, recipient=self.router, transfers=transfers)
+        transaction = MempoolTransaction(id=collect_fees_addess, asset=self.default_currency.symbol, fee=0, amount=0, sender=agent_wallet, recipient=self.router, transfers=transfers)
         self.unapproved_collect_fees[collect_fees_addess] = CollectFee(liquidity.base_fee, liquidity.quote_fee, liquidity.pool_fee_pct, transaction)
         return {collect_fees_addess: self.unapproved_collect_fees[collect_fees_addess]}
     
-    async def approve_collect_fees(self, collect_fees_addess:Address) -> CollectFee:
+    async def approve_collect_fees(self, collect_fees_addess:Address, network_fee: str) -> CollectFee:
         """
         Approves a collect fees transaction.
         """
@@ -536,7 +548,7 @@ class DefiExchange():
         if collect_fees_addess not in self.unapproved_collect_fees:
             return {'error': 'liquidity not found'}
         approved_collect_fees = self.unapproved_collect_fees.pop(collect_fees_addess)
-
+        approved_collect_fees.txn.fee = network_fee
         pending_transaction = await self.requester.add_transaction(**approved_collect_fees.txn.to_dict())
         if('error' in pending_transaction or pending_transaction['sender'] == 'error' ):
             self.logger.error('add_transaction_failed', pending_transaction, pending_transaction)

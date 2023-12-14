@@ -42,6 +42,7 @@ async def run_defi_exchange() -> None:
             elif msg['topic'] == 'get_pools': return dumps(await exchange.get_pools())
             elif msg['topic'] == 'get_pool': return dumps(await exchange.get_pool(msg['base'], msg['quote'], msg['fee_level']))
             elif msg['topic'] == 'get_pool_liquidity': return dumps(await exchange.get_pool_liquidity(msg['base'], msg['quote'], msg['fee_level']))
+            elif msg['topic'] == 'get_assets': return dumps(await exchange.get_assets())
             else: return dumps({"warning":  f'unknown topic {msg["topic"]}'})
 
         while True:
