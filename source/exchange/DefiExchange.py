@@ -152,7 +152,38 @@ class DefiExchange():
                 accumuluate_quote_fee = prec(pool.amm.reserve_b * percent_of_pool, self.assets[liquidity.pair.quote].decimals)
                 liquidity.base_fee += accumulate_base_fee
                 liquidity.quote_fee += accumuluate_quote_fee
-  
+
+    async def signature_response(self, agent_wallet: Address, decision: bool, id: Address):
+        if id in self.unapproved_swaps and self.unapproved_swaps[id].txn.sender == agent_wallet:
+            if decision == True:
+                await self.approve_swap(id)
+                return {'swap_approved': id}
+            else:
+                self.unapproved_swaps.pop(id)
+                return {'swap_rejected': id}
+        elif id in self.unapproved_liquidity and self.unapproved_liquidity[id].txn.sender == agent_wallet:
+            if decision == True:
+                await self.approve_liquidity(id)
+                return {'liquidity_approved': id}
+            else:
+                self.unapproved_liquidity.pop(id)
+                return {'liquidity_rejected': id}
+        elif id in self.unapproved_remove_liquidity and self.unapproved_remove_liquidity[id].txn.sender == agent_wallet:
+            if decision == True:
+                await self.approve_remove_liquidity(id)
+                return {'remove_liquidity_approved': id}
+            else:
+                self.unapproved_remove_liquidity.pop(id)
+                return {'remove_liquidity_rejected': id}
+        elif id in self.unapproved_collect_fees and self.unapproved_collect_fees[id].txn.sender == agent_wallet:
+            if decision == True:
+                await self.approve_collect_fees(id)
+                return {'collect_fees_approved': id}
+            else:
+                self.unapproved_collect_fees.pop(id)
+                return {'collect_fees_rejected': id}
+        return {'error': 'transaction not found'}
+
     async def list_asset(self, symbol: str, decimals=8, min_qty_percent='0.05') -> dict:
         if symbol == self.default_currency.symbol:
             return {'error': 'cannot list default_quote_currency'}
@@ -323,7 +354,7 @@ class DefiExchange():
             {'asset': quote, 'address': self.assets[quote]['address'], 'from': self.router, 'to': agent_wallet, 'for': price}
         ]
         swap_address = Address(generate_address())
-        transaction = MempoolTransaction(id=swap_address, asset=self.default_currency.symbol, fee=network_fee, amount=0, sender=self.router, recipient=agent_wallet, transfers=transfers)
+        transaction = MempoolTransaction(id=swap_address, asset=self.default_currency.symbol, fee=network_fee, amount=0, sender=agent_wallet, recipient=self.router, transfers=transfers)
         self.unapproved_swaps[swap_address] = Swap(pool_fee_pct, fee_amount, slippage, transaction)
         await self.wallet_requester.request_signature(agent_wallet, transaction.to_dict())
         return {swap_address: self.unapproved_swaps[swap_address]}
@@ -389,7 +420,7 @@ class DefiExchange():
             {'asset': quote, 'address': self.assets[quote]['address'], 'from': agent_wallet, 'to': self.router, 'for': price},
             {'asset': liquidity_address, 'address': pool.lp_token, 'from': self.router, 'to': agent_wallet, 'for': 0} #LP token, the `asset` is the address to the Liquidity position address so that the wallet has a record of the liquidity position
         ]
-        transaction = MempoolTransaction(id=liquidity_address, asset=self.default_currency.symbol, fee=network_fee, amount=0, sender=self.router, recipient=agent_wallet, transfers=transfers)
+        transaction = MempoolTransaction(id=liquidity_address, asset=self.default_currency.symbol, fee=network_fee, amount=0, sender=agent_wallet, recipient=self.router, transfers=transfers)
         self.unapproved_liquidity[liquidity_address] = Liquidity(liquidity_address, max_price, min_price, pool_fee_pct, transaction) # the `owner` is the address of the liquidity being removed
         return {liquidity_address: self.unapproved_liquidity[liquidity_address]}
     
@@ -416,7 +447,7 @@ class DefiExchange():
         if len(self.pending_liquidity) >= self.max_pending_transactions:
             return {'error': 'max_pending_transactions_reached'}
 
-        liquidity_to_remove = pool.liquidity_positions[agent_wallet][position_address]
+        liquidity_to_remove = self.liquidity_positions[position_address]
 
         remove_liquidity_address = Address(generate_address())
         transfers = [
@@ -424,7 +455,7 @@ class DefiExchange():
             {'asset': quote, 'address': self.assets[quote]['address'], 'from': self.router, 'to': agent_wallet, 'for': liquidity_to_remove.txn.transfers[1]['for']}
         ]
         network_fee = prec((await self.requester.get_last_fee()), self.default_currency.decimals)
-        transaction = MempoolTransaction(id=remove_liquidity_address, asset=self.default_currency.symbol, fee=network_fee, amount=0, sender=self.router, recipient=agent_wallet, transfers=transfers)
+        transaction = MempoolTransaction(id=remove_liquidity_address, asset=self.default_currency.symbol, fee=network_fee, amount=0, sender=agent_wallet, recipient=self.router, transfers=transfers)
         self.unapproved_remove_liquidity[remove_liquidity_address] = Liquidity(agent_wallet, liquidity_to_remove.max_price, liquidity_to_remove.min_price, pool_fee_pct, transaction)
         return {remove_liquidity_address: self.unapproved_remove_liquidity[remove_liquidity_address]}
 
@@ -482,7 +513,7 @@ class DefiExchange():
             {'asset': quote, 'address': self.assets[quote]['address'], 'from': self.router, 'to': agent_wallet, 'for': liquidity.quote_fee}
         ]
         network_fee = prec((await self.requester.get_last_fee()), self.default_currency.decimals)
-        transaction = MempoolTransaction(id=collect_fees_addess, asset=self.default_currency.symbol, fee=network_fee, amount=0, sender=self.router, recipient=agent_wallet, transfers=transfers)
+        transaction = MempoolTransaction(id=collect_fees_addess, asset=self.default_currency.symbol, fee=network_fee, amount=0, sender=agent_wallet, recipient=self.router, transfers=transfers)
         self.unapproved_collect_fees[collect_fees_addess] = CollectFee(liquidity.base_fee, liquidity.quote_fee, liquidity.pool_fee_pct, transaction)
         return {collect_fees_addess: self.unapproved_collect_fees[collect_fees_addess]}
     
@@ -498,30 +529,3 @@ class DefiExchange():
         
         self.pending_collect_fees[approved_collect_fees] = approved_collect_fees
         return approved_collect_fees
-
-    async def signature_response(self, decision, id):
-        #TODO: add wallet address here and to requests to verify that the wallet is the one that signed the transaction
-        if id not in self.unapproved_swaps and id not in self.unapproved_liquidity:
-            return {'error': 'transaction not found'}
-        if id in self.unapproved_swaps:
-            if decision == True:
-                await self.approve_swap(id)
-            else:
-                self.unapproved_swaps.pop(id)
-        elif id in self.unapproved_liquidity:
-            if decision == True:
-                await self.approve_liquidity(id)
-            else:
-                self.unapproved_liquidity.pop(id)
-        elif id in self.unapproved_remove_liquidity:
-            if decision == True:
-                await self.approve_remove_liquidity(id)
-            else:
-                self.unapproved_remove_liquidity.pop(id)
-        elif id in self.unapproved_collect_fees:
-            if decision == True:
-                await self.approve_collect_fees(id)
-            else:
-                self.unapproved_collect_fees.pop(id)
-        
-        return {'msg': 'request received'}

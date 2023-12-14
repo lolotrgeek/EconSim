@@ -33,7 +33,7 @@ async def run_defi_exchange() -> None:
                 exchange.datetime = string_to_time(clock)
 
         async def callback(msg):
-            if msg['topic'] == 'signature': return dumps(await exchange.signature_response(msg['decision'], msg['txn']))
+            if msg['topic'] == 'signature': return dumps(await exchange.signature_response(msg['agent_wallet'], msg['decision'], msg['txn']))
             elif msg['topic'] == 'create_asset': return dumps(await exchange.create_asset(msg['asset'], msg['decimals'] ))
             elif msg['topic'] == 'provide_liquidity': return dumps(await exchange.provide_liquidity(msg['agent_wallet'], msg['base'], msg['quote'], msg['amount'], msg['fee_level'], msg['high_range'], msg['low_range']))
             elif msg['topic'] == 'remove_liquidity': return dumps(await exchange.remove_liquidity(msg['agent_wallet'], msg['base'], msg['quote'], msg['amount'], msg['fee_level']))

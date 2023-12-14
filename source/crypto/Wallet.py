@@ -2,14 +2,11 @@ import sys, os
 parent_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 sys.path.append(parent_dir)
 from source.utils._utils import prec, generate_address, dumps
-from source.Messaging import Responder, Requester
 from source.exchange.DefiExchangeRequests import DefiExchangeRequests
-from Channels import Channels
 
 class Wallet():
     def __init__(self, name, requester=None):
-        channels = Channels()
-        self.requester = requester
+        self.requester: DefiExchangeRequests = requester
         self.address = generate_address()
         self.name = name
         self.signature_requests = []
