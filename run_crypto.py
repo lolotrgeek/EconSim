@@ -1,6 +1,5 @@
 from datetime import datetime
 from source.crypto.CryptoCurrency import CryptoCurrency
-from source.exchange.CryptoExchangeRequests import CryptoExchangeRequests
 from source.Messaging import Responder, Requester, Subscriber
 import asyncio
 from rich import print
@@ -9,27 +8,28 @@ from source.utils._utils import dumps, string_to_time
 from Channels import Channels
 from random import random
 
-async def generate_cryptos(requester, time) -> dict:
+async def generate_cryptos( time) -> dict:
     # create the default currency chain
     fiat = {
-        "USD": CryptoCurrency("USD", time, decimals=2, requester=requester)
+        "USD": CryptoCurrency("USD", time, decimals=2)
     }
     cryptos = {
-        "ETH": CryptoCurrency("ETH", time, decimals=18, requester=requester),
-        "BTC": CryptoCurrency("BTC", time, decimals=8, requester=requester),
-        "LTC": CryptoCurrency("LTC", time, decimals=8, requester=requester),
+        "ETH": CryptoCurrency("ETH", time, decimals=18),
+        "BTC": CryptoCurrency("BTC", time, decimals=8),
+        "LTC": CryptoCurrency("LTC", time, decimals=8),
+    }
+    defi = {
+        "BNB": CryptoCurrency("BNB", time, decimals=18),
     }
     for crypto in cryptos:
-        if crypto == 'ETH':
-            pairs = [{'asset': 'USD' ,'market_qty':1000 ,'seed_price':str(random()) ,'seed_bid':'.99', 'seed_ask':'1.01'}]
-        else:
-            pairs = [{'asset': 'USD' ,'market_qty':1000 ,'seed_price':str(random()) ,'seed_bid':'.99', 'seed_ask':'1.01'}, 
-                     {'asset': 'ETH' ,'market_qty':1000 ,'seed_price':str(random()) ,'seed_bid':'.99', 'seed_ask':'1.01'}
-                    ]
-        await cryptos[crypto].issue_coins(pairs, 1_000_000_000)
+        await cryptos[crypto].supply(1_000_000_000)
 
-    currencies = {**fiat, **cryptos}
+    currencies = {**fiat, **cryptos, **defi}
     return currencies
+
+async def list_cryptos(cryptos):
+    # single line loop through all the cryptos, call to_dict() on each, and return as a list of dicts
+    return list(map(lambda crypto: crypto.to_dict(), cryptos.values()))
 
 async def run_crypto() -> None:
     try:
@@ -50,9 +50,16 @@ async def run_crypto() -> None:
                 return string_to_time(clock) 
 
         time = get_time()
-        cryptos = await generate_cryptos(CryptoExchangeRequests(requester), time)
+        cryptos = await generate_cryptos(time)
 
         async def callback(msg):
+            if msg['topic'] == 'get_assets': return dumps(await list_cryptos(cryptos))
+
+            if 'chain' in msg:
+                if msg['chain'] in cryptos:
+                    if msg('topic') == 'connect': return dumps(await cryptos[msg['chain']].to_dict())
+                else: return f'unknown chain {msg["chain"]}'
+
             if 'asset' in msg:
                 if msg['asset'] in cryptos:
                     if msg['topic'] == 'get_transactions': return dumps(await cryptos[msg['asset']].blockchain.get_transactions())

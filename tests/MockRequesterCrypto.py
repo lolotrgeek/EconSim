@@ -28,9 +28,9 @@ class MockResponderCrypto():
     def __init__(self, requests=None):
         self.time = datetime(2023, 1, 1)
         self.cryptos = {
-            'USD': CryptoCurrency("USD", self.time, requester=MockRequesterCryptoExchange),
-            'BTC': CryptoCurrency("BTC", self.time, requester=MockRequesterCryptoExchange),
-            'ETH': CryptoCurrency("ETH", self.time, requester=MockRequesterCryptoExchange),  
+            'USD': CryptoCurrency("USD", self.time, decimals=2),
+            'BTC': CryptoCurrency("BTC", self.time, decimals=8),
+            'ETH': CryptoCurrency("ETH", self.time, decimals=18),  
         }
 
     async def next(self):
@@ -38,8 +38,18 @@ class MockResponderCrypto():
         self.exchange.datetime = self.time
         for crypto in self.cryptos:
             await self.cryptos[crypto].next(self.time)
+
+    async def list_cryptos(self):
+        # single line loop through all the cryptos, call to_dict() on each, and return as a list of dicts
+        return list(map(lambda crypto: crypto.to_dict(), self.cryptos.values()))            
                 
     async def callback(self, msg):
+        if msg['topic'] == 'get_assets': return dumps(await self.list_cryptos())
+
+        if 'chain' in msg:
+            if msg['chain'] in self.cryptos:
+                if msg('topic') == 'connect': return dumps(await self.cryptos[msg['chain']].to_dict())
+            else: return f'unknown chain {msg["chain"]}'        
         if 'asset' in msg:
             if msg['asset'] in self.cryptos:
                 if msg['topic'] == 'get_transactions': return dumps(await self.cryptos[msg['asset']].blockchain.get_transactions())
@@ -49,7 +59,8 @@ class MockResponderCrypto():
                 elif msg['topic'] == 'get_mempool': return dumps(await self.cryptos[msg['asset']].blockchain.get_mempool())
                 elif msg['topic'] == 'get_pending_transactions': return dumps(await self.cryptos[msg['asset']].blockchain.mempool.get_pending_transactions(to_dicts=True))
                 elif msg['topic'] == 'get_confirmed_transactions': return dumps(await self.cryptos[msg['asset']].blockchain.mempool.get_confirmed_transactions(to_dicts=True))
-
+                elif msg['topic'] == 'get_last_fee': return dumps(await self.cryptos[msg['asset']].get_last_fee())
+                elif msg['topic'] == 'get_fees': return dumps(await self.cryptos[msg['asset']].get_fees(msg['num']))
             else: return f'unknown asset {msg["asset"]}'    
         
 class MockRequesterCryptoExchange():

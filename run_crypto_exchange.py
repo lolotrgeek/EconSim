@@ -5,6 +5,7 @@ from source.exchange.CryptoExchange import CryptoExchange
 from source.crypto.CryptoCurrencyRequests import CryptoCurrencyRequests
 from source.utils._utils import dumps, string_to_time
 from Channels import Channels
+from random import random
 from rich import print
 import asyncio
 asyncio.set_event_loop_policy(asyncio.WindowsSelectorEventLoopPolicy())
@@ -17,9 +18,20 @@ async def run_crypto_exchange() -> None:
         requester = Requester(channels.crypto_channel)
         await responder.connect()
         await requester.connect()
+        crypto_requester = CryptoCurrencyRequests(requester=requester)
 
-        exchange = CryptoExchange(datetime=datetime(1700,1,1), requester=CryptoCurrencyRequests(requester))
-
+        exchange = CryptoExchange(datetime=datetime(1700,1,1), requester=crypto_requester)
+        
+        cryptos = await crypto_requester.get_assets()
+        for crypto in cryptos:
+            if crypto['symbol'] == 'ETH':
+                pairs = [{'asset': 'USD' ,'market_qty':1000 ,'seed_price':str(random()) ,'seed_bid':'.99', 'seed_ask':'1.01'}]
+            else:
+                pairs = [{'asset': 'USD' ,'market_qty':1000 ,'seed_price':str(random()) ,'seed_bid':'.99', 'seed_ask':'1.01'}, 
+                        {'asset': 'ETH' ,'market_qty':1000 ,'seed_price':str(random()) ,'seed_bid':'.99', 'seed_ask':'1.01'}
+                        ]
+            await exchange.create_asset(crypto['symbol'], pairs, decimals=crypto['decimals'], min_qty_percent='0.05')       
+        
         def get_time():
             clock = time_puller.subscribe("time")
             if clock == None: 
