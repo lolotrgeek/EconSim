@@ -5,27 +5,27 @@ import sys, os
 parent_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 sys.path.append(parent_dir)
 from components.ConstantProduct import ConstantProduct
-from crypto.MemPool import MempoolTransaction
+from source.crypto.MemPool import MempoolTransaction
 from source.utils._utils import get_minimum, generate_address
 
 #NOTE: https://wiki.python.org/moin/UsingSlots
 # https://tommyseattle.com/python-class-dict-named-tuple-performance-and-memory-usage/
 
 class Symbol():
-    __slots__ = ["value"]
+    __slots__ = ("value",)
     def __init__(self, value:str = '') -> None:
         self.value:str = value
-    def __repr__(self) -> str:
-        return self.value
     def __str__(self) -> str:
-        return self.value         
+        return self.value
+    def __repr__(self) -> str:
+        return self.__str__()
 
 class Pair():
-    __slots__ = ['base', 'quote']
+    __slots__ = ('base', 'quote', 'value')
     def __init__(self, base: Symbol, quote: Symbol) -> None:
         self.base: Symbol = base
         self.quote: Symbol = quote
-        self.value = f'{base.value}{quote.value}'
+        self.value = f'{str(base)}{str(quote)}'
     def __repr__(self) -> str:
         return self.value
     def __str__(self) -> str:
@@ -37,7 +37,7 @@ class Pair():
         }
 
 class Address():
-    __slots__ = ['value']
+    __slots__ = ('value',)
     def __init__(self, value:str='') -> None:
         self.value: str = value
     def __repr__(self) -> str:
@@ -46,7 +46,7 @@ class Address():
         return self.value
 
 class PoolFee():
-    __slots__ = ['value']
+    __slots__ = ('value',)
     def __init__(self, value:Decimal = 0) -> None:
         self.value: str = str(value)
     def __repr__(self) -> str:
@@ -55,7 +55,7 @@ class PoolFee():
         return self.value        
 
 class Pool():
-    __slots__ = ['fee', 'base', 'quote', 'amm', 'total_liquidity', 'lp_token', 'is_active']
+    __slots__ = ('fee', 'base', 'quote', 'amm', 'lp_token', 'is_active')
     def __init__(self, fee: Decimal, base: str, quote: str, amm: ConstantProduct, is_active: bool= True):
         self.fee: str = fee
         self.base: str = base
@@ -70,16 +70,15 @@ class Pool():
             'base': self.base,
             'quote': self.quote,
             'amm': self.amm.to_dict(),
-            'total_liquidity': self.total_liquidity,
             'lp_token': Address(generate_address()),
             'is_active': self.is_active,
         }
 
 class Currency():
-    __slots__ = ['name', 'symbol', 'id', 'decimals']
+    __slots__ = ('name', 'symbol', 'id', 'decimals')
     def __init__(self, symbol: Symbol, name: str='', id:str = str(UUID()), decimals: int= 8):
         self.name: str = name
-        self.symbol: Symbol = symbol.value
+        self.symbol: Symbol = symbol
         self.id: str = id
         self.decimals: int = decimals
 
@@ -92,7 +91,7 @@ class Currency():
         }
 
 class Asset():
-    __slots__ = ['address', 'decimals', 'min_qty', 'is_active']
+    __slots__ = ('address', 'decimals', 'min_qty', 'is_active')
     def __init__(self, address: str, decimals: int, min_qty: Decimal = -1, is_active: bool = True):
         self.address: str = address
         self.decimals: int = decimals
@@ -108,10 +107,10 @@ class Asset():
         }
 
 class Swap():
-    __slots__ = ['pair', 'pool_fee', 'fee_amount' 'slippage', 'txn']
+    __slots__ = ('pair', 'pool_fee_pct', 'fee_amount', 'slippage', 'txn')
     def __init__(self, pool_fee_pct: PoolFee, fee_amount: Decimal, slippage: Decimal, txn: MempoolTransaction):
-        self.pair: Pair = Pair(Symbol(txn.transfers[0]['asset']), Symbol(txn.transfers[1]['asset']))
-        self.pool_fee_pct: PoolFee = pool_fee_pct.value
+        self.pair: Pair = Pair(txn.transfers[0]['asset'], txn.transfers[1]['asset'])
+        self.pool_fee_pct: PoolFee = pool_fee_pct
         self.fee_amount: Decimal = fee_amount
         self.slippage: Decimal = slippage
         self.txn: MempoolTransaction = txn
@@ -126,7 +125,7 @@ class Swap():
         }
 
 class Liquidity():
-    __slots__ = ['pair', 'owner', 'max_price', 'min_price', 'pool_fee_pct', 'base_fee', 'quote_fee', 'txn']
+    __slots__ = ('pair', 'owner', 'max_price', 'min_price', 'pool_fee_pct', 'base_fee', 'quote_fee', 'txn')
     def __init__(self, owner: Address, max_price: Decimal, min_price: Decimal, pool_fee_pct: PoolFee, txn: MempoolTransaction):
         """
         owner: the address of the liquidity provider
@@ -138,7 +137,7 @@ class Liquidity():
         base_fee: the base fee accumulated
         txn: the transaction that created the liquidity position
         """
-        self.pair: Pair = Pair(Symbol(txn.transfers[0]['asset']), Symbol(txn.transfers[1]['asset']))
+        self.pair: Pair = Pair(txn.transfers[0]['asset'],txn.transfers[1]['asset'])
         self.owner: Address = owner
         self.max_price: Decimal = max_price
         self.min_price: Decimal = min_price
@@ -160,7 +159,7 @@ class Liquidity():
         }
 
 class CollectFee():
-    __slots__ = ['base_fee', 'quote_fee',' pool_fee_pct', 'txn']
+    __slots__ = ('base_fee', 'quote_fee', 'pool_fee_pct', 'txn')
     def __init__(self, base_fee: Decimal, quote_fee: Decimal, pool_fee_pct: Decimal, txn:MempoolTransaction ):
         self.base_fee: Decimal = base_fee
         self.quote_fee: Decimal = quote_fee
