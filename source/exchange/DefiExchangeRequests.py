@@ -34,3 +34,6 @@ class DefiExchangeRequests(Requests):
 
     async def get_pool_liquidity(self, base, quote, fee_level=-1):
         return await self.make_request('get_pool_liquidity', {'base': base, 'quote': quote, 'fee_level': fee_level}, self.requester)
+    
+    async def get_assets(self):
+        return await self.make_request('get_assets', {}, self.requester)
