@@ -327,7 +327,7 @@ class DefiExchange():
             return False
         return True
 
-    async def swap(self, base: str, quote:str, base_qty: Decimal, agent_wallet: Address, slippage='.05') -> dict:
+    async def swap(self, agent_wallet: Address, base: str, quote:str, base_qty: Decimal, slippage='.05') -> dict:
         """
         Swaps a base asset for a quote asset.
         """

@@ -12,18 +12,20 @@ class Wallet():
         self.address = generate_address()
         self.name = name
         self.signature_requests = []
-        self.chain = None
+        self.chain: dict = {}
         self.assets = {}
 
     async def connect(self, chain:str):
         """
         Connect to a cryptocurrency chain
         
+        "connecting" to a chain loads the rules of the chain into the wallet, the rules are defined in the CryptoCurrency class __init__ method
+
         Parameters
         
         chain: str - the symbol of the chain to connect to
         """
-        self.chain = await self.crypto_requester.connect(chain)
+        self.chain = (await self.crypto_requester.connect(chain))
         if 'error' in self.chain:
             return {'msg': self.chain['error']}
 
