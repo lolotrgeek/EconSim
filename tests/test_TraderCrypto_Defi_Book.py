@@ -5,7 +5,7 @@ from decimal import Decimal
 parent_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 sys.path.append(parent_dir)
 from source.agents.TraderCrypto import CryptoTrader as Trader
-from source.exchange.CryptoExchange_DeFi_Book import CryptoExchange as Exchange
+from source.exchange.DefiBookExchange import DefiBookExchange as Exchange
 from source.exchange.CryptoExchangeRequests import CryptoExchangeRequests as ExchangeRequests
 from source.crypto.CryptoCurrencyRequests import CryptoCurrencyRequests
 from .MockRequesterCrypto import MockRequesterCryptoExchange as MockRequester

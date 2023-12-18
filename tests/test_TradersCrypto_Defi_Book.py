@@ -10,7 +10,7 @@ from source.utils.logger import Logger
 from source.agents.TraderCrypto import CryptoTrader as Trader
 from source.agents.TradersCrypto import RandomMarketTaker, NaiveMarketMaker, SimpleMarketTaker, LowBidder
 from source.exchange.CryptoExchangeRequests import CryptoExchangeRequests as ExchangeRequests
-from source.exchange.CryptoExchange_DeFi_Book import CryptoExchange as Exchange
+from source.exchange.DefiBookExchange import DefiBookExchange as Exchange
 from source.crypto.CryptoCurrencyRequests import CryptoCurrencyRequests
 from .MockRequesterCrypto import MockRequesterCryptoExchange as MockRequester
 

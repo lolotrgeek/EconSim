@@ -52,8 +52,9 @@ class MockResponderCrypto():
             else: return f'unknown chain {msg["chain"]}'        
         if 'asset' in msg:
             if msg['asset'] in self.cryptos:
-                if msg['topic'] == 'get_transactions': return dumps(await self.cryptos[msg['asset']].blockchain.get_transactions())
-                if msg['topic'] == 'get_transaction': return dumps(await self.cryptos[msg['asset']].blockchain.get_transaction(msg['id']))
+                if msg['topic'] == 'connect': return dumps(await self.cryptos[msg['asset']].to_dict())
+                elif msg['topic'] == 'get_transactions': return dumps(await self.cryptos[msg['asset']].blockchain.get_transactions())
+                elif msg['topic'] == 'get_transaction': return dumps(await self.cryptos[msg['asset']].blockchain.get_transaction(msg['id']))
                 elif msg['topic'] == 'add_transaction': return dumps((await self.cryptos[msg['asset']].blockchain.add_transaction(msg['asset'], msg['fee'], msg['amount'], msg['sender'], msg['recipient'])).to_dict())
                 elif msg['topic'] == 'cancel_transaction': return dumps(await self.cryptos[msg['asset']].blockchain.cancel_transaction(msg['id']))
                 elif msg['topic'] == 'get_mempool': return dumps(await self.cryptos[msg['asset']].blockchain.get_mempool())
