@@ -11,7 +11,6 @@ sys.path.append(parent_dir)
 from source.exchange.StockExchange import StockExchange as Exchange
 from source.exchange.types.LimitOrder import LimitOrder
 from source.exchange.types.OrderSide import OrderSide
-from source.exchange.types.Transaction import Transaction, Exit
 from source.utils.logger import Null_Logger
 
 class CreateAssetTestCase(unittest.IsolatedAsyncioTestCase):
