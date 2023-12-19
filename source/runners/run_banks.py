@@ -32,7 +32,7 @@ class BankRunner(Runner):
         elif msg['topic'] == 'withdraw': return dumps(await self.bank.withdraw_savings(msg['agent'], msg['amount']))
         else: return f"Unknown topic: {msg['topic']}"
 
-    async def run_banks(self) -> None:
+    async def run(self) -> None:
         try: 
             await self.responder.connect()
             await self.requester.connect()
@@ -62,4 +62,4 @@ class BankRunner(Runner):
 
 if __name__ == '__main__':
     runner = BankRunner()
-    asyncio.run(runner.run_banks())
+    asyncio.run(runner.run())

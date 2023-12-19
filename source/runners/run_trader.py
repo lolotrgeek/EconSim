@@ -19,7 +19,7 @@ class TraderRunner(Runner):
         self.crypto_requester = Requester(channel=self.channels.crypto_channel)
         self.trader = None
 
-    async def run_trader(self) -> None:
+    async def run(self) -> None:
         try:
             picker = randint(0,2)
 
@@ -56,7 +56,7 @@ if __name__ == '__main__':
     try:
         print('starting trader')
         runner = TraderRunner()
-        asyncio.run(runner.run_trader())
+        asyncio.run(runner.run())
     except Exception as e:
         print("[Trader Error] ", e)
         traceback.print_exc()

@@ -41,7 +41,7 @@ class CompaniesRunner(Runner):
 
         else: return dumps({"warning":  f'unknown topic {msg["topic"]}'})
 
-    async def run_companies(self) -> None:
+    async def run(self) -> None:
         try:
             await self.responder.connect()
             await self.requester.connect()
@@ -68,4 +68,4 @@ class CompaniesRunner(Runner):
 
 if __name__ == '__main__':
     runner = CompaniesRunner()
-    asyncio.run(runner.run_companies())
+    asyncio.run(runner.run())

@@ -13,7 +13,7 @@ from source.agents.TradersCryptoDefi import RandomSwapper
 from source.utils._utils import dumps
 asyncio.set_event_loop_policy(asyncio.WindowsSelectorEventLoopPolicy())
 
-class TraderRunner(Runner):
+class DefiTraderRunner(Runner):
     def __init__(self):
         super().__init__()
         self.responder = Responder(self.channels.wallet_channel)
@@ -31,7 +31,7 @@ class TraderRunner(Runner):
             else: return f'unknown asset {msg["asset"]}'    
         else: return f'unknown topic {msg["topic"]}'
 
-    async def run_defi_trader(self) -> None:
+    async def run(self) -> None:
         try:
             await self.responder.connect()
             await self.requester.connect()
@@ -58,8 +58,8 @@ class TraderRunner(Runner):
 
 if __name__ == '__main__':
     try:
-        runner = TraderRunner()
-        asyncio.run(runner.run_defi_trader())
+        runner = DefiTraderRunner()
+        asyncio.run(runner.run())
     except Exception as e:
         print("[Trader Error] ", e)
         traceback.print_exc()

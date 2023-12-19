@@ -60,7 +60,7 @@ class CryptoExchangeRunner(Runner):
         #TODO: exchange topic to get general exchange data
         else: return dumps({"warning":  f'unknown topic {msg["topic"]}'})
 
-    async def run_crypto_exchange(self) -> None:
+    async def run(self) -> None:
         try:
             await self.responder.connect()
             await self.requester.connect()
@@ -94,6 +94,6 @@ class CryptoExchangeRunner(Runner):
     
 if __name__ == '__main__':
     runner = CryptoExchangeRunner()
-    asyncio.run(runner.run_crypto_exchange())
+    asyncio.run(runner.run())
     # print('done...')
     # exit(0)

@@ -56,7 +56,7 @@ class ExchangeRunner(Runner):
         #TODO: exchange topic to get general exchange data
         else: return dumps({"warning":  f'unknown topic {msg["topic"]}'})        
 
-    async def run_exchange(self) -> None:
+    async def run(self) -> None:
         try: 
             await self.responder.connect()
             self.exchange = Exchange(datetime=datetime(1700,1,1))            
@@ -76,6 +76,6 @@ class ExchangeRunner(Runner):
     
 if __name__ == '__main__':
     runner = ExchangeRunner()
-    asyncio.run(runner.run_exchange())
+    asyncio.run(runner.run())
     # print('done...')
     # exit(0)

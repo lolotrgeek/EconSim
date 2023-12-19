@@ -33,7 +33,7 @@ class DefiExchangeRunner(Runner):
         elif msg['topic'] == 'get_assets': return dumps(await self.exchange.get_assets())
         else: return dumps({"warning":  f'unknown topic {msg["topic"]}'})
 
-    async def run_defi_exchange(self) -> None:
+    async def run(self) -> None:
         try:
             await self.responder.connect()
             await self.crypto_requester.connect()
@@ -57,6 +57,6 @@ class DefiExchangeRunner(Runner):
     
 if __name__ == '__main__':
     runner = DefiExchangeRunner()
-    asyncio.run(runner.run_defi_exchange())
+    asyncio.run(runner.run())
     # print('done...')
     # exit(0)

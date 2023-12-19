@@ -17,7 +17,7 @@ class GovernmentRunner(Runner):
         self.pusher = Pusher(self.channels.government_channel)
         self.government = None
 
-    async def run_government(self) -> None:
+    async def run(self) -> None:
         try:
             await self.requester.connect()
             self.government = Government(requester=Requests(self.requester))
@@ -43,4 +43,4 @@ class GovernmentRunner(Runner):
 
 if __name__ == '__main__':
     runner = GovernmentRunner()
-    asyncio.run(runner.run_government())
+    asyncio.run(runner.run())

@@ -42,7 +42,7 @@ class CryptoRunner(Runner):
         # single line loop through all the cryptos, call to_dict() on each, and return as a list of dicts
         return list(map(lambda crypto: crypto.to_dict(), self.currencies.values()))
 
-    async def run_crypto(self) -> None:
+    async def run(self) -> None:
         try:
             await self.responder.connect()
             await self.requester.connect()
@@ -92,4 +92,4 @@ class CryptoRunner(Runner):
 
 if __name__ == '__main__':
     runner = CryptoRunner()
-    asyncio.run(runner.run_crypto())
+    asyncio.run(runner.run())
