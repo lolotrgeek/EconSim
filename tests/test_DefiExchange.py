@@ -8,7 +8,7 @@ from source.utils.logger import Null_Logger
 from source.utils._utils import prec
 from source.exchange.DefiExchange import DefiExchange as Exchange
 from source.crypto.CryptoCurrencyRequests import CryptoCurrencyRequests as Requests
-from .MockRequesterDefi import MockRequesterDefi as MockRequester
+from .MockRequesterDefi import MockRequesterDefiExchange as MockRequester
 
 async def standard_asyncSetUp(self):
     self.mock_requester = MockRequester()

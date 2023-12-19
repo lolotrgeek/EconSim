@@ -14,6 +14,7 @@ class TraderDefi():
         self.exchange_requests = exchange_requests
         self.crypto_requests = crypto_requests
         self.wallet = Wallet(name, exchange_requests)
+        self.current_date = None
 
     def __repr__(self):
         return f'<TraderDefi: {self.name}>'

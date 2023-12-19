@@ -1,6 +1,8 @@
+import os, sys
+sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 import multiprocessing
 import asyncio
-from run_trader import run_trader
+from .run_trader import run_trader
 import traceback
 if __name__ == '__main__':
     try:

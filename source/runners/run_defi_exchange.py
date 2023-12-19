@@ -1,0 +1,62 @@
+import os, sys
+sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+from datetime import datetime
+import traceback
+from .runner import Runner
+from source.Messaging import Responder, Requester
+from source.exchange.DefiExchange import DefiExchange
+from source.crypto.CryptoCurrencyRequests import CryptoCurrencyRequests
+from source.crypto.WalletRequests import WalletRequests
+from source.utils._utils import dumps
+from rich import print
+import asyncio
+asyncio.set_event_loop_policy(asyncio.WindowsSelectorEventLoopPolicy())
+
+class DefiExchangeRunner(Runner):
+    def __init__(self):
+        super.__init__()
+        self.responder = Responder(self.channels.defi_channel)
+        self.crypto_requester = Requester(self.channels.crypto_channel)
+        self.wallet_requester = Requester(self.channels.wallet_channel)            
+        self.exchange = None
+
+    async def callback(self, msg):
+        if msg['topic'] == 'signature': return dumps(await self.exchange.signature_response(msg['agent_wallet'], msg['decision'], msg['txn']))
+        elif msg['topic'] == 'list_asset': return dumps(await self.exchange.list_asset(msg['asset'], msg['decimals'] ))
+        elif msg['topic'] == 'provide_liquidity': return dumps(await self.exchange.provide_liquidity(msg['agent_wallet'], msg['base'], msg['quote'], msg['amount'], msg['fee_level'], msg['high_range'], msg['low_range']))
+        elif msg['topic'] == 'remove_liquidity': return dumps(await self.exchange.remove_liquidity(msg['agent_wallet'], msg['base'], msg['quote'], msg['amount'], msg['fee_level']))
+        elif msg['topic'] == 'swap': return dumps(await self.exchange.swap( msg['agent_wallet'], msg['base'], msg['quote'], msg['amount'], msg['slippage']))
+        elif msg['topic'] == 'get_fee_levels': return dumps(await self.exchange.get_fee_levels())
+        elif msg['topic'] == 'get_pools': return dumps(await self.exchange.get_pools())
+        elif msg['topic'] == 'get_pool': return dumps(await self.exchange.get_pool(msg['base'], msg['quote'], msg['fee_level']))
+        elif msg['topic'] == 'get_pool_liquidity': return dumps(await self.exchange.get_pool_liquidity(msg['base'], msg['quote'], msg['fee_level']))
+        elif msg['topic'] == 'get_assets': return dumps(await self.exchange.get_assets())
+        else: return dumps({"warning":  f'unknown topic {msg["topic"]}'})
+
+    async def run_defi_exchange(self) -> None:
+        try:
+            await self.responder.connect()
+            await self.crypto_requester.connect()
+            await self.wallet_requester.connect()
+            self.exchange = DefiExchange(datetime=datetime(1700,1,1), crypto_requests=CryptoCurrencyRequests(self.crypto_requester), wallet_requests=WalletRequests(self.wallet_requester))
+            
+            while True:
+                self.exchange.dt = await self.get_time()
+                await self.exchange.next()
+                msg = await self.responder.respond(self.callback)
+                if msg is None:
+                    continue
+
+        except Exception as e:
+            print("[DefiExchange Error] ", e)
+            print(traceback.print_exc())
+            return None  
+        except KeyboardInterrupt:
+            print("attempting to close defi_exchange..." )
+            return None
+    
+if __name__ == '__main__':
+    runner = DefiExchangeRunner()
+    asyncio.run(runner.run_defi_exchange())
+    # print('done...')
+    # exit(0)

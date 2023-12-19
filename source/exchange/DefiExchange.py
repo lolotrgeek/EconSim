@@ -26,11 +26,11 @@ class DefiExchange():
     There are no limit orders, only market orders called "swaps".
 
     """
-    def __init__(self, chain = None, datetime= None, crypto_requester=None, wallet_requester=None):
+    def __init__(self, chain = None, datetime= None, crypto_requests=None, wallet_requests=None):
         self.chain = chain # the blockchain that the exchange is running on
         self.dt = datetime
-        self.requester: CryptoCurrencyRequests = crypto_requester
-        self.wallet_requester: WalletRequests = wallet_requester
+        self.requests: CryptoCurrencyRequests = crypto_requests
+        self.wallet_requests: WalletRequests = wallet_requests
         self.router = generate_address()
         self.default_currency: Currency = None
         self.assets: Dict[Symbol, Asset] = {}
@@ -54,7 +54,7 @@ class DefiExchange():
         self.logger = Logger('DefiExchange', 30)
 
     async def start(self):
-        self.chain = self.requester.connect(self.chain)
+        self.chain = self.requests.connect(self.chain)
         if 'error' in self.chain:
             self.logger.error(f'cannot connect to chain, error: {self.chain["error"]}')
             return {'error': 'cannot connect to chain'}
@@ -62,7 +62,7 @@ class DefiExchange():
             self.default_currency = Currency(self.chain['symbol'], decimals= self.chain['decimals'])
             self.assets[self.default_currency.symbol] = Asset(self.router)
 
-        assets = self.requester.get_assets()
+        assets = self.requests.get_assets()
         if 'error' in assets:
             self.logger.error(f'cannot get assets, error: {assets["error"]}')
             return {'error': 'cannot get assets'}
@@ -73,7 +73,7 @@ class DefiExchange():
         for address, pending_liquidity in self.pending_liquidity:
             address: Address = str(address)
             pending_liquidity: Liquidity
-            transaction = await self.requester.get_transaction(asset=self.default_currency.symbol, id=address)
+            transaction = await self.requests.get_transaction(asset=self.default_currency.symbol, id=address)
             if not transaction:
                 # NOTE: if transaction is not confirmed, we keep waiting, it will eventually be confirmed
                 continue
@@ -93,7 +93,7 @@ class DefiExchange():
         for address, pending_remove_liquidity in self.pending_remove_liquidity:
             address: Address = str(address)
             pending_remove_liquidity: Liquidity
-            transaction = await self.requester.get_transaction(asset=self.default_currency.symbol, id=address)
+            transaction = await self.requests.get_transaction(asset=self.default_currency.symbol, id=address)
             if not transaction:
                 # NOTE: if transaction is not confirmed, we keep waiting, it will eventually be confirmed
                 continue
@@ -112,7 +112,7 @@ class DefiExchange():
         for address, pending_swap in self.pending_swaps:
             address: Address = str(address)
             pending_swap: Swap
-            transaction = await self.requester.get_transaction(asset=self.default_currency.symbol, id=address)
+            transaction = await self.requests.get_transaction(asset=self.default_currency.symbol, id=address)
             if not transaction:
                 # NOTE: if transaction is not confirmed, we keep waiting, it will eventually be confirmed
                 continue
@@ -128,10 +128,10 @@ class DefiExchange():
                 slippage = pending_swap.slippage
                 if price < quote_qty * (1 - slippage):
                     self.logger.warning(f'price slipped too low, price: {price}, quote_qty: {quote_qty}, slippage: {slippage}')
-                    await self.requester.cancel_transaction(self.default_currency.symbol, transaction['id'])
+                    await self.requests.cancel_transaction(self.default_currency.symbol, transaction['id'])
                 if price > quote_qty * (1 + slippage) :
                     self.logger.warning(f'price slipped too high, price: {price}, quote_qty: {quote_qty}, slippage: {slippage}')
-                    await self.requester.cancel_transaction(self.default_currency.symbol, transaction['id'])
+                    await self.requests.cancel_transaction(self.default_currency.symbol, transaction['id'])
                     return {'error': 'slippage, price too high'}            
             if transaction['confirmed']:
                 await self.pool_swap_liquidity(base_qty, quote_qty, pending_swap.fee_amount)
@@ -142,7 +142,7 @@ class DefiExchange():
         for address, pending_collect_fees in self.pending_collect_fees:
             address: Address = str(address)
             pending_collect_fees: CollectFee
-            transaction = await self.requester.get_transaction(asset=self.default_currency.symbol, id=address)
+            transaction = await self.requests.get_transaction(asset=self.default_currency.symbol, id=address)
             if not transaction:
                 # NOTE: if transaction is not confirmed, we keep waiting, it will eventually be confirmed
                 continue
@@ -322,7 +322,7 @@ class DefiExchange():
         if amount < self.assets[asset].min_qty:
             self.logger.error(f'amount too small, asset: {asset}, amount: {amount}')
             return False
-        if amount > (await self.wallet_requester.get_balance(str(agent_wallet), asset)):
+        if amount > (await self.wallet_requests.get_balance(str(agent_wallet), asset)):
             self.logger.error(f'insufficient funds, agent_wallet: {agent_wallet}, asset: {asset}, amount: {amount}')
             return False
         return True
@@ -360,7 +360,7 @@ class DefiExchange():
         swap_address = generate_address()
         transaction = MempoolTransaction(id=swap_address, asset=self.default_currency.symbol, fee=0, amount=0, sender=agent_wallet, recipient=self.router, transfers=transfers)
         self.unapproved_swaps[swap_address] = Swap(pool_fee_pct, fee_amount, slippage, transaction)
-        await self.wallet_requester.request_signature(agent_wallet, transaction.to_dict())
+        await self.wallet_requests.request_signature(agent_wallet, transaction.to_dict())
         return {swap_address: self.unapproved_swaps[swap_address]}
 
     async def approve_swap(self, swap_address: Address, network_fee:str) -> Swap:
@@ -389,7 +389,7 @@ class DefiExchange():
         
         approved_swap.txn.transfers[1]['for'] = price
         approved_swap.txn.fee = network_fee
-        pending_transaction = await self.requester.add_transaction(**approved_swap.txn.to_dict())
+        pending_transaction = await self.requests.add_transaction(**approved_swap.txn.to_dict())
         if('error' in pending_transaction or pending_transaction['sender'] == 'error' ):
             self.logger.error('add_transaction_failed', pending_transaction)
             return {'error': 'add_transaction_failed'}
@@ -445,7 +445,7 @@ class DefiExchange():
             return {'error': 'liquidity not found'}
         approved_liquidity = self.unapproved_liquidity.pop(liquidity_address)
 
-        pending_transaction = await self.requester.add_transaction(**approved_liquidity.txn.to_dict())
+        pending_transaction = await self.requests.add_transaction(**approved_liquidity.txn.to_dict())
         if('error' in pending_transaction or pending_transaction['sender'] == 'error' ):
             self.logger.error('add_transaction_failed', pending_transaction, pending_transaction)
             return {'error': 'add_transaction_failed'}
@@ -482,7 +482,7 @@ class DefiExchange():
             return {'error': 'liquidity not found'}
         approved_remove_liquidity = self.unapproved_liquidity.pop(remove_liquidity_address)
         approved_remove_liquidity.txn.fee = network_fee
-        pending_transaction = await self.requester.add_transaction(**approved_remove_liquidity.txn.to_dict())
+        pending_transaction = await self.requests.add_transaction(**approved_remove_liquidity.txn.to_dict())
         if('error' in pending_transaction or pending_transaction['sender'] == 'error' ):
             self.logger.error('add_transaction_failed', pending_transaction, pending_transaction)
             return {'error': 'add_transaction_failed'}
@@ -549,7 +549,7 @@ class DefiExchange():
             return {'error': 'liquidity not found'}
         approved_collect_fees = self.unapproved_collect_fees.pop(collect_fees_addess)
         approved_collect_fees.txn.fee = network_fee
-        pending_transaction = await self.requester.add_transaction(**approved_collect_fees.txn.to_dict())
+        pending_transaction = await self.requests.add_transaction(**approved_collect_fees.txn.to_dict())
         if('error' in pending_transaction or pending_transaction['sender'] == 'error' ):
             self.logger.error('add_transaction_failed', pending_transaction, pending_transaction)
             return {'error': 'add_transaction_failed'}

@@ -2,7 +2,6 @@ import random, string, os, sys
 parent_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 sys.path.append(parent_dir)
 from source.runners.run_companies import CompaniesRunner
-from source.runners.run_stock_exchange import StockExchangeRunner
 from source.company.PublicCompany import PublicCompany
 from source.exchange.StockExchange import StockExchange as Exchange
 from source.utils._utils import dumps
@@ -22,16 +21,18 @@ class MockRequester():
     async def request(self, msg):
         return await self.responder.callback(msg)
 
-class MockResponder(StockExchangeRunner):
+class MockResponder(CompaniesRunner):
     """
-    Mocked run_exchange and run_company callback responder
+    Mocked run_company callback responder
     """
     def __init__(self):
-        super().__init__()
+        super.__init__()
         self.time = datetime(2023, 1, 1)
         self.exchange = Exchange(datetime=self.time)
         self.agent = None
         self.mock_order = None
+        self.companies = [PublicCompany("AAPL", self.exchange.datetime, MockRequester)]
+
 
     async def init(self):
         await self.exchange.create_asset("AAPL", seed_price=150, seed_bid=0.99, seed_ask=1.01)

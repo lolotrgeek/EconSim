@@ -6,13 +6,13 @@ import os
 parent_dir = os.path.dirname(os.path.dirname(os.path.abspath(__name__)))
 
 files = [
-    parent_dir+'\\EconSim\\run_crypto_exchange.py',
-    parent_dir+'\\EconSim\\run_crypto.py',
-    parent_dir+'\\EconSim\\run_government.py',
-    parent_dir+'\\EconSim\\run_clock.py',
+    parent_dir+'\\EconSim\\source\\runners\\run_crypto_exchange.py',
+    parent_dir+'\\EconSim\\source\\runners\\run_crypto.py',
+    parent_dir+'\\EconSim\\source\\runners\\run_government.py',
+    parent_dir+'\\EconSim\\source\\runners\\run_clock.py',
 ]
 traders = [
-    parent_dir+'\\EconSim\\run_traders.py',
+    parent_dir+'\\EconSim\\source\\runners\\run_traders.py',
     # parent_dir+'\\EconSim\\run_trader_maker.py',
     # parent_dir+'\\EconSim\\run_trader_taker.py',
 ]

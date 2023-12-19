@@ -7,8 +7,8 @@ class Bank(Agent):
     """
     Holds and moves cash and distributes notes to other agents.
     """
-    def __init__(self, initial_balance=10_000_000, requester=None):
-        super().__init__("Bank", initial_balance, requester=requester)
+    def __init__(self, initial_balance=10_000_000, requests=None):
+        super().__init__("Bank", initial_balance, requests=requests)
         self.reserve_requirement = 0.1 # TODO: for a USD bank these are updated by the Fed (central bank)
         self.prime_rate = random.uniform(0.01, 0.1) 
         self.reserve = initial_balance

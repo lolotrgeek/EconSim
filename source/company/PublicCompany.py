@@ -10,7 +10,7 @@ class PublicCompany:
     """
     Runs all public companies as a process Generating financial reports, distributing dividends, and issuing shares
     """
-    def __init__(self, name, startdate, requester):
+    def __init__(self, name, startdate, requests):
         self.name = name
         self.symbol = name[:3].upper()
         self.startdate = startdate
@@ -31,7 +31,7 @@ class PublicCompany:
         self.income_statement_archive = Archive(self.symbol+"_income_statement")
         self.cash_flow_archive = Archive(self.symbol+"_cash_flow")
         self.dividends_to_distribute = 0
-        self.requests = requester
+        self.requests = requests
 
     def __str__(self):
         return f"PublicCompany({self.name}, {self.symbol}, {self.startdate}, {self.currentdate}, {self.shareholders}, {self.balance_sheet}, {self.income_statement}, {self.cash_flow}, {self.ex_dividend_date}, {self.dividend_payment_date}, {self.dividends_to_distribute})"

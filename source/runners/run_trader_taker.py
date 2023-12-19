@@ -1,3 +1,5 @@
+import os, sys
+sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 from random import randint
 import traceback
 from source.Messaging import Requester
@@ -6,7 +8,7 @@ from rich import print
 import asyncio
 from source.exchange.CryptoExchangeRequests import CryptoExchangeRequests
 from source.crypto.CryptoCurrencyRequests import CryptoCurrencyRequests
-from Channels import Channels
+from source.Channels import Channels
 asyncio.set_event_loop_policy(asyncio.WindowsSelectorEventLoopPolicy())
 
 async def run_trader() -> None:

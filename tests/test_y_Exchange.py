@@ -894,7 +894,17 @@ class UpdateAgentsTestCase(unittest.IsolatedAsyncioTestCase):
         agent2 = await self.exchange.register_agent("Agent2", initial_cash=200)
         self.agent1 = agent1['registered_agent']
         self.agent2 = agent2['registered_agent']
-        fake_buy_txn = Transaction(-50, "AAPL", 50, 1, self.exchange.datetime, "buy").to_dict()
+        fake_buy_txn ={
+            'id': "testbuy",
+            'agent': self.agent1,
+            'cash_flow': -50,
+            'price': 50,
+            'ticker': 'AAPL',
+            'initial_qty': 1,
+            'qty': 1,
+            'dt': self.exchange.datetime,
+            'type': 'buy'
+        }
     
         self.exchange.agents[1]['_transactions'].append(fake_buy_txn)
         fake_position = {

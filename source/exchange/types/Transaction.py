@@ -1,5 +1,4 @@
 from uuid import uuid4 as UUID
-
 from .Side import Side
 
 class Transaction():

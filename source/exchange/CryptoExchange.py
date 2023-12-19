@@ -7,6 +7,7 @@ import random, string
 from decimal import Decimal
 from source.Archive import Archive
 from .Exchange import Exchange
+from source.crypto.CryptoCurrencyRequests import CryptoCurrencyRequests
 from .types.CryptoOrderBook import CryptoOrderBook
 from .types.CryptoTrade import CryptoTrade
 from .types.CryptoOrder import CryptoOrder
@@ -27,10 +28,10 @@ class CryptoExchange(Exchange):
     Orders are matched and filled, the assets are frozen and processed, the exchange tracks trades and holds a pool of assets for each agent.
     
     """    
-    def __init__(self, datetime= None, requester=None, archiver=None):
+    def __init__(self, datetime= None, crypto_requests=None, archiver=None):
         super().__init__(datetime=datetime)
         self.archiver = archiver
-        self.requester = requester
+        self.crypto_requests: CryptoCurrencyRequests = crypto_requests
         self.default_currency = {'name': 'US Dollar', 'symbol': 'USD', 'id': str(UUID()), 'decimals': 2}
         self.assets = {self.default_currency['symbol']: {'type': 'crypto', 'id' : self.default_currency['id'], 'decimals': self.default_currency['decimals'], 'min_qty': Decimal('0.01'), 'min_qty_percent': Decimal('0.05')}}        
         self.pairs = []
