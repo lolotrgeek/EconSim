@@ -7,7 +7,7 @@ from time import sleep
 from source.utils._utils import prec, dumps
 from source.utils.logger import Logger
 from decimal import Decimal
-from TraderDefi import TraderDefi
+from .TraderDefi import TraderDefi
 
 class RandomSwapper(TraderDefi):
     def __init__(self, name, exchange_messenger=None, crypto_messenger=None):

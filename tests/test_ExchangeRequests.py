@@ -6,7 +6,7 @@ sys.path.append(parent_dir)
 
 import unittest
 from source.exchange.ExchangeRequests import ExchangeRequests as Requests
-from .MockRequester import MockRequester
+from .MockRequesterExchange import MockRequester
 
 class CreateAssetTest(unittest.IsolatedAsyncioTestCase):
     async def asyncSetUp(self):

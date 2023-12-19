@@ -5,7 +5,7 @@ from datetime import datetime, timedelta
 from source.exchange.ExchangeRequests import ExchangeRequests
 from source.company.PublicCompany import PublicCompany
 from source.company.operations import Operations
-from .MockRequester import MockRequester
+from .MockRequesterExchange import MockRequester
 
 class TestPublicCompany(unittest.IsolatedAsyncioTestCase):
     async def asyncSetUp(self):

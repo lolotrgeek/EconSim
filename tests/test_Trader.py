@@ -5,7 +5,7 @@ parent_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 sys.path.append(parent_dir)
 from source.agents.Trader import Trader
 from source.exchange.ExchangeRequests import ExchangeRequests
-from .MockRequester import MockRequester
+from .MockRequesterExchange import MockRequester
 import asyncio
 
 class TestTrader(unittest.IsolatedAsyncioTestCase):

@@ -6,7 +6,7 @@ sys.path.append(parent_dir)
 from source.agents.TraderStock import StockTrader as Trader
 from source.exchange.ExchangeRequests import ExchangeRequests
 from source.company.PublicCompanyRequests import PublicCompanyRequests
-from .MockRequester import MockRequester
+from .MockRequesterExchange import MockRequester
 import asyncio
 
 class GetIncomeStatement(unittest.IsolatedAsyncioTestCase):

@@ -9,7 +9,7 @@ from unittest.mock import MagicMock
 from source.agents.Government import Government
 from source.exchange.ExchangeRequests import ExchangeRequests
 from source.company.PublicCompanyRequests import PublicCompanyRequests
-from .MockRequester import MockRequester
+from .MockRequesterExchange import MockRequester
 from decimal import Decimal
 
 from .MockTaxes import mock_taxes
