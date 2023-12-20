@@ -4,8 +4,7 @@ import zmq
 import zmq.asyncio
 import asyncio
 from .utils.logger import Logger
-from .utils._utils import dumps
-from decimal import Decimal
+from .utils._utils import dumps, DecimalEncoder
 asyncio.set_event_loop_policy(asyncio.WindowsSelectorEventLoopPolicy())
 
 
