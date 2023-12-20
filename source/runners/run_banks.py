@@ -36,7 +36,7 @@ class BankRunner(Runner):
         try: 
             await self.responder.connect()
             await self.requester.connect()
-            self.bank = Bank(requester=Requests(self.requester))
+            self.bank = Bank(requests=Requests(self.requester))
 
             while True:
                 self.bank.current_date = (await self.get_time())
@@ -51,7 +51,10 @@ class BankRunner(Runner):
                     "get_credit": dumps(await self.bank.get_credit_scores()),
                 }
                 await self.pusher.push(msg)
-                await self.responder.lazy_respond(callback=self.callback)
+                msg = await self.responder.lazy_respond(callback=self.callback)
+                if msg == 'STOP':
+                    break
+
         except Exception as e:
             print("[Bank Error]", e)
             print(traceback.format_exc())

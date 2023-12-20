@@ -11,7 +11,7 @@ from .TraderDefi import TraderDefi
 
 class RandomSwapper(TraderDefi):
     def __init__(self, name, exchange_messenger=None, crypto_messenger=None):
-        super().__init__(name, requests=exchange_messenger, crypto_requests=crypto_messenger)
+        super().__init__(name, exchange_requests=exchange_messenger, crypto_requests=crypto_messenger)
 
     # loops through wallet signature requests, randomly approves or rejects them
     async def sign_txns(self):
@@ -21,8 +21,9 @@ class RandomSwapper(TraderDefi):
             await self.wallet.sign_txn(txn, decision)
 
     async def next(self, time):
+        self.current_date = time
         await self.sign_txns()
-        self.swap(self.wallet.address, 'ETH', 'DAI', 1, '.05')
+        await self.swap(self.wallet.address, 'ETH', 'DAI', 1, '.05')
 
 class RandomLiquidityProvider():
     pass

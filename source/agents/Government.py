@@ -11,8 +11,8 @@ from source.utils._utils import prec
 from decimal import Decimal
 
 class Government(Agent):
-    def __init__(self, initial_balance=10000000, requester=None):
-        super().__init__("Government", initial_balance, requester=requester)
+    def __init__(self, initial_balance=10000000, requests=None):
+        super().__init__("Government", initial_balance, requests=requests)
         self.current_date = datetime(1700,1,1)
         self.taxes_last_collected = {"date": self.current_date, "amount": 0}
         self.max_tax_records = 100000 #NOTE: this needs to be at least larger than the amount of agents in the simulation
@@ -131,12 +131,15 @@ class Government(Agent):
                 self.back_taxes.remove(back_tax)
                  
 
-    async def next(self) -> None:
+    async def next(self) -> bool:
         """The government's next action.
 
         Args:
             current_date (datetime): the current date.
         """
+        if self.requests is None:
+            return False
+        
         # attempt to collect back taxes once per month
         if self.current_date.month != self.taxes_last_collected['date'].month and self.current_date.day == 1 and self.current_date.hour == 12 and self.current_date.minute == 0 and self.current_date.second == 0:
             await self.collect_back_taxes()
@@ -148,4 +151,5 @@ class Government(Agent):
             await self.archive_tax_records()
             self.taxes_last_collected['date'] = self.current_date
             await self.collect_taxes()
-            
+        
+        return True    

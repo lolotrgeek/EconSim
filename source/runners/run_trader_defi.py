@@ -19,9 +19,7 @@ class DefiTraderRunner(Runner):
         self.responder = Responder(self.channels.wallet_channel)
         self.requester = Requester(self.channels.crypto_channel)
         self.exchange_requester = Requester(self.channels.defi_channel)
-        self.crypto_messenger = CryptoCurrencyRequests(self.requester)
-        self.exchange_messenger = DefiExchangeRequests(self.exchange_requester)
-        self.traders = {}
+        self.traders: Dict[str, RandomSwapper] = {}
 
     async def callback(self, msg):
         if 'address' in msg:
@@ -37,16 +35,16 @@ class DefiTraderRunner(Runner):
             await self.requester.connect()
             await self.exchange_requester.connect()
 
-            random_swapper = RandomSwapper('random_swapper', self.exchange_messenger, self.crypto_messenger)
+            random_swapper = RandomSwapper('random_swapper', DefiExchangeRequests(self.exchange_requester), CryptoCurrencyRequests(self.requester))
             self.traders[random_swapper.wallet.address] = random_swapper
 
             while True:
                 time = await self.get_time()
-                for wallet, trader in self.traders:
+                for wallet, trader in self.traders.items():
                     await trader.next(time)
                 msg = await self.responder.lazy_respond(self.callback)
-                if msg == None:
-                    continue
+                if msg == 'STOP':
+                    break
 
         except Exception as e:
             print("[Trader Error] ", e)

@@ -27,10 +27,10 @@ class DefiBookExchange(Exchange):
     Orders are matched and filled, the assets are frozen and sent to the blockchains for confirmation and then the trade is completed.
     
     """    
-    def __init__(self, datetime= None, requester=None, archiver=None):
+    def __init__(self, datetime= None, crypto_requests=None, archiver=None):
         super().__init__(datetime=datetime)
         self.archiver = archiver
-        self.requester = requester
+        self.crypto_requests = crypto_requests
         self.default_currency = {'name': 'US Dollar', 'symbol': 'USD', 'id': str(UUID()), 'decimals': 2}
         self.assets = {self.default_currency['symbol']: {'type': 'crypto', 'id' : self.default_currency['id'], 'decimals': self.default_currency['decimals'], 'min_qty': Decimal('0.01'), 'min_qty_percent': Decimal('0.05')}}        
         self.pairs = []
@@ -57,8 +57,8 @@ class DefiBookExchange(Exchange):
     async def next(self):
         for transaction in self.pending_transactions: 
             # NOTE: base and quote transactions return a MempoolTransaction, see `source\crypto\MemPool.py`
-            base_transaction = await self.requester.get_transaction(asset=transaction['base_txn']['asset'], id=transaction['base_txn']['id'])
-            quote_transaction = await self.requester.get_transaction(asset=transaction['quote_txn']['asset'], id=transaction['quote_txn']['id'])
+            base_transaction = await self.crypto_requests.get_transaction(asset=transaction['base_txn']['asset'], id=transaction['base_txn']['id'])
+            quote_transaction = await self.crypto_requests.get_transaction(asset=transaction['quote_txn']['asset'], id=transaction['quote_txn']['id'])
             if not base_transaction and not quote_transaction:
                 # NOTE: if transaction is not confirmed, we keep waiting, it will eventually be confirmed
                 continue
@@ -206,8 +206,8 @@ class DefiBookExchange(Exchange):
             seller_wallet = (await self.get_agent(seller))['wallets'][base]
             buyer_wallet = (await self.get_agent(buyer))['wallets'][quote]
 
-            pending_base_transaction = await self.requester.add_transaction(asset=base, fee=network_fee['base'], amount=qty, sender=seller_wallet, recipient=buyer_wallet)
-            pending_quote_transaction = await self.requester.add_transaction(asset=quote, fee=network_fee['quote'], amount=quote_amount, sender=buyer_wallet, recipient=seller_wallet)
+            pending_base_transaction = await self.crypto_requests.add_transaction(asset=base, fee=network_fee['base'], amount=qty, sender=seller_wallet, recipient=buyer_wallet)
+            pending_quote_transaction = await self.crypto_requests.add_transaction(asset=quote, fee=network_fee['quote'], amount=quote_amount, sender=buyer_wallet, recipient=seller_wallet)
 
             if('error' in pending_base_transaction or pending_base_transaction['sender'] == 'error' or 'error' in pending_quote_transaction or pending_quote_transaction['sender'] == 'error'):
                 self.logger.error('add_transaction_failed', pending_base_transaction, pending_quote_transaction)
@@ -458,7 +458,7 @@ class DefiBookExchange(Exchange):
                     return {'success': 'network fee paid'}
 
     async def get_network_fees(self, asset, num_txns=10) -> list:
-        fees = self.requester.get_fees( asset,num_txns)
+        fees = self.crypto_requests.get_fees( asset,num_txns)
         if not fees:
             return {'error': 'no fees found'}
         for fee in fees:

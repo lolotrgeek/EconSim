@@ -11,7 +11,7 @@ from datetime import datetime
 
 class Trader(Agent):
     def __init__(self, name:str, aum:int=10_000, requests=None):
-        super().__init__(name, aum, requester=None)
+        super().__init__(name, aum, requests=None)
         self.exchange_requests = requests
         self.assets = {}
         self.tickers = []

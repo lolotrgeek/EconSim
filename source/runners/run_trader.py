@@ -19,21 +19,22 @@ class TraderRunner(Runner):
         self.crypto_requester = Requester(channel=self.channels.crypto_channel)
         self.trader = None
 
+    async def pick_trader(self):
+        picker = randint(0,2)
+        exchange_requests = CryptoExchangeRequests(requester=self.exchange_requester)
+        crypto_requests = CryptoCurrencyRequests(requester=self.crypto_requester)
+        if picker == 0:
+            self.trader =  NaiveMarketMaker(name='market_maker', aum=1_000_000, spread_pct='0.005', requests=(exchange_requests, crypto_requests))
+        elif picker == 1:
+            self.trader = SimpleMarketTaker(name='poor_taker', aum=1_000, requests=(exchange_requests, crypto_requests))
+        elif picker == 2:
+            self.trader = SimpleMarketTaker(name='rich_taker', aum=10_000, requests=(exchange_requests, crypto_requests))        
+
     async def run(self) -> None:
         try:
-            picker = randint(0,2)
-
             await self.exchange_requester.connect()
             await self.crypto_requester.connect()
-            exchange_requests = CryptoExchangeRequests(requester=self.exchange_requester)
-            crypto_requests = CryptoCurrencyRequests(requester=self.crypto_requester)
-            if picker == 0:
-                self.trader =  NaiveMarketMaker(name='market_maker', aum=1_000_000, spread_pct='0.005', requests=(exchange_requests, crypto_requests))
-            elif picker == 1:
-                self.trader = SimpleMarketTaker(name='poor_taker', aum=1_000, requests=(exchange_requests, crypto_requests))
-            elif picker == 2:
-                self.trader = SimpleMarketTaker(name='rich_taker', aum=10_000, requests=(exchange_requests, crypto_requests))
-
+            await self.pick_trader()
             registered = await self.trader.register(logger=True)
             if registered is None:
                 raise Exception("Trader not registered")
@@ -50,8 +51,6 @@ class TraderRunner(Runner):
             self.trader.requests.requester.close()
             return None
 
-
-    
 if __name__ == '__main__':
     try:
         print('starting trader')

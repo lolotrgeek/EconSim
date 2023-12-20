@@ -5,7 +5,7 @@ import traceback
 from .runner import Runner
 from source.Messaging import Responder, Requester, Subscriber
 from source.exchange.Exchange import Exchange
-from source.utils._utils import dumps, string_to_time
+from source.utils._utils import dumps
 from source.Channels import Channels
 from rich import print
 import asyncio
@@ -55,17 +55,17 @@ class ExchangeRunner(Runner):
         elif msg['topic'] == 'get_taxable_events': return dumps(await self.exchange.get_taxable_events())
         #TODO: exchange topic to get general exchange data
         else: return dumps({"warning":  f'unknown topic {msg["topic"]}'})        
-
+        
     async def run(self) -> None:
         try: 
             await self.responder.connect()
-            self.exchange = Exchange(datetime=datetime(1700,1,1))            
+            self.exchange = Exchange(datetime=datetime(1700,1,1))
             while True:
                 self.exchange.datetime = (await self.get_time())
                 msg = await self.responder.respond(self.callback)
-                if msg is None:
-                    continue
-
+                if msg == 'STOP':
+                    break
+                
         except Exception as e:
             print("[Exchange Error] ", e)
             print(traceback.print_exc())

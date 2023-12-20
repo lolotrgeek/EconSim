@@ -17,7 +17,7 @@ class CompaniesRunner(Runner):
         self.responder = Responder(self.channels.company_channel)
         self.requester = Requester(self.channels.exchange_channel)
         self.names= ['A', 'frXoX', 'wAt', 'Ayc', 'EXCAb', 'Qw', 'vbcY', 'ZM', 'j', 'nNLga', 'Ln', 'ao', 'k', 'icyJ', 'r', 'qk', 'BeHN', 'if', 'yAnL', 'sw']
-        self.time = string_to_time('1700-01-01')
+        self.time = string_to_time('1700-01-01 0:0:0')
         self.companies: Dict[str, PublicCompany] = {}
 
     def generate_companies(self, requests, time) -> None:
@@ -59,8 +59,8 @@ class CompaniesRunner(Runner):
                     company.currentdate = time
                     await company.next(time)
                 msg = await self.responder.lazy_respond(self.callback)
-                if msg == None:
-                    continue
+                if msg == 'STOP':
+                    break
 
         except Exception as e:
             print(e)

@@ -14,7 +14,7 @@ asyncio.set_event_loop_policy(asyncio.WindowsSelectorEventLoopPolicy())
 
 class DefiExchangeRunner(Runner):
     def __init__(self):
-        super.__init__()
+        super().__init__()
         self.responder = Responder(self.channels.defi_channel)
         self.crypto_requester = Requester(self.channels.crypto_channel)
         self.wallet_requester = Requester(self.channels.wallet_channel)            
@@ -44,8 +44,8 @@ class DefiExchangeRunner(Runner):
                 self.exchange.dt = await self.get_time()
                 await self.exchange.next()
                 msg = await self.responder.respond(self.callback)
-                if msg is None:
-                    continue
+                if msg == 'STOP':
+                    break
 
         except Exception as e:
             print("[DefiExchange Error] ", e)

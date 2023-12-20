@@ -9,7 +9,7 @@ class CryptoCurrencyRequests(Requests):
         super().__init__(requester, cache)
 
     async def get_assets(self):
-        return await self.make_request('assets', {}, self.requester)
+        return await self.make_request('get_assets', {}, self.requester)
 
     async def connect(self, chain:str):
         return await self.make_request('connect', {'chain': chain}, self.requester)

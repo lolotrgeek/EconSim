@@ -13,7 +13,7 @@ asyncio.set_event_loop_policy(asyncio.WindowsSelectorEventLoopPolicy())
 
 class StockExchangeRunner(Runner):
     def __init__(self):
-        super.__init__()
+        super().__init__()
         self.responder = Responder(self.channels.exchange_channel)
         self.exchange = None
 
@@ -25,7 +25,7 @@ class StockExchangeRunner(Runner):
         elif msg['topic'] == 'limit_sell': return dumps((await self.exchange.limit_sell(msg['ticker'], msg['price'], msg['qty'], msg['creator'])).to_dict_full())
         elif msg['topic'] == 'market_buy': return await self.exchange.market_buy(msg['ticker'], msg['qty'], msg['buyer'])
         elif msg['topic'] == 'market_sell': return await self.exchange.market_sell(msg['ticker'], msg['qty'], msg['seller'])
-        elif msg['topic'] == 'cancel_order': return await self.exchange.cancel_order(msg['order_id'])
+        elif msg['topic'] == 'cancel_order': return await self.exchange.cancel_order(msg['ticker'], msg['order_id'])
         elif msg['topic'] == 'cancel_all_orders': return await self.exchange.cancel_all_orders( msg['ticker'], msg['agent'])
         elif msg['topic'] == 'candles': return dumps(await self.exchange.get_price_bars(ticker=msg['ticker'], bar_size=msg['interval'], limit=msg['limit']))
         elif msg['topic'] == 'order_book': return dumps( (await self.exchange.get_order_book(msg['ticker'])).to_dict(msg['limit']))
@@ -60,8 +60,8 @@ class StockExchangeRunner(Runner):
             while True:
                 self.exchange.datetime = await self.get_time()
                 msg = await self.responder.respond(self.callback)
-                if msg is None:
-                    continue
+                if msg == 'STOP':
+                    break
 
         except Exception as e:
             print("[Stock Exchange Error] ", e)

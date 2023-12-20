@@ -12,18 +12,23 @@ from rich import print
 
 class GovernmentRunner(Runner):
     def __init__(self):
-        super.__init__()
+        super().__init__()
         self.requester = Requester(self.channels.crypto_exchange_channel)
         self.pusher = Pusher(self.channels.government_channel)
         self.government = None
 
+    async def set_government(self):
+        self.government = Government(requests=Requests(self.requester))
+
     async def run(self) -> None:
         try:
             await self.requester.connect()
-            self.government = Government(requester=Requests(self.requester))
+            await self.set_government()
             while True: 
                 self.government.current_date = await self.get_time()
-                await self.government.next()
+                next = await self.government.next()
+                if not next:
+                    break
                 msg = {
                     "get_cash": dumps(self.government.cash),
                     "get_date": dumps(self.government.current_date),
@@ -32,6 +37,7 @@ class GovernmentRunner(Runner):
                     "get_back_taxes": dumps(self.government.back_taxes),
                 }
                 await self.pusher.push(msg)
+
 
         except Exception as e:
             print("[Government Error]", e)

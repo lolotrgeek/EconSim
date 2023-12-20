@@ -60,29 +60,38 @@ class CryptoExchangeRunner(Runner):
         #TODO: exchange topic to get general exchange data
         else: return dumps({"warning":  f'unknown topic {msg["topic"]}'})
 
+    async def create_initial_assets(self):
+        cryptos = await self.crypto_currency_requests.get_assets()
+        
+        found_base = [crypto for crypto in cryptos if crypto.get('symbol') == 'ETH']
+        if len(found_base) == 0:
+            #TODO: retry if this fails
+            return None
+        pairs = [{'asset': 'USD' ,'market_qty':1000 ,'seed_price':str(random()) ,'seed_bid':'.99', 'seed_ask':'1.01'}]
+        await self.exchange.create_asset(found_base[0]['symbol'], pairs, decimals=found_base[0]['decimals'], min_qty_percent='0.05')
+
+        for crypto in cryptos:
+            if crypto['symbol'] != 'ETH':
+                pairs = [
+                    {'asset': 'USD' ,'market_qty':1000 ,'seed_price':str(random()) ,'seed_bid':'.99', 'seed_ask':'1.01'}, 
+                    {'asset': 'ETH' ,'market_qty':1000 ,'seed_price':str(random()) ,'seed_bid':'.99', 'seed_ask':'1.01'}
+                ]
+            await self.exchange.create_asset(crypto['symbol'], pairs, decimals=crypto['decimals'], min_qty_percent='0.05') 
+
     async def run(self) -> None:
         try:
             await self.responder.connect()
             await self.requester.connect()
             self.exchange = CryptoExchange(datetime=datetime(1700,1,1), crypto_requests=self.crypto_currency_requests, )
 
-            cryptos = await self.crypto_currency_requests.get_assets()
-            for crypto in cryptos:
-                if crypto['symbol'] == 'ETH':
-                    pairs = [{'asset': 'USD' ,'market_qty':1000 ,'seed_price':str(random()) ,'seed_bid':'.99', 'seed_ask':'1.01'}]
-                else:
-                    pairs = [
-                        {'asset': 'USD' ,'market_qty':1000 ,'seed_price':str(random()) ,'seed_bid':'.99', 'seed_ask':'1.01'}, 
-                        {'asset': 'ETH' ,'market_qty':1000 ,'seed_price':str(random()) ,'seed_bid':'.99', 'seed_ask':'1.01'}
-                    ]
-                await self.exchange.create_asset(crypto['symbol'], pairs, decimals=crypto['decimals'], min_qty_percent='0.05')       
+            await self.create_initial_assets()
             
             while True:
                 self.exchange.datetime = (await self.get_time())
                 await self.exchange.next()
                 msg = await self.responder.respond(self.callback)
-                if msg is None:
-                    continue
+                if msg == 'STOP':
+                    break
 
         except Exception as e:
             print("[Exchange Error] ", e)
