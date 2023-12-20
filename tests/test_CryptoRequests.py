@@ -16,7 +16,7 @@ class TestCryptoRequests(unittest.IsolatedAsyncioTestCase):
         eth_txns = await self.requests.get_transactions('ETH')
         print(usd_txns)
         self.assertEqual(usd_txns[0]['asset'], 'USD')
-        self.assertEqual(usd_txns[0]['fee'], 0.0)
+        self.assertEqual(usd_txns[0]['fee'], '0.01')
         self.assertEqual(usd_txns[0]['amount'], 0)
         self.assertEqual(usd_txns[0]['sender'], 'init_seed')
         self.assertEqual(usd_txns[0]['recipient'], 'init_seed')
@@ -43,7 +43,7 @@ class TestCryptoRequests(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(eth_txns[0]['timestamp'], None)
 
     async def test_get_transaction(self):
-        id = self.requests.requester.responder.cryptos['BTC'].blockchain.chain[0].id
+        id = self.requests.requester.responder.currencies['BTC'].blockchain.chain[0].id
         print(id)
         txn_id = await self.requests.get_transaction('BTC', id)
         self.assertEqual(txn_id['id'], id)
@@ -51,8 +51,8 @@ class TestCryptoRequests(unittest.IsolatedAsyncioTestCase):
     async def test_add_transaction(self):
         txn = await self.requests.add_transaction('USD', '0.1', 1000, 'sender', 'recipient')
         self.assertEqual(txn['asset'], 'USD')
-        self.assertEqual(txn['fee'], '0.10000000')
-        self.assertEqual(txn['amount'], '1000.00000000')
+        self.assertEqual(txn['fee'], '0.10')
+        self.assertEqual(txn['amount'], '1000.00')
         self.assertEqual(txn['sender'], 'sender')
         self.assertEqual(txn['recipient'], 'recipient')
         self.assertEqual(txn['confirmed'], False)

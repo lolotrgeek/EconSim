@@ -22,7 +22,7 @@ class TestCollectTaxes(unittest.IsolatedAsyncioTestCase):
     async def asyncSetUp(self):
         self.mock_requester = MockRequester()
         self.requests = (ExchangeRequests(self.mock_requester))
-        self.govnerment = Government(requester = self.requests)
+        self.govnerment = Government(requests = self.requests)
         self.govnerment.current_date = self.mock_requester.responder.time
         await self.mock_requester.responder.init()
         self.mock_requester.responder.exchange.agents[1]['taxable_events'] = [

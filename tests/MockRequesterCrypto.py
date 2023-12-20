@@ -2,6 +2,7 @@ import os, sys
 parent_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 sys.path.append(parent_dir)
 from source.runners.run_crypto_exchange import CryptoExchangeRunner
+from source.runners.run_crypto import CryptoRunner
 from source.exchange.CryptoExchange import CryptoExchange as Exchange
 from source.crypto.CryptoCurrencyRequests import CryptoCurrencyRequests as Requests
 from source.crypto.CryptoCurrency import CryptoCurrency
@@ -15,66 +16,62 @@ class MockRequesterCrypto():
     """
     def __init__(self):
         self.responder = MockResponderCrypto()
+        self.connected = False
 
     async def init(self):
         await self.responder.init()
+
+    async def connect(self):
+        self.connected = True
+        pass
     
     async def request(self, msg):
         return await self.responder.callback(msg)
 
-class MockResponderCrypto():
+class MockResponderCrypto(CryptoRunner):
     """
-    Mocked run_exchange and run_company callback responder
+    Mocks a responder for Crypto by wrapping the CryptoRunner with response methods
     """
-    def __init__(self, requests=None):
+    def __init__(self):
+        super().__init__()
         self.time = datetime(2023, 1, 1)
-        self.cryptos = {
+        self.currencies = {
             'USD': CryptoCurrency("USD", self.time, decimals=2),
             'BTC': CryptoCurrency("BTC", self.time, decimals=8),
             'ETH': CryptoCurrency("ETH", self.time, decimals=18),  
         }
+        self.connected = False
 
     async def next(self):
         self.time = self.time + timedelta(days=1)
-        self.exchange.datetime = self.time
-        for crypto in self.cryptos:
-            await self.cryptos[crypto].next(self.time)
+        for crypto in self.currencies:
+            await self.currencies[crypto].next(self.time)  
 
-    async def list_cryptos(self):
-        # single line loop through all the cryptos, call to_dict() on each, and return as a list of dicts
-        return list(map(lambda crypto: crypto.to_dict(), self.cryptos.values()))            
-                
-    async def callback(self, msg):
-        if msg['topic'] == 'get_assets': return dumps(await self.list_cryptos())
+    async def respond(self, msg):
+        return await self.callback(msg)
+    
+    async def lazy_respond(self, msg):
+        return await self.callback(msg)
+    
+    async def connect(self):
+        self.connected = True
+        pass
 
-        if 'chain' in msg:
-            if msg['chain'] in self.cryptos:
-                if msg('topic') == 'connect': return dumps(await self.cryptos[msg['chain']].to_dict())
-            else: return f'unknown chain {msg["chain"]}'        
-        if 'asset' in msg:
-            if msg['asset'] in self.cryptos:
-                if msg['topic'] == 'connect': return dumps(await self.cryptos[msg['asset']].to_dict())
-                elif msg['topic'] == 'get_transactions': return dumps(await self.cryptos[msg['asset']].blockchain.get_transactions())
-                elif msg['topic'] == 'get_transaction': return dumps(await self.cryptos[msg['asset']].blockchain.get_transaction(msg['id']))
-                elif msg['topic'] == 'add_transaction': return dumps((await self.cryptos[msg['asset']].blockchain.add_transaction(msg['asset'], msg['fee'], msg['amount'], msg['sender'], msg['recipient'])).to_dict())
-                elif msg['topic'] == 'cancel_transaction': return dumps(await self.cryptos[msg['asset']].blockchain.cancel_transaction(msg['id']))
-                elif msg['topic'] == 'get_mempool': return dumps(await self.cryptos[msg['asset']].blockchain.get_mempool())
-                elif msg['topic'] == 'get_pending_transactions': return dumps(await self.cryptos[msg['asset']].blockchain.mempool.get_pending_transactions(to_dicts=True))
-                elif msg['topic'] == 'get_confirmed_transactions': return dumps(await self.cryptos[msg['asset']].blockchain.mempool.get_confirmed_transactions(to_dicts=True))
-                elif msg['topic'] == 'get_last_fee': return dumps(await self.cryptos[msg['asset']].get_last_fee())
-                elif msg['topic'] == 'get_fees': return dumps(await self.cryptos[msg['asset']].get_fees(msg['num']))
-            else: return f'unknown asset {msg["asset"]}'    
-        
 class MockRequesterCryptoExchange():
     """
     Mocked Requester that connects directly to the MockResponder
     """
     def __init__(self, exchange=None):
         self.responder = MockResponderCryptoExchange(exchange=exchange)
+        self.connected = False
 
     async def init(self):
         await self.responder.init()
     
+    async def connect(self):
+        self.connected = True
+        pass    
+
     async def request(self, msg):
         return await self.responder.callback(msg)
     
@@ -83,10 +80,11 @@ class MockResponderCryptoExchange(CryptoExchangeRunner):
         super().__init__()
         self.mock_requester = MockRequesterCrypto()
         self.requests = Requests(self.mock_requester)
-        self.exchange = Exchange(datetime=datetime(2023, 1, 1), requester=self.requests) if exchange is None else exchange(datetime=datetime(2023, 1, 1), requester=self.requests)
+        self.exchange = Exchange(datetime=datetime(2023, 1, 1), crypto_requests=self.requests) if exchange is None else exchange(datetime=datetime(2023, 1, 1), crypto_requests=self.requests)
         self.exchange.logger = Null_Logger(debug_print=True)
         self.agent = None
         self.mock_order = None
+        self.connected = False
 
     async def init(self):
         await self.exchange.create_asset("BTC", pairs = [{'asset': "USD" ,'market_qty':1000 ,'seed_price':150 ,'seed_bid':'.99', 'seed_ask':'1.01'}])
@@ -97,3 +95,13 @@ class MockResponderCryptoExchange(CryptoExchangeRunner):
         self.time = self.time + timedelta(days=1)
         self.exchange.datetime = self.time
         await self.exchange.next()
+
+    async def respond(self, msg):
+        return await self.callback(msg)
+    
+    async def lazy_respond(self, msg):
+        return await self.callback(msg)
+    
+    async def connect(self):
+        self.connected = True
+        pass

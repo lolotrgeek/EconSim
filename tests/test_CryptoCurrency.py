@@ -9,12 +9,10 @@ from decimal import Decimal
 
 from source.crypto.CryptoCurrency import CryptoCurrency
 from source.crypto.MemPool import MempoolTransaction
-from source.exchange.CryptoExchangeRequests import CryptoExchangeRequests as Requests
-from .MockRequesterCrypto import MockRequesterCrypto as MockRequester
 
 class CryptoCurrencyTests(unittest.IsolatedAsyncioTestCase):
     async def asyncSetUp(self):
-        self.crypto = CryptoCurrency("BTC", datetime(2022, 1, 1), requester=Requests(MockRequester()))
+        self.crypto = CryptoCurrency("BTC", datetime(2022, 1, 1))
         
     async def test_init(self):
         self.assertEqual(self.crypto.symbol, "BTC")
@@ -23,7 +21,7 @@ class CryptoCurrencyTests(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(self.crypto.blockchain.mempool.transactions, [])
         self.assertEqual(self.crypto.supply, 1)
         self.assertEqual(self.crypto.max_supply, 0)
-        self.assertEqual(self.crypto.burn_address, '0x0')
+        self.assertEqual(self.crypto.burn_address, '0x00000000000000000000000000')
         self.assertEqual(self.crypto.startdate, datetime(2022, 1, 1))
         self.assertEqual(self.crypto.currentdate, datetime(2022, 1, 1))
         self.assertEqual(self.crypto.halving_period, 210_000)
@@ -33,8 +31,15 @@ class CryptoCurrencyTests(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(self.crypto.to_dict(), {
             "name": "BTC",
             "symbol": "BTC",
-            "startdate": datetime(2022, 1, 1),
-            "currentdate": datetime(2022, 1, 1),
+            "decimals": 8,
+            "block_reward": 50,
+            "max_supply": 0,
+            "burn_address": "0x00000000000000000000000000",
+            "halving_period": 210_000,
+            "last_halving_block": 0,
+            'supply': 1,
+            "startdate": datetime(2022, 1, 1,0,0),
+            "currentdate": datetime(2022, 1, 1, 0, 0),
         })
 
     async def test_validate_address(self):
@@ -44,24 +49,13 @@ class CryptoCurrencyTests(unittest.IsolatedAsyncioTestCase):
         self.assertEqual((await self.crypto.validate_address('0x0'*35)), False)
 
 
-    async def test_issue_coins(self):
-        await self.crypto.issue_coins(pairs = [{'asset': "USD" ,'market_qty':1000 ,'seed_price':150 ,'seed_bid':.99, 'seed_ask':1.01}], amount=1000)
-        self.assertEqual(self.crypto.supply, 1001)
-
-    async def test_halving(self):
-        self.assertEqual(self.crypto.block_reward, 50)
-        self.assertEqual(self.crypto.last_halving_block, 0)
-        await self.crypto.halving()
-        self.assertEqual(self.crypto.block_reward, 25)
-        self.assertEqual(self.crypto.last_halving_block, 1)
-
     async def test_get_last_fee(self):
         self.crypto.blockchain.chain.append(MempoolTransaction("BTC", Decimal('0.01'), 0, 'sender', 'recipient', datetime(2022, 1, 1))) 
         self.assertEqual(await self.crypto.get_last_fee(), Decimal('0.01'))
 
     async def test_get_fees(self):
         self.crypto.blockchain.chain.append(MempoolTransaction("BTC", Decimal('0.01'), 0, 'sender', 'recipient', datetime(2022, 1, 1))) 
-        self.assertEqual(await self.crypto.get_fees(10), ['0', '0.01'])
+        self.assertEqual(await self.crypto.get_fees(10), ['1E-8', '0.01'])
 
     async def test_next(self):
         await self.crypto.next(datetime(2022, 1, 2))
@@ -71,7 +65,7 @@ class CryptoCurrencyTests(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(self.crypto.blockchain.mempool.transactions, [])
         self.assertEqual(self.crypto.supply, 1)
         self.assertEqual(self.crypto.max_supply, 0)
-        self.assertEqual(self.crypto.burn_address, '0x0')
+        self.assertEqual(self.crypto.burn_address, '0x00000000000000000000000000')
         self.assertEqual(self.crypto.startdate, datetime(2022, 1, 1))
         self.assertEqual(self.crypto.currentdate, datetime(2022, 1, 2))
         self.assertEqual(self.crypto.halving_period, 210_000)

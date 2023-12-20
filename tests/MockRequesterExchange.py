@@ -2,6 +2,7 @@ import os, sys
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 from source.company.PublicCompany import PublicCompany
 from source.runners.run_exchange import ExchangeRunner
+from source.exchange.Exchange import Exchange
 from datetime import datetime
 
 
@@ -11,9 +12,14 @@ class MockRequester():
     """
     def __init__(self):
         self.responder = MockResponder()
+        self.connected = False
 
     async def init(self):
         await self.responder.init()
+
+    async def connect(self):
+        self.connected = True
+        pass
     
     async def request(self, msg):
         return await self.responder.callback(msg)
@@ -25,10 +31,12 @@ class MockResponder(ExchangeRunner):
     def __init__(self):
         super().__init__()
         self.time = datetime(2023, 1, 1)
+        self.exchange = Exchange(datetime=datetime(1700,1,1))
         self.exchange.datetime=self.time
         self.agent = None
         self.mock_order = None
         self.companies = [PublicCompany("AAPL", self.exchange.datetime, MockRequester)]
+        self.connected = False
 
     async def init(self):
         await self.exchange.create_asset("AAPL", seed_price=150, seed_bid=0.99, seed_ask=1.01)
@@ -38,5 +46,9 @@ class MockResponder(ExchangeRunner):
     async def respond(self, msg):
         return await self.callback(msg)
     
+    async def lazy_respond(self, msg):
+        return await self.callback(msg)
+
     async def connect(self):
+        self.connected = True
         pass
