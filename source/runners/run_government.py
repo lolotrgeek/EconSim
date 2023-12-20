@@ -1,9 +1,12 @@
 import asyncio
 asyncio.set_event_loop_policy(asyncio.WindowsSelectorEventLoopPolicy())
 import os, sys
-sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+file_dir = os.path.dirname(os.path.abspath(__file__))
+source_dir = os.path.dirname(file_dir)
+parent_dir = os.path.dirname(source_dir)
+sys.path.append(parent_dir)
 import traceback
-from .runner import Runner
+from runner import Runner
 from source.Messaging import Requester, Pusher
 from source.agents.Government import Government
 from source.exchange.CryptoExchangeRequests import CryptoExchangeRequests as Requests

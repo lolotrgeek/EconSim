@@ -1,6 +1,9 @@
 import os, sys
-sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-from .runner import Runner
+file_dir = os.path.dirname(os.path.abspath(__file__))
+source_dir = os.path.dirname(file_dir)
+parent_dir = os.path.dirname(source_dir)
+sys.path.append(parent_dir)
+from runner import Runner
 from source.company.PublicCompany import PublicCompany
 from source.Messaging import Responder, Requester, Subscriber, Pusher
 from source.exchange.ExchangeRequests import ExchangeRequests as Requests

@@ -4,7 +4,7 @@ from signal import SIGTERM
 import sys
 import os
 parent_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-file = parent_dir+'\\EconSim\\run_trader.py'
+file = parent_dir+'\\runners\\run_trader.py'
 print(file)
 
 if __name__ == '__main__':

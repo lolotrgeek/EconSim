@@ -1,3 +1,8 @@
+import os, sys
+file_dir = os.path.dirname(os.path.abspath(__file__))
+source_dir = os.path.dirname(file_dir)
+parent_dir = os.path.dirname(source_dir)
+sys.path.append(parent_dir)
 from source.Energy import Energy
 from datetime import datetime
 

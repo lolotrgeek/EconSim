@@ -1,7 +1,6 @@
 import subprocess
 from time import sleep
 from signal import SIGTERM
-import sys
 import os
 parent_dir = os.path.dirname(os.path.dirname(os.path.abspath(__name__)))
 
