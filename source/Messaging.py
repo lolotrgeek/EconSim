@@ -4,14 +4,10 @@ import zmq
 import zmq.asyncio
 import asyncio
 from .utils.logger import Logger
+from .utils._utils import dumps
 from decimal import Decimal
 asyncio.set_event_loop_policy(asyncio.WindowsSelectorEventLoopPolicy())
 
-class DecimalEncoder(json.JSONEncoder):
-    def default(self, o):
-        if isinstance(o, Decimal):
-            return str('{:.18f}'.format(o))
-        return super().default(o)
 
 class Requester:
     def __init__(self, channel='5556', max_retries=3):
@@ -29,7 +25,7 @@ class Requester:
 
     async def request(self, msg) -> str:
         try:
-            msg = json.dumps(msg, cls=DecimalEncoder)
+            msg = dumps(msg)
             await self.socket.send_json(msg)
             response = await self.socket.recv_json()
             if type(response) == str:
@@ -45,7 +41,7 @@ class Requester:
 
     async def request_lazy(self, msg) -> str:
         try:
-            msg = json.dumps(msg, cls=DecimalEncoder)
+            msg = dumps(msg)
             await self.socket.send_json(msg)
             retries_left = self.max_retries
             while True:
