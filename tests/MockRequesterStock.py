@@ -1,11 +1,8 @@
-import random, string, os, sys
-parent_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-sys.path.append(parent_dir)
-from source.runners.run_companies import CompaniesRunner
+import os, sys
+sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+
 from source.runners.run_stock_exchange import StockExchangeRunner
-from source.company.PublicCompany import PublicCompany
 from source.exchange.StockExchange import StockExchange as Exchange
-from source.utils._utils import dumps
 from datetime import datetime
 
 

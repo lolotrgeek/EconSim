@@ -2,8 +2,11 @@ import asyncio
 asyncio.set_event_loop_policy(asyncio.WindowsSelectorEventLoopPolicy())
 import traceback
 import sys, os
-parent_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+file_dir = os.path.dirname(os.path.abspath(__file__))
+source_dir = os.path.dirname(file_dir)
+parent_dir = os.path.dirname(source_dir)
 sys.path.append(parent_dir)
+sys.path.append(source_dir+'\\runners')
 from runner import Runner
 from source.Messaging import Responder, Requester, Subscriber, Pusher
 from source.agents.Bank import Bank

@@ -3,7 +3,7 @@ file_dir = os.path.dirname(os.path.abspath(__file__))
 source_dir = os.path.dirname(file_dir)
 parent_dir = os.path.dirname(source_dir)
 sys.path.append(parent_dir)
-from random import randint
+sys.path.append(source_dir+'\\runners')
 import traceback
 from source.Messaging import Requester
 from source.agents.TradersCrypto import NaiveMarketMaker, SimpleMarketTaker, LowBidder

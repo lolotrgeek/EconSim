@@ -3,6 +3,7 @@ file_dir = os.path.dirname(os.path.abspath(__file__))
 source_dir = os.path.dirname(file_dir)
 parent_dir = os.path.dirname(source_dir)
 sys.path.append(parent_dir)
+sys.path.append(source_dir+'\\runners')
 from random import randint
 import traceback
 from source.Messaging import Requester

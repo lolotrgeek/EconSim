@@ -1,10 +1,10 @@
 import os, sys
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+
 from source.company.PublicCompany import PublicCompany
 from source.runners.run_exchange import ExchangeRunner
 from source.exchange.Exchange import Exchange
 from datetime import datetime
-
 
 class MockRequester():
     """

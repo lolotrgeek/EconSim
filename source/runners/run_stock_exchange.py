@@ -3,6 +3,7 @@ file_dir = os.path.dirname(os.path.abspath(__file__))
 source_dir = os.path.dirname(file_dir)
 parent_dir = os.path.dirname(source_dir)
 sys.path.append(parent_dir)
+sys.path.append(source_dir+'\\runners')
 from datetime import datetime
 import traceback
 from runner import Runner
@@ -10,7 +11,6 @@ from source.Messaging import Responder
 from source.exchange.StockExchange import StockExchange as Exchange
 from source.utils._utils import dumps
 from rich import print
-import time
 import asyncio
 asyncio.set_event_loop_policy(asyncio.WindowsSelectorEventLoopPolicy())
 

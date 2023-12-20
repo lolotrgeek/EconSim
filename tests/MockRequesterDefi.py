@@ -1,12 +1,10 @@
 import os, sys
-parent_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-sys.path.append(parent_dir)
+sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 from source.exchange.DefiExchange import DefiExchange as Exchange
 from source.crypto.CryptoCurrencyRequests import CryptoCurrencyRequests as Requests
 from source.runners.run_defi_exchange import DefiExchangeRunner
 from .MockRequester import MockRequester
 from .MockRequesterCrypto import MockRequesterCrypto
-from source.utils._utils import dumps
 from datetime import datetime, timedelta
 from source.utils.logger import Null_Logger
 
