@@ -7,8 +7,14 @@ context = getcontext()
 context.prec = 128
 context.rounding = ROUND_UP
 
+class DecimalEncoder(json.JSONEncoder):
+    def default(self, o):
+        if isinstance(o, Decimal):
+            return str('{:f}'.format(o))
+        return super().default(o)
+
 def dumps(data):
-    return json.dumps(data, indent=4, sort_keys=True, default=str)
+    return json.dumps(data, sort_keys=True, default=str, cls=DecimalEncoder)
 
 def get_pandas_time(time_unit) -> str:
     return {

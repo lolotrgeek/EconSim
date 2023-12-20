@@ -10,7 +10,7 @@ from source.utils._utils import *
 class TestUtilsTest(unittest.TestCase):
     def test_dumps(self):
         data = {'key': 'value'}
-        expected_output = '{\n    "key": "value"\n}'
+        expected_output = '{"key": "value"}'
         self.assertEqual(dumps(data), expected_output)
 
     def test_get_pandas_time(self):
