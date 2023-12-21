@@ -14,3 +14,9 @@ class WalletRequests(Requests):
     async def get_balance(self,address, asset) -> str:
         return await self.make_request('get_balance', {'address': address, 'asset': asset}, self.requester)
     
+    async def transaction_confirmed(self, address, txn) -> str:
+        return await self.make_request('transaction_confirmed', {'address': address, 'txn': txn}, self.requester)
+    
+    async def transaction_failed(self, address, txn) -> str:
+        return await self.make_request('transaction_failed', {'address': address, 'txn': txn}, self.requester)
+    
