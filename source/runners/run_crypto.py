@@ -51,7 +51,7 @@ class CryptoRunner(Runner):
 
         if 'chain' in msg:
             if msg['chain'] in self.currencies:
-                if msg('topic') == 'connect': return dumps(await self.currencies[msg['chain']].to_dict())
+                if msg['topic'] == 'connect': return dumps(self.currencies[msg['chain']].to_dict())
             else: return f'unknown chain {msg["chain"]}'
 
         if 'asset' in msg:
