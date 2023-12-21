@@ -20,7 +20,7 @@ class MempoolTransaction:
         
     def to_dict(self) -> dict:
         return {
-            'id': self.id,
+            'id': self.id, #TODO: rename to hash?
             'asset': self.asset,
             'fee': self.fee,
             'amount': self.amount,
@@ -37,11 +37,11 @@ class MemPool:
     def __init__(self) :
         self.transactions: List[MempoolTransaction] = []
 
-    async def get_pending_transactions(self, to_dicts=False) -> list:
+    async def get_pending_transactions(self, to_dicts=False) -> List[MempoolTransaction]:
         if to_dicts: return [transaction.to_dict() for transaction in self.transactions if not transaction.confirmed]
         return [transaction for transaction in self.transactions if not transaction.confirmed]
     
-    async def get_confirmed_transactions(self, to_dicts=False) -> list:
+    async def get_confirmed_transactions(self, to_dicts=False) -> List[MempoolTransaction]:
         if to_dicts: return [transaction.to_dict() for transaction in self.transactions if transaction.confirmed]
         return [transaction for transaction in self.transactions if transaction.confirmed]
     
