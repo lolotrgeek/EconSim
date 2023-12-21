@@ -88,11 +88,10 @@ class Blockchain():
         return {"error": "transaction not found"}
     
     async def cancel_transaction(self, id:str) -> dict:
-        unconfirmed_transactions = await self.mempool.get_pending_transactions()
-        for transaction in unconfirmed_transactions:
-            if transaction.id == id:
-                unconfirmed_transactions.remove(transaction)
-                return transaction.to_dict()
+        for idx, transaction in enumerate(self.mempool.transactions):
+            if transaction.id == id and not transaction.confirmed:
+                cancelled_transaction = self.mempool.transactions.pop(idx)
+                return cancelled_transaction.to_dict()
         return {"error": "transaction not found"}
     
     async def get_mempool(self):
