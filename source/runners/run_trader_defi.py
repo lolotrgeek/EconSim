@@ -13,7 +13,7 @@ from typing import Dict
 from runner import Runner
 from source.exchange.DefiExchangeRequests import DefiExchangeRequests
 from source.crypto.CryptoCurrencyRequests import CryptoCurrencyRequests
-from source.agents.TradersCryptoDefi import RandomSwapper
+from source.agents.TradersDefi import RandomSwapper
 from source.utils._utils import dumps
 asyncio.set_event_loop_policy(asyncio.WindowsSelectorEventLoopPolicy())
 
@@ -27,9 +27,11 @@ class DefiTraderRunner(Runner):
 
     async def callback(self, msg):
         if 'address' in msg:
-            if msg['wallet'] in self.traders:
-                if msg['topic'] == 'request_signature': return dumps(await self.traders[msg['wallet']].signature_request(msg['txn']))
-                elif msg['topic'] == 'get_balance': return dumps((await self.traders[msg['wallet']].get_balance(msg['asset'])))
+            if msg['address'] in self.traders:
+                if msg['topic'] == 'request_signature': return dumps(await self.traders[msg['address']].wallet.signature_request(msg['txn']))
+                elif msg['topic'] == 'get_balance': return dumps((await self.traders[msg['address']].wallet.get_balance(msg['asset'])))
+                elif msg['topic'] == 'transaction_confirmed': return dumps(await self.traders[msg['address']].wallet.transaction_confirmed(msg['txn']))
+                elif msg['topic'] == 'transaction_failed': return dumps(await self.traders[msg['address']].wallet.transaction_failed(msg['txn']))
             else: return f'unknown asset {msg["asset"]}'    
         else: return f'unknown topic {msg["topic"]}'
 

@@ -11,7 +11,7 @@ from source.utils._utils import prec
 from source.crypto.Wallet import Wallet
 
 class TraderDefi():
-    def __init__(self, name:str, aum:int=10_000, exchange_requests=None, crypto_requests=None):
+    def __init__(self, name:str, exchange_requests=None, crypto_requests=None):
         self.name = name
         self.exchange_requests: DefiExchangeRequests = exchange_requests
         self.crypto_requests: CryptoCurrencyRequests = crypto_requests
