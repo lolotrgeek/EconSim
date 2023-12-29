@@ -10,6 +10,9 @@ class CryptoCurrencyRequests(Requests):
 
     async def connect(self, chain:str):
         return await self.make_request('connect', {'chain': chain}, self.requester)
+    
+    async def get_assets(self):
+        return await self.make_request('get_assets', {}, self.requester)
 
     async def get_transactions(self, asset) -> str:
         return await self.make_request('get_transactions', {'asset': asset}, self.requester)
