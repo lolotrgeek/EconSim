@@ -17,8 +17,8 @@ class CryptoCurrencyRequests(Requests):
     async def get_transaction(self, asset, id) -> str:
         return await self.make_request('get_transaction', {'asset': asset, 'id': id}, self.requester)
     
-    async def add_transaction(self, asset:str, fee:float, amount:float, sender:str, recipient:str, id=None) -> str:
-        return await self.make_request('add_transaction', {'asset': asset, 'fee': fee, 'amount': amount, 'sender': sender, 'recipient': recipient, 'id': id}, self.requester)
+    async def add_transaction(self, asset:str, fee:float, amount:float, sender:str, recipient:str, id=None, transfers=[]) -> str:
+        return await self.make_request('add_transaction', {'asset': asset, 'fee': fee, 'amount': amount, 'sender': sender, 'recipient': recipient, 'id': id, 'transfers': transfers}, self.requester)
     
     async def cancel_transaction(self, asset:str, id:str) -> str:
         return await self.make_request('cancel_transaction', {'asset': asset, 'id': id}, self.requester)
