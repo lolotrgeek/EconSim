@@ -12,9 +12,9 @@ from .MockRequesterCrypto import MockRequesterCrypto
 class TestWallet(unittest.IsolatedAsyncioTestCase):
     async def asyncSetUp(self):
         self.wallet = Wallet("MyWallet")
-        self.wallet.crypto_requester = CryptoCurrencyRequests( MockRequesterCrypto())
-        self.wallet.requester = DefiExchangeRequests( MockRequester())
-        self.seed_address = self.wallet.crypto_requester.requester.responder.currencies['ETH'].burn_address
+        self.wallet.crypto_requests = CryptoCurrencyRequests( MockRequesterCrypto())
+        self.wallet.requests = DefiExchangeRequests( MockRequester())
+        self.seed_address = self.wallet.crypto_requests.requester.responder.currencies['ETH'].burn_address
    
     async def test_connect(self):
         # Test connecting to a chain
@@ -124,7 +124,7 @@ class TestWallet(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(valid_transfer_result, {'valid': valid_transfer_txn, 'msg': 'valid transaction'})
 
     async def test_signature_request(self):
-        # Mock the crypto_requester and set the signature request status
+        # Mock the crypto_requests and set the signature request status
         txn = MempoolTransaction('ETH', 0, 1, self.wallet.address, self.seed_address, datetime(2023,1,1)).to_dict() 
 
         # Test requesting a signature for a transaction
@@ -151,14 +151,14 @@ class TestWallet(unittest.IsolatedAsyncioTestCase):
         await self.wallet.update_holdings(seed_txn)
         txn = MempoolTransaction('ETH', 0, 1, self.wallet.address, self.seed_address, datetime(2023,1,1))
         txn_unsigned = MempoolTransaction('ETH', 0, 1, self.wallet.address, self.seed_address, datetime(2023,1,1))
-        self.wallet.crypto_requester.requester.responder.currencies['ETH'].blockchain.mempool.transactions = [txn, txn_unsigned]
+        self.wallet.crypto_requests.requester.responder.currencies['ETH'].blockchain.mempool.transactions = [txn, txn_unsigned]
         sign = await self.wallet.sign_txn(txn.to_dict(), True)
-        self.assertEqual(len(self.wallet.crypto_requester.requester.responder.currencies['ETH'].blockchain.mempool.transactions), 2)
+        self.assertEqual(len(self.wallet.crypto_requests.requester.responder.currencies['ETH'].blockchain.mempool.transactions), 2)
         result = await self.wallet.cancel_transaction(txn.id)
         failed_result = await self.wallet.cancel_transaction(txn_unsigned.id)
         self.assertEqual(result, {'msg': 'transaction cancelled'})
         self.assertEqual(failed_result, {'msg': f'wallet does not have a pending transaction with id {txn_unsigned.id}'})
-        self.assertEqual(len(self.wallet.crypto_requester.requester.responder.currencies['ETH'].blockchain.mempool.transactions), 1)
+        self.assertEqual(len(self.wallet.crypto_requests.requester.responder.currencies['ETH'].blockchain.mempool.transactions), 1)
 
     async def test_transaction_confirmed(self):
         await self.wallet.connect('ETH')

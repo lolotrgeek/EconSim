@@ -69,7 +69,7 @@ class TestDefi(unittest.TestCase):
         min_price = 900
         pool_fee_pct = PoolFee(0.01)
         txn = MempoolTransaction('test',0,0,'test', 'test', transfers=[{'asset': 'ETH'}, {'asset': 'USDT'}])
-        liquidity = Liquidity(owner, max_price, min_price, pool_fee_pct, txn,)
+        liquidity = Liquidity(owner, max_price, min_price, pool_fee_pct, txn)
         self.assertEqual(liquidity.owner, owner)
         self.assertEqual(liquidity.max_price, max_price)
         self.assertEqual(liquidity.min_price, min_price)
@@ -80,8 +80,9 @@ class TestDefi(unittest.TestCase):
         base_fee = 0.1
         quote_fee = 0.2
         pool_fee_pct = 0.01
+        liquidity_txn = MempoolTransaction('test',0,0,'test', 'test', transfers=[{'asset': 'ETH'}, {'asset': 'USDT'}])
         txn = MempoolTransaction('test',0,0,'test', 'test')
-        collect_fee = CollectFee(base_fee, quote_fee, pool_fee_pct, txn)
+        collect_fee = CollectFee(liquidity_txn.id, base_fee, quote_fee, pool_fee_pct, txn)
         self.assertEqual(collect_fee.base_fee, base_fee)
         self.assertEqual(collect_fee.quote_fee, quote_fee)
         self.assertEqual(collect_fee.pool_fee_pct, pool_fee_pct)

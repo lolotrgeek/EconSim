@@ -4,6 +4,7 @@ sys.path.append(parent_dir)
 
 import unittest
 from source.crypto.CryptoCurrencyRequests import CryptoCurrencyRequests as Requests
+from source.utils._utils import convert_sci_to_str
 from .MockRequesterCrypto import MockRequesterCrypto as MockRequester
 
 class TestCryptoRequests(unittest.IsolatedAsyncioTestCase):
@@ -14,7 +15,7 @@ class TestCryptoRequests(unittest.IsolatedAsyncioTestCase):
         usd_txns = await self.requests.get_transactions('USD')
         btc_txns = await self.requests.get_transactions('BTC')
         eth_txns = await self.requests.get_transactions('ETH')
-        print(usd_txns)
+        
         self.assertEqual(usd_txns[0]['asset'], 'USD')
         self.assertEqual(usd_txns[0]['fee'], '0.01')
         self.assertEqual(usd_txns[0]['amount'], 0)
@@ -25,7 +26,7 @@ class TestCryptoRequests(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(usd_txns[0]['timestamp'], None)
 
         self.assertEqual(btc_txns[0]['asset'], 'BTC')
-        self.assertEqual(btc_txns[0]['fee'], 0.0)
+        self.assertEqual(convert_sci_to_str(btc_txns[0]['fee']), '0.00000001')
         self.assertEqual(btc_txns[0]['amount'], 0.0)
         self.assertEqual(btc_txns[0]['sender'], 'init_seed')
         self.assertEqual(btc_txns[0]['recipient'], 'init_seed')
@@ -34,7 +35,7 @@ class TestCryptoRequests(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(btc_txns[0]['timestamp'], None)
 
         self.assertEqual(eth_txns[0]['asset'], 'ETH')
-        self.assertEqual(eth_txns[0]['fee'], 0.0)
+        self.assertEqual(convert_sci_to_str(eth_txns[0]['fee']), '0.000000000000000001')
         self.assertEqual(eth_txns[0]['amount'], 0.0)
         self.assertEqual(eth_txns[0]['sender'], 'init_seed')
         self.assertEqual(eth_txns[0]['recipient'], 'init_seed')

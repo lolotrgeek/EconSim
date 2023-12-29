@@ -59,11 +59,11 @@ class TestSimpleMarketTaker(unittest.IsolatedAsyncioTestCase):
         cash_before = self.simple_taker.cash    
         await self.simple_taker.spend_cash()
         
-        self.mock_requester.responder.mock_requester.responder.cryptos['BTC'].blockchain.mempool.transactions[0].confirmed = True
-        self.mock_requester.responder.mock_requester.responder.cryptos['USD'].blockchain.mempool.transactions[0].confirmed = True
+        self.mock_requester.responder.mock_requester.responder.currencies['BTC'].blockchain.mempool.transactions[0].confirmed = True
+        self.mock_requester.responder.mock_requester.responder.currencies['USD'].blockchain.mempool.transactions[0].confirmed = True
         txn = self.mock_requester.responder.exchange.pending_transactions[0]
-        base_txn = self.mock_requester.responder.mock_requester.responder.cryptos['BTC'].blockchain.mempool.transactions[0].to_dict()
-        quote_txn = self.mock_requester.responder.mock_requester.responder.cryptos['USD'].blockchain.mempool.transactions[0].to_dict()
+        base_txn = self.mock_requester.responder.mock_requester.responder.currencies['BTC'].blockchain.mempool.transactions[0].to_dict()
+        quote_txn = self.mock_requester.responder.mock_requester.responder.currencies['USD'].blockchain.mempool.transactions[0].to_dict()
         await self.mock_requester.responder.exchange._complete_trade(txn, base_txn, quote_txn)
 
         assets = (await self.simple_taker.get_assets())['assets']
@@ -77,11 +77,11 @@ class TestSimpleMarketTaker(unittest.IsolatedAsyncioTestCase):
         self.simple_taker.cash = self.simple_taker.assets['USD']
         await self.simple_taker.spend_cash()
         
-        self.mock_requester.responder.mock_requester.responder.cryptos['BTC'].blockchain.mempool.transactions[0].confirmed = True
-        self.mock_requester.responder.mock_requester.responder.cryptos['USD'].blockchain.mempool.transactions[0].confirmed = True
+        self.mock_requester.responder.mock_requester.responder.currencies['BTC'].blockchain.mempool.transactions[0].confirmed = True
+        self.mock_requester.responder.mock_requester.responder.currencies['USD'].blockchain.mempool.transactions[0].confirmed = True
         txn = self.mock_requester.responder.exchange.pending_transactions[0]
-        base_txn = self.mock_requester.responder.mock_requester.responder.cryptos['BTC'].blockchain.mempool.transactions[0].to_dict()
-        quote_txn = self.mock_requester.responder.mock_requester.responder.cryptos['USD'].blockchain.mempool.transactions[0].to_dict()
+        base_txn = self.mock_requester.responder.mock_requester.responder.currencies['BTC'].blockchain.mempool.transactions[0].to_dict()
+        quote_txn = self.mock_requester.responder.mock_requester.responder.currencies['USD'].blockchain.mempool.transactions[0].to_dict()
         await self.mock_requester.responder.exchange.next()
 
         assets_before = self.simple_taker.assets['BTC']
@@ -92,11 +92,11 @@ class TestSimpleMarketTaker(unittest.IsolatedAsyncioTestCase):
         print(self.mock_requester.responder.exchange.books['BTCUSD'].bids)
         await self.simple_taker.dump_to_cash()
 
-        self.mock_requester.responder.mock_requester.responder.cryptos['BTC'].blockchain.mempool.transactions[1].confirmed = True
-        self.mock_requester.responder.mock_requester.responder.cryptos['USD'].blockchain.mempool.transactions[1].confirmed = True
+        self.mock_requester.responder.mock_requester.responder.currencies['BTC'].blockchain.mempool.transactions[1].confirmed = True
+        self.mock_requester.responder.mock_requester.responder.currencies['USD'].blockchain.mempool.transactions[1].confirmed = True
         # txn = self.mock_requester.responder.exchange.pending_transactions[0]
-        # base_txn = self.mock_requester.responder.mock_requester.responder.cryptos['BTC'].blockchain.mempool.transactions[1].to_dict()
-        # quote_txn = self.mock_requester.responder.mock_requester.responder.cryptos['USD'].blockchain.mempool.transactions[1].to_dict()
+        # base_txn = self.mock_requester.responder.mock_requester.responder.currencies['BTC'].blockchain.mempool.transactions[1].to_dict()
+        # quote_txn = self.mock_requester.responder.mock_requester.responder.currencies['USD'].blockchain.mempool.transactions[1].to_dict()
         # await self.mock_requester.responder.exchange._complete_trade(txn, base_txn, quote_txn)
         await self.mock_requester.responder.exchange.next()
         print(self.mock_requester.responder.exchange.books['BTCUSD'].bids)
@@ -146,11 +146,11 @@ class TestNaiveMarketMaker(unittest.IsolatedAsyncioTestCase):
     async def complete_trade(self):
         print(self.mock_requester.responder.exchange.books['BTCUSD'].bids)
         print(self.mock_requester.responder.exchange.books['BTCUSD'].asks)
-        self.mock_requester.responder.mock_requester.responder.cryptos['BTC'].blockchain.mempool.transactions[0].confirmed = True
-        self.mock_requester.responder.mock_requester.responder.cryptos['USD'].blockchain.mempool.transactions[0].confirmed = True
+        self.mock_requester.responder.mock_requester.responder.currencies['BTC'].blockchain.mempool.transactions[0].confirmed = True
+        self.mock_requester.responder.mock_requester.responder.currencies['USD'].blockchain.mempool.transactions[0].confirmed = True
         txn = self.mock_requester.responder.exchange.pending_transactions[0]
-        base_txn = self.mock_requester.responder.mock_requester.responder.cryptos['BTC'].blockchain.mempool.transactions[0].to_dict()
-        quote_txn = self.mock_requester.responder.mock_requester.responder.cryptos['USD'].blockchain.mempool.transactions[0].to_dict()
+        base_txn = self.mock_requester.responder.mock_requester.responder.currencies['BTC'].blockchain.mempool.transactions[0].to_dict()
+        quote_txn = self.mock_requester.responder.mock_requester.responder.currencies['USD'].blockchain.mempool.transactions[0].to_dict()
         await self.mock_requester.responder.exchange._complete_trade(txn, base_txn, quote_txn)        
 
     async def test_init(self):
@@ -196,11 +196,11 @@ class TestNaiveMarketMaker(unittest.IsolatedAsyncioTestCase):
     async def test_market_make(self):
         # Test that the market maker buys an asset
         await self.market_maker.next()
-        self.mock_requester.responder.mock_requester.responder.cryptos['BTC'].blockchain.mempool.transactions[0].confirmed = True
-        self.mock_requester.responder.mock_requester.responder.cryptos['USD'].blockchain.mempool.transactions[0].confirmed = True
+        self.mock_requester.responder.mock_requester.responder.currencies['BTC'].blockchain.mempool.transactions[0].confirmed = True
+        self.mock_requester.responder.mock_requester.responder.currencies['USD'].blockchain.mempool.transactions[0].confirmed = True
         txn = self.mock_requester.responder.exchange.pending_transactions[0]
-        base_txn = self.mock_requester.responder.mock_requester.responder.cryptos['BTC'].blockchain.mempool.transactions[0].to_dict()
-        quote_txn = self.mock_requester.responder.mock_requester.responder.cryptos['USD'].blockchain.mempool.transactions[0].to_dict()
+        base_txn = self.mock_requester.responder.mock_requester.responder.currencies['BTC'].blockchain.mempool.transactions[0].to_dict()
+        quote_txn = self.mock_requester.responder.mock_requester.responder.currencies['USD'].blockchain.mempool.transactions[0].to_dict()
         await self.mock_requester.responder.exchange._complete_trade(txn, base_txn, quote_txn)
 
         get_assets = await self.market_maker.get_assets()

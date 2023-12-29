@@ -56,16 +56,16 @@ class BlockchainTests(unittest.IsolatedAsyncioTestCase):
         self.blockchain.datetime=datetime(2022, 1, 3)
 
         transaction = await self.blockchain.add_transaction(asset, fee, amount, sender, recipient)
-        await self.blockchain.cancel_transaction(transaction.id)
+        cancelled_transaction = await self.blockchain.cancel_transaction(transaction.id)
         mempool_transactions = self.blockchain.mempool.transactions
-        self.assertEqual(len(mempool_transactions), 1)
-        self.assertEqual(mempool_transactions[0].asset, asset)
-        self.assertEqual(mempool_transactions[0].fee, fee)
-        self.assertEqual(mempool_transactions[0].amount, amount)
-        self.assertEqual(mempool_transactions[0].sender, sender)
-        self.assertEqual(mempool_transactions[0].recipient, recipient)
-        self.assertEqual(mempool_transactions[0].confirmed, False)
-        self.assertEqual(mempool_transactions[0].dt, datetime(2022, 1, 3))
+        self.assertEqual(len(mempool_transactions), 0)
+        self.assertEqual(cancelled_transaction['asset'], asset)
+        self.assertEqual(cancelled_transaction['fee'], fee)
+        self.assertEqual(cancelled_transaction['amount'], amount)
+        self.assertEqual(cancelled_transaction['sender'], sender)
+        self.assertEqual(cancelled_transaction['recipient'], recipient)
+        self.assertEqual(cancelled_transaction['confirmed'], False)
+        self.assertEqual(cancelled_transaction['dt'], datetime(2022, 1, 3))
 
     async def test_process_transactions(self):
         self.blockchain.datetime = datetime(2022, 1, 3)

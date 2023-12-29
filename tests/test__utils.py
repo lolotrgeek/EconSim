@@ -84,7 +84,7 @@ class DecimalEncoderTest(unittest.TestCase):
     def test_decimal_encoder(self):
         # Test that DecimalEncoder encodes Decimal objects correctly
         d = Decimal('3.14159265358979323846')
-        expected_output = '3.141592653589793239' # NOTE when run alone test will fail because the decimal context precision gets set in _utils test, we put the "correct" value here when run after the _utils test
+        expected_output = '3.14159265358979323846'
         output = json.dumps(d, cls=DecimalEncoder)
         self.assertEqual(output.replace('"', ''), expected_output)
 
