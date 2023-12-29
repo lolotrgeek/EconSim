@@ -15,7 +15,7 @@ class TraderDefi():
         self.name = name
         self.exchange_requests: DefiExchangeRequests = exchange_requests
         self.crypto_requests: CryptoCurrencyRequests = crypto_requests
-        self.wallet = Wallet(name, exchange_requests)
+        self.wallet = Wallet(name, exchange_requests, crypto_requests)
         self.current_date = None
 
     def __repr__(self):
@@ -47,3 +47,6 @@ class TraderDefi():
     async def get_pool(self, base, quote, fee_level=-1) -> dict:
         pool = await self.exchange_requests.get_pool(base, quote, fee_level)
         return pool
+    
+    async def next():
+        pass
