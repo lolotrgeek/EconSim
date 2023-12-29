@@ -6,9 +6,9 @@ from source.exchange.DefiExchangeRequests import DefiExchangeRequests
 from source.crypto.CryptoCurrencyRequests import CryptoCurrencyRequests
 
 class Wallet():
-    def __init__(self, name, requester=None, crypto_requester=None):
-        self.requester: DefiExchangeRequests = requester
-        self.crypto_requester: CryptoCurrencyRequests = crypto_requester
+    def __init__(self, name, requests=None, crypto_requests=None):
+        self.requests: DefiExchangeRequests = requests
+        self.crypto_requests: CryptoCurrencyRequests = crypto_requests
         self.address = generate_address()
         self.name = name
         self.chain: dict = {}
@@ -27,7 +27,7 @@ class Wallet():
         
         chain: str - the symbol of the chain to connect to
         """
-        self.chain = (await self.crypto_requester.connect(chain))
+        self.chain = (await self.crypto_requests.connect(chain))
         if 'error' in self.chain:
             return {'msg': self.chain['error']}
 
@@ -114,7 +114,7 @@ class Wallet():
             await self.update_holdings(txn)
             self.pending_transactions[txn['id']] = txn
         
-        return (await self.requester.send_signature(agent_wallet=self.address, decision=decision, txn=txn))
+        return (await self.requests.send_signature(agent_wallet=self.address, decision=decision, txn=txn))
 
     async def cancel_transaction(self, txn_id):
         """
@@ -123,7 +123,7 @@ class Wallet():
         if txn_id not in self.pending_transactions:
             return {'msg': f'wallet does not have a pending transaction with id {txn_id}'}
         
-        cancel_request = await self.crypto_requester.cancel_transaction(self.chain['symbol'], txn_id)
+        cancel_request = await self.crypto_requests.cancel_transaction(self.chain['symbol'], txn_id)
         if 'error' in cancel_request:
             return cancel_request
         if 'id' not in cancel_request or cancel_request['id'] != txn_id:
@@ -159,7 +159,7 @@ class Wallet():
             return {'msg': 'wallet is not connected to a chain'}
 
         #TODO: set max fee willing to pay
-        network_fee = prec((await self.crypto_requester.get_last_fee(self.chain['symbol'])), self.chain['decimals'])
+        network_fee = prec((await self.crypto_requests.get_last_fee(self.chain['symbol'])), self.chain['decimals'])
         return network_fee
         
     async def set_fee(self, fee_limit=-1):
@@ -171,7 +171,7 @@ class Wallet():
             return {'msg': 'wallet is not connected to a chain'}
         
         #TODO: could use "get_fees" to create a sample of fees for txns that were confirmed and use the median
-        network_fee = prec((await self.crypto_requester.get_last_fee(self.chain['symbol'])), self.chain['decimals'])
+        network_fee = prec((await self.crypto_requests.get_last_fee(self.chain['symbol'])), self.chain['decimals'])
 
         if fee_limit == -1:
             fee_limit = network_fee + get_minimum(self.chain['decimals'])
