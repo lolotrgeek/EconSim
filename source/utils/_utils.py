@@ -170,4 +170,4 @@ def validate_address(address:str) -> bool:
     return len(address[2:]) > 26 or len(address[2:]) < 35 and address[:2] == '0x'
 
 def convert_sci_to_str(num):
-    return "{:f}".format(num)
+    return "{:f}".format(Decimal(num))
