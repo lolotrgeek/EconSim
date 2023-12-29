@@ -121,7 +121,6 @@ class DefiExchange():
             pending_swap: Swap = self.pending_swaps[address]
             transaction = await self.requests.get_transaction(asset=self.default_currency.symbol, id=address)
             if not transaction:
-                # NOTE: if transaction is not confirmed, we keep waiting, it will eventually be confirmed
                 continue
             elif 'error' in transaction:
                 continue
@@ -135,13 +134,19 @@ class DefiExchange():
             slippage = pending_swap.slippage
 
             if not transaction['confirmed']:
+                if (self.dt - string_to_time(transaction['dt'])).total_seconds() > pending_swap.deadline:
+                    self.logger.warning(f'transaction timed out, transaction: {transaction}, deadline: {pending_swap.deadline}')
+                    await self.requests.cancel_transaction(self.default_currency.symbol, transaction['id'])
+                    self.pending_swaps.pop(address)
                 if price < quote_qty * (1 - slippage):
                     self.logger.warning(f'price slipped too low, price: {price}, quote_qty: {quote_qty}, slippage: {slippage}')
                     await self.requests.cancel_transaction(self.default_currency.symbol, transaction['id'])
+                    self.pending_swaps.pop(address)
                 if price > quote_qty * (1 + slippage) :
                     self.logger.warning(f'price slipped too high, price: {price}, quote_qty: {quote_qty}, slippage: {slippage}')
                     await self.requests.cancel_transaction(self.default_currency.symbol, transaction['id'])
-                    return {'error': 'slippage, price too high'}            
+                    self.pending_swaps.pop(address)   
+                       
             if transaction['confirmed']:
                 await self.pool_swap_liquidity(pool, base_qty, quote_qty, pending_swap.fee_amount)
                 self.swaps.append(pending_swap)
@@ -382,9 +387,11 @@ class DefiExchange():
             return False
         return True
 
-    async def swap(self, agent_wallet: Address, base: str, quote:str, base_qty: Decimal, slippage='.05') -> Swap:
+    async def swap(self, agent_wallet: Address, base: str, quote:str, base_qty: Decimal, slippage='.05', deadline=30) -> Swap:
         """
         Swaps a base asset for a quote asset.
+        
+        deadline is number of seconds to wait before cancelling the transaction.
         """
         if len(self.pending_swaps) >= self.max_pending_transactions:
             return {'error': 'max_pending_transactions_reached'}
@@ -426,7 +433,7 @@ class DefiExchange():
         ]
         swap_address = generate_address()
         transaction = MempoolTransaction(id=swap_address, asset=self.default_currency.symbol, fee=0, amount=0, sender=agent_wallet, recipient=self.router, transfers=transfers)
-        self.unapproved_swaps[swap_address] = Swap(pool_fee_pct, fee_amount, slippage, transaction)
+        self.unapproved_swaps[swap_address] = Swap(pool_fee_pct, fee_amount, slippage, deadline, transaction)
         await self.wallet_requests.request_signature(agent_wallet, transaction.to_dict())
         return self.unapproved_swaps[swap_address]
 

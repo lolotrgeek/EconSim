@@ -107,13 +107,14 @@ class Asset():
         }
 
 class Swap():
-    __slots__ = ('pair', 'pool_fee_pct', 'fee_amount', 'slippage', 'txn')
-    def __init__(self, pool_fee_pct: PoolFee, fee_amount: Decimal, slippage: Decimal, txn: MempoolTransaction):
+    __slots__ = ('pair', 'pool_fee_pct', 'fee_amount', 'slippage', 'deadline', 'txn')
+    def __init__(self, pool_fee_pct: PoolFee, fee_amount: Decimal, slippage: Decimal, deadline: int, txn: MempoolTransaction):
         self.pair: Pair = Pair(txn.transfers[0]['asset'], txn.transfers[1]['asset'])
         self.pool_fee_pct: PoolFee = pool_fee_pct
         self.fee_amount: Decimal = fee_amount
         self.slippage: Decimal = slippage
         self.txn: MempoolTransaction = txn
+        self.deadline: int = deadline
 
     def to_dict(self):
         return {
