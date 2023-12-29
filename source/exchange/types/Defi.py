@@ -1,5 +1,5 @@
-from typing import Dict, List
 from decimal import Decimal
+from datetime import datetime
 from uuid import uuid4 as UUID
 import sys, os
 parent_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
@@ -125,7 +125,7 @@ class Swap():
         }
 
 class Liquidity():
-    __slots__ = ('pair', 'owner', 'max_price', 'min_price', 'pool_fee_pct', 'base_fee', 'quote_fee', 'txn')
+    __slots__ = ('pair', 'owner', 'max_price', 'min_price', 'pool_fee_pct', 'base_fee', 'quote_fee', 'last_collect_time', 'txn')
     def __init__(self, owner: Address, max_price: Decimal, min_price: Decimal, pool_fee_pct: PoolFee, txn: MempoolTransaction):
         """
         owner: the address of the liquidity provider
@@ -144,6 +144,7 @@ class Liquidity():
         self.pool_fee_pct: PoolFee = pool_fee_pct
         self.quote_fee: Decimal = 0
         self.base_fee: Decimal = 0
+        self.last_collect_time: datetime = datetime(1700,1,1)
         self.txn: MempoolTransaction = txn
 
     def to_dict(self):
@@ -159,8 +160,9 @@ class Liquidity():
         }
 
 class CollectFee():
-    __slots__ = ('base_fee', 'quote_fee', 'pool_fee_pct', 'txn')
-    def __init__(self, base_fee: Decimal, quote_fee: Decimal, pool_fee_pct: Decimal, txn:MempoolTransaction ):
+    __slots__ = ('liquidity_address', 'base_fee', 'quote_fee', 'pool_fee_pct', 'txn')
+    def __init__(self,liquidity_address: Address, base_fee: Decimal, quote_fee: Decimal, pool_fee_pct: Decimal, txn:MempoolTransaction ):
+        self.liquidity_address: Address = liquidity_address
         self.base_fee: Decimal = base_fee
         self.quote_fee: Decimal = quote_fee
         self. pool_fee_pct: Decimal = pool_fee_pct
