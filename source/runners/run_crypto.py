@@ -59,7 +59,7 @@ class CryptoRunner(Runner):
                 if msg['topic'] == 'connect': return dumps(await self.currencies[msg['asset']].to_dict())
                 elif msg['topic'] == 'get_transactions': return dumps(await self.currencies[msg['asset']].blockchain.get_transactions())
                 elif msg['topic'] == 'get_transaction': return dumps(await self.currencies[msg['asset']].blockchain.get_transaction(msg['id']))
-                elif msg['topic'] == 'add_transaction': return dumps((await self.currencies[msg['asset']].blockchain.add_transaction(msg['asset'], msg['fee'], msg['amount'], msg['sender'], msg['recipient'])).to_dict())
+                elif msg['topic'] == 'add_transaction': return dumps((await self.currencies[msg['asset']].blockchain.add_transaction(msg['asset'], msg['fee'], msg['amount'], msg['sender'], msg['recipient'], msg['id'], msg['transfers'])).to_dict())
                 elif msg['topic'] == 'cancel_transaction': return dumps(await self.currencies[msg['asset']].blockchain.cancel_transaction(msg['id']))
                 elif msg['topic'] == 'get_mempool': return dumps(await self.currencies[msg['asset']].blockchain.get_mempool())
                 elif msg['topic'] == 'get_pending_transactions': return dumps(await self.currencies[msg['asset']].blockchain.mempool.get_pending_transactions(to_dicts=True))
@@ -67,8 +67,8 @@ class CryptoRunner(Runner):
                 elif msg['topic'] == 'get_last_fee': return dumps(await self.currencies[msg['asset']].get_last_fee())
                 elif msg['topic'] == 'get_fees': return dumps(await self.currencies[msg['asset']].get_fees(msg['num']))
 
-            else: return f'unknown asset {msg["asset"]}'    
-        else: return f'unknown topic {msg["topic"]}'
+            else: return '{"error": unknown asset'+msg["asset"]+'}'    
+        else: return '{"error": unknown topic'+msg["topic"]+'}'
 
     async def run(self) -> None:
         try:
