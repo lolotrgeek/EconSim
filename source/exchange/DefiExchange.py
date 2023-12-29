@@ -51,6 +51,7 @@ class DefiExchange():
         self.max_unapproved_swaps = 1_000_000
         self.max_pairs = 10000
         self.max_assets = 10000
+        self.max_price_impact = Decimal('0.15')
         self.logger = Logger('DefiExchange', 30)
 
     async def start(self):
@@ -168,7 +169,7 @@ class DefiExchange():
                 position.last_collect_time = string_to_time(transaction['dt'])
                 self.liquidity_positions[position.txn.id] = position                
                 await self.wallet_requests.transaction_confirmed(address, transaction)
-                self.pending_collect_fees.pop(address)
+                return self.pending_collect_fees.pop(address)
 
     async def update_liqudity_positions(self): 
         for address in list(self.liquidity_positions.keys()):
@@ -300,8 +301,8 @@ class DefiExchange():
         # swap fees are paid in the base currency to the base reserves (e.g ETH/DAI, if you swap ETH for DAI, the fee is paid in ETH)
         # the pool fee amount, is the fee amount that is paid for a swap, it is not the amount of fees that are paid to liquidity providers
         # the fee is accrued in the pool and can be collected by liquidity providers at any time via a collect transaction.
-        pool.amm.reserve_a -= base_qty
-        pool.amm.reserve_b += quote_qty
+        pool.amm.reserve_a += base_qty
+        pool.amm.reserve_b -= quote_qty
         if self.dt not in pool.amm.fees:
             pool.amm.fees[self.dt] = 0
         pool.amm.fees[self.dt] += fee_amount
@@ -405,8 +406,20 @@ class DefiExchange():
         if not has_funds: 
             #TODO: block agent from making swaps until they have enough funds
             return {'error': 'wallet does not have enough funds'}
-            
-        #TODO: send a confirmation to agent (not wallet) to confirm the swap
+
+        # get the price of the pool after the swap takes place (ie copy the pool amt, add the base_qty to the and remove the quote qty, balance and recalulate the price)
+        future_reserve_a = prec(pool.amm.reserve_a + base_qty, self.assets[base].decimals)
+        future_reserve_b = prec(pool.amm.reserve_b - price, self.assets[quote].decimals) 
+        k = non_zero_prec(future_reserve_a * future_reserve_b)
+        new_reserve_a = non_zero_prec(future_reserve_a + base_qty)
+        new_reserve_b = non_zero_prec(k /new_reserve_a) 
+        future_price = prec(future_reserve_b - new_reserve_b, self.assets[quote].decimals)
+        price_impact = prec(abs(future_price - price) / price, 3)
+        if price_impact > self.max_price_impact:
+            self.logger.error(f'price impact too high, price_impact: {price_impact}, max_price_impact: {self.max_price_impact}')
+            return {'error': 'price impact too high'}
+    
+        #TODO: send a confirmation to agent (not wallet) on front-end to confirm the swap
         transfers = [
             {'asset': base, 'address': self.assets[base].address, 'from': agent_wallet, 'to': self.router, 'for': total_amount, 'decimals': self.assets[base].decimals},
             {'asset': quote, 'address': self.assets[quote].address, 'from': self.router, 'to': agent_wallet, 'for': price, 'decimals': self.assets[quote].decimals}
@@ -431,18 +444,19 @@ class DefiExchange():
         quote_qty = approved_swap.txn.transfers[1]['for']
         slippage = prec(approved_swap.slippage, 3)
         pool_fee_pct = approved_swap.pool_fee_pct
+        pool = self.pools[base+quote][pool_fee_pct]
 
-        price = prec(self.pools[base+quote][pool_fee_pct].amm.get_price(base_qty), self.assets[quote].decimals)
+        price = prec(pool.amm.get_price(base_qty), self.assets[quote].decimals)
         max_price = quote_qty * (1 + slippage)
         min_price = quote_qty * (1 - slippage)
 
         if price < min_price:
             self.logger.error(f'price slipped too low, price: {price}, quote_qty: {quote_qty}, slippage: {slippage}')
-            self.wallet_requests.transaction_failed(approved_swap.txn.sender, approved_swap.txn.to_dict())
+            await self.wallet_requests.transaction_failed(approved_swap.txn.sender, approved_swap.txn.to_dict())
             return {'error': 'price too low'}
         if price > max_price:
             self.logger.error(f'price slipped too high, price: {price}, quote_qty: {quote_qty}, slippage: {slippage}')
-            self.wallet_requests.transaction_failed(approved_swap.txn.sender, approved_swap.txn.to_dict())
+            await self.wallet_requests.transaction_failed(approved_swap.txn.sender, approved_swap.txn.to_dict())
             return {'error': 'price too high'}
         
         approved_swap.txn.transfers[1]['for'] = price
@@ -564,10 +578,8 @@ class DefiExchange():
             return position
         base_liquidity = position.txn.transfers[0]['for']
         quote_liquidity = position.txn.transfers[1]['for']
-        base_decimals = position.txn.transfers[0]['decimals']
-        quote_decimals = position.txn.transfers[1]['decimals']
-        base_percent = prec(base_liquidity / pool.amm.reserve_a, base_decimals)
-        quote_percent = prec(quote_liquidity / pool.amm.reserve_b, quote_decimals)
+        base_percent = prec(base_liquidity / pool.amm.reserve_a, 3)
+        quote_percent = prec(quote_liquidity / pool.amm.reserve_b, 3)
         return {"base_pct": base_percent, "quote_pct": quote_percent}
         
     async def get_accumulated_fees(self, liquidity_address: Address) -> dict:

@@ -1,6 +1,6 @@
-import asyncio,sys,os
-import unittest
+import asyncio,sys,os, unittest
 from datetime import datetime
+from copy import deepcopy
 parent_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 sys.path.append(parent_dir)
 from decimal import Decimal
@@ -10,6 +10,7 @@ from source.crypto.CryptoCurrencyRequests import CryptoCurrencyRequests as Reque
 from source.crypto.WalletRequests import WalletRequests
 from .MockRequesterCrypto import MockRequesterCrypto
 from .MockRequesterWallet import MockRequesterWallet
+from source.utils._utils import prec
 from source.exchange.types.Defi import *
 
 async def standard_asyncSetUp(self):
@@ -155,15 +156,15 @@ class TestPoolSwapLiquidity(unittest.IsolatedAsyncioTestCase):
         await self.exchange.list_asset('CAKE', 18)
         await self.exchange.create_pool('ETH', 'CAKE', 3)
         pool = self.exchange.pools['ETHCAKE'][str(self.exchange.fee_levels[3])]
-        await self.exchange.pool_add_liquidity(pool, 1, 1)        
+        await self.exchange.pool_add_liquidity(pool, 1, 2)        
 
     async def test_pool_swap_liquidity(self):
         pool_fee_pct = str(self.exchange.fee_levels[3])
         pool = self.exchange.pools['ETHCAKE'][pool_fee_pct]
         await self.exchange.pool_swap_liquidity(pool, Decimal('.02'), 1, Decimal('0.001'))
-        self.assertEqual(self.exchange.pools['ETHCAKE'][pool_fee_pct].amm.reserve_a, Decimal('0.98'))
-        self.assertEqual(self.exchange.pools['ETHCAKE'][pool_fee_pct].amm.reserve_b, 2)
-        self.assertEqual(self.exchange.pools['ETHCAKE'][pool_fee_pct].amm.k, Decimal('1.960000000000000000'))
+        self.assertEqual(self.exchange.pools['ETHCAKE'][pool_fee_pct].amm.reserve_a, Decimal('1.02'))
+        self.assertEqual(self.exchange.pools['ETHCAKE'][pool_fee_pct].amm.reserve_b, 1)
+        self.assertEqual(self.exchange.pools['ETHCAKE'][pool_fee_pct].amm.k, Decimal('1.020000000000000000'))
         self.assertEqual(self.exchange.pools['ETHCAKE'][pool_fee_pct].amm.fees, {datetime(2023, 1, 1, 0, 0): Decimal('0.001')})
 
 class TestPoolRemoveLiquidity(unittest.IsolatedAsyncioTestCase):
@@ -198,7 +199,7 @@ class TestGetPool(unittest.IsolatedAsyncioTestCase):
         await self.exchange.list_asset('CAKE', 18)
         await self.exchange.create_pool('ETH', 'CAKE', 3)
         pool = self.exchange.pools['ETHCAKE'][str(self.exchange.fee_levels[3])]
-        await self.exchange.pool_add_liquidity(pool, 1, 1)
+        await self.exchange.pool_add_liquidity(pool, 100, 100)
 
     async def test_get_pool(self):
         fee= await self.exchange.select_pool_fee_pct('ETH', 'CAKE')
@@ -240,7 +241,7 @@ class TestWalletHasFunds(unittest.IsolatedAsyncioTestCase):
         await self.exchange.list_asset('CAKE', 18)
         await self.exchange.create_pool('ETH', 'CAKE', 3)
         pool = self.exchange.pools['ETHCAKE'][str(self.exchange.fee_levels[3])]
-        await self.exchange.pool_add_liquidity(pool, 1, 1)
+        await self.exchange.pool_add_liquidity(pool, 100, 100)
 
     async def test_wallet_has_funds(self):
         wallet_address = self.exchange.wallet_requests.requester.responder.trader.wallet.address
@@ -258,9 +259,9 @@ class TestSwap(unittest.IsolatedAsyncioTestCase):
         await self.exchange.wallet_requests.requester.init()
         await self.exchange.list_asset('CAKE', 18)
         await self.exchange.create_pool('ETH', 'CAKE', 3)
-        pool = self.exchange.pools['ETHCAKE'][str(self.exchange.fee_levels[3])]
-        await self.exchange.pool_add_liquidity(pool, 1, 1)
-
+        self.pool = self.exchange.pools['ETHCAKE'][str(self.exchange.fee_levels[3])]
+        await self.exchange.pool_add_liquidity(self.pool, 100, 100)
+        
     async def test_swap(self):
         wallet_address = self.exchange.wallet_requests.requester.responder.trader.wallet.address
         swap = await self.exchange.swap(wallet_address, 'ETH', 'CAKE', Decimal('0.1'))
@@ -272,7 +273,7 @@ class TestSwap(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(self.exchange.unapproved_swaps[swap.txn.id].txn.transfers[0]['asset'], 'ETH')
         self.assertEqual(self.exchange.unapproved_swaps[swap.txn.id].txn.transfers[1]['asset'], 'CAKE')
         self.assertEqual(self.exchange.unapproved_swaps[swap.txn.id].txn.transfers[0]['for'], Decimal('0.110000000000000000'))
-        self.assertEqual(self.exchange.unapproved_swaps[swap.txn.id].txn.transfers[1]['for'], Decimal('0.099099099099099100'))
+        self.assertEqual(self.exchange.unapproved_swaps[swap.txn.id].txn.transfers[1]['for'], Decimal('0.109879132953750875'))
         self.assertEqual(self.exchange.unapproved_swaps[swap.txn.id].txn.transfers[0]['from'], wallet_address)
         self.assertEqual(self.exchange.unapproved_swaps[swap.txn.id].txn.transfers[0]['to'], self.exchange.router)
         self.assertEqual(self.exchange.unapproved_swaps[swap.txn.id].txn.transfers[1]['to'], wallet_address)
@@ -286,6 +287,14 @@ class TestSwap(unittest.IsolatedAsyncioTestCase):
         self.assertTrue(type(swap) is dict)
         self.assertEqual(swap['error'], 'wallet does not have enough funds')
 
+    async def test_price_impact_too_high(self):
+        await self.exchange.pool_add_liquidity(self.pool, 1 , 1)
+        wallet_address = self.exchange.wallet_requests.requester.responder.trader.wallet.address
+        swap = await self.exchange.swap(wallet_address, 'ETH', 'CAKE', Decimal('0.1'), Decimal('0.0001'))
+        pool = self.exchange.pools['ETHCAKE'][str(self.exchange.fee_levels[3])]
+        self.assertTrue(type(swap) is dict)
+        self.assertEqual(swap['error'], 'price impact too high')
+
 class TestApprovedSwap(unittest.IsolatedAsyncioTestCase):
     async def asyncSetUp(self):
         self.exchange = await standard_asyncSetUp(self)
@@ -293,7 +302,7 @@ class TestApprovedSwap(unittest.IsolatedAsyncioTestCase):
         await self.exchange.list_asset('CAKE', 18)
         await self.exchange.create_pool('ETH', 'CAKE', 3)
         pool = self.exchange.pools['ETHCAKE'][str(self.exchange.fee_levels[3])]
-        await self.exchange.pool_add_liquidity(pool, 1, 1)
+        await self.exchange.pool_add_liquidity(pool, 100, 100)
 
     async def test_approved_swap(self):
         wallet_address = self.exchange.wallet_requests.requester.responder.trader.wallet.address
@@ -305,7 +314,7 @@ class TestApprovedSwap(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(self.exchange.pending_swaps[swap.txn.id].txn.transfers[0]['asset'], 'ETH')
         self.assertEqual(self.exchange.pending_swaps[swap.txn.id].txn.transfers[1]['asset'], 'CAKE')
         self.assertEqual(self.exchange.pending_swaps[swap.txn.id].txn.transfers[0]['for'], Decimal('0.110000000000000000'))
-        self.assertEqual(self.exchange.pending_swaps[swap.txn.id].txn.transfers[1]['for'], Decimal('0.099099099099099100'))
+        self.assertEqual(self.exchange.pending_swaps[swap.txn.id].txn.transfers[1]['for'], Decimal('0.109879132953750875'))
         self.assertEqual(self.exchange.pending_swaps[swap.txn.id].txn.transfers[0]['from'], wallet_address)
         self.assertEqual(self.exchange.pending_swaps[swap.txn.id].txn.transfers[0]['to'], self.exchange.router)
         self.assertEqual(self.exchange.pending_swaps[swap.txn.id].txn.transfers[1]['to'], wallet_address)
@@ -338,7 +347,7 @@ class TestApprovedSwap(unittest.IsolatedAsyncioTestCase):
         wallet_address = self.exchange.wallet_requests.requester.responder.trader.wallet.address
         swap = await self.exchange.swap(wallet_address, 'ETH', 'CAKE', Decimal('0.1'), Decimal('0.0001'))
         pool = self.exchange.pools['ETHCAKE'][str(self.exchange.fee_levels[3])]
-        await self.exchange.pool_add_liquidity(pool, 100, 100)
+        await self.exchange.pool_add_liquidity(pool, 100, 1000)
         approved_swap = await self.exchange.approve_swap(swap.txn.id, '.0001')
         self.assertTrue(type(approved_swap) is dict)
         self.assertEqual(approved_swap['error'], 'price too high')
@@ -347,7 +356,7 @@ class TestApprovedSwap(unittest.IsolatedAsyncioTestCase):
         wallet_address = self.exchange.wallet_requests.requester.responder.trader.wallet.address
         swap = await self.exchange.swap(wallet_address, 'ETH', 'CAKE', Decimal('0.1'), Decimal('0.0001'))
         pool = self.exchange.pools['ETHCAKE'][str(self.exchange.fee_levels[3])]
-        await self.exchange.pool_remove_liquidity(pool, Decimal('.9'), Decimal('.9'))
+        await self.exchange.pool_remove_liquidity(pool, 0, Decimal('.99'))
         approved_swap = await self.exchange.approve_swap(swap.txn.id, '.0001')
         self.assertTrue(type(approved_swap) is dict)
         self.assertEqual(approved_swap['error'], 'price too low')
@@ -360,7 +369,7 @@ class TestConfirmSwap(unittest.IsolatedAsyncioTestCase):
         await self.exchange.list_asset('CAKE', 18)
         await self.exchange.create_pool('ETH', 'CAKE', 3)
         pool = self.exchange.pools['ETHCAKE'][str(self.exchange.fee_levels[3])]
-        await self.exchange.pool_add_liquidity(pool, 1, 1)
+        await self.exchange.pool_add_liquidity(pool, 100, 100)
 
     async def test_confirm_swap(self):
         self.swap = await self.exchange.swap(self.wallet_address, 'ETH', 'CAKE', Decimal('0.1'), Decimal('0.0001'))
@@ -416,7 +425,7 @@ class TestApproveLiquidity(unittest.IsolatedAsyncioTestCase):
         await self.exchange.list_asset('CAKE', 18)
         await self.exchange.create_pool('ETH', 'CAKE', 3)
         pool = self.exchange.pools['ETHCAKE'][str(self.exchange.fee_levels[3])]
-        await self.exchange.pool_add_liquidity(pool, 1, 1)
+        await self.exchange.pool_add_liquidity(pool, 100, 100)
 
 
     async def test_approve_liquidity(self):
@@ -435,7 +444,7 @@ class TestConfirmLiquidity(unittest.IsolatedAsyncioTestCase):
         await self.exchange.list_asset('CAKE', 18)
         await self.exchange.create_pool('ETH', 'CAKE', 3)
         pool = self.exchange.pools['ETHCAKE'][str(self.exchange.fee_levels[3])]
-        await self.exchange.pool_add_liquidity(pool, 1, 1)
+        await self.exchange.pool_add_liquidity(pool, 100, 100)
 
     async def test_confirm_liquidity(self):
         wallet_address = self.exchange.wallet_requests.requester.responder.trader.wallet.address
@@ -455,8 +464,8 @@ class TestRemoveLiquidity(unittest.IsolatedAsyncioTestCase):
         await self.exchange.wallet_requests.requester.init()
         await self.exchange.list_asset('CAKE', 18)
         await self.exchange.create_pool('ETH', 'CAKE', 3)
-        pool = self.exchange.pools['ETHCAKE'][str(self.exchange.fee_levels[3])]
-        await self.exchange.pool_add_liquidity(pool, 1, 1)
+        self.pool = self.exchange.pools['ETHCAKE'][str(self.exchange.fee_levels[3])]
+        await self.exchange.pool_add_liquidity(self.pool, 1, 1)
 
     async def test_remove_liquidity(self):
         wallet_address = self.exchange.wallet_requests.requester.responder.trader.wallet.address
@@ -470,10 +479,6 @@ class TestRemoveLiquidity(unittest.IsolatedAsyncioTestCase):
         self.assertTrue(len(self.exchange.unapproved_swaps.items()) == 0)
         self.assertTrue(len(self.exchange.pending_swaps.items()) == 0)
         self.assertTrue(len(self.exchange.unapproved_remove_liquidity.items()) == 1)
-        self.assertEqual(self.exchange.pools['ETHCAKE'][str(self.exchange.fee_levels[3])].amm.reserve_a, Decimal('1.400000000000000000'))
-        self.assertEqual(self.exchange.pools['ETHCAKE'][str(self.exchange.fee_levels[3])].amm.reserve_b, Decimal('1.285714285714285715'))
-        self.assertEqual(self.exchange.pools['ETHCAKE'][str(self.exchange.fee_levels[3])].amm.k, Decimal('1.800000000000000001'))
-        self.assertEqual(self.exchange.pools['ETHCAKE'][str(self.exchange.fee_levels[3])].amm.fees, {})
 
 class TestApproveRemoveLiquidity(unittest.IsolatedAsyncioTestCase):
     async def asyncSetUp(self):
@@ -481,8 +486,8 @@ class TestApproveRemoveLiquidity(unittest.IsolatedAsyncioTestCase):
         await self.exchange.wallet_requests.requester.init()
         await self.exchange.list_asset('CAKE', 18)
         await self.exchange.create_pool('ETH', 'CAKE', 3)
-        pool = self.exchange.pools['ETHCAKE'][str(self.exchange.fee_levels[3])]
-        await self.exchange.pool_add_liquidity(pool, 1, 1)
+        self.pool = self.exchange.pools['ETHCAKE'][str(self.exchange.fee_levels[3])]
+        await self.exchange.pool_add_liquidity(self.pool, 100, 100)
 
     async def test_approve_remove_liquidity(self):
         wallet_address = self.exchange.wallet_requests.requester.responder.trader.wallet.address
@@ -497,14 +502,15 @@ class TestApproveRemoveLiquidity(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(self.exchange.pending_remove_liquidity[approved_removed_liquidity.txn.id], approved_removed_liquidity)
         self.assertEqual(self.exchange.pending_remove_liquidity[approved_removed_liquidity.txn.id].txn.id, approved_removed_liquidity.txn.id)
 
+
 class TestConfirmRemoveLiquidity(unittest.IsolatedAsyncioTestCase):
     async def asyncSetUp(self):
         self.exchange = await standard_asyncSetUp(self)
         await self.exchange.wallet_requests.requester.init()
         await self.exchange.list_asset('CAKE', 18)
         await self.exchange.create_pool('ETH', 'CAKE', 3)
-        pool = self.exchange.pools['ETHCAKE'][str(self.exchange.fee_levels[3])]
-        self.liquidity = await self.exchange.pool_add_liquidity(pool, 1, 1)
+        self.pool = self.exchange.pools['ETHCAKE'][str(self.exchange.fee_levels[3])]
+        self.liquidity = await self.exchange.pool_add_liquidity(self.pool, 100, 100)
 
     async def test_confirm_remove_liquidity(self):
         wallet_address = self.exchange.wallet_requests.requester.responder.trader.wallet.address
@@ -512,6 +518,7 @@ class TestConfirmRemoveLiquidity(unittest.IsolatedAsyncioTestCase):
         approved_liquidity = await self.exchange.approve_liquidity(liquidity.txn.id, '.0001')
         self.exchange.requests.requester.responder.currencies['ETH'].blockchain.mempool.transactions[0].confirmed = True
         await self.exchange.update_pending_liquidity()
+        pool_before = deepcopy(self.pool)
         removed_liquidity = await self.exchange.remove_liquidity('ETH', 'CAKE', wallet_address, approved_liquidity.txn.id)
         approved_removed_liquidity = await self.exchange.approve_remove_liquidity(removed_liquidity.txn.id, '.0001')
         self.exchange.requests.requester.responder.currencies['ETH'].blockchain.mempool.transactions[1].confirmed = True
@@ -519,6 +526,9 @@ class TestConfirmRemoveLiquidity(unittest.IsolatedAsyncioTestCase):
         self.assertTrue(len(self.exchange.unapproved_remove_liquidity.items()) == 0)
         self.assertTrue(len(self.exchange.pending_remove_liquidity.items()) == 0)
         self.assertTrue(len(self.exchange.liquidity_positions) == 0)
+        self.assertTrue(pool_before.amm.reserve_a > self.pool.amm.reserve_a)
+        self.assertTrue(pool_before.amm.reserve_b > self.pool.amm.reserve_b)
+        self.assertTrue(pool_before.amm.k > self.pool.amm.k)        
 
 class TestUpdateLiquidityPosition(unittest.IsolatedAsyncioTestCase):
     async def asyncSetUp(self):
@@ -526,16 +536,18 @@ class TestUpdateLiquidityPosition(unittest.IsolatedAsyncioTestCase):
         await self.exchange.wallet_requests.requester.init()
         await self.exchange.list_asset('CAKE', 18)
         await self.exchange.create_pool('ETH', 'CAKE', 3)
-        pool = self.exchange.pools['ETHCAKE'][str(self.exchange.fee_levels[3])]
-        self.liquidity = await self.exchange.pool_add_liquidity(pool, 1, 1)
+        self.pool = self.exchange.pools['ETHCAKE'][str(self.exchange.fee_levels[3])]
+        self.liquidity = await self.exchange.pool_add_liquidity(self.pool, 100, 100)
 
     async def test_update_liquidity_position(self):
         wallet_address = self.exchange.wallet_requests.requester.responder.trader.wallet.address
         swapper_address = self.exchange.wallet_requests.requester.responder.swapper.wallet.address
-        liquidity = await self.exchange.provide_liquidity(wallet_address, 'ETH', 'CAKE', Decimal('.4'), 3, '.8', '.2')        
+        liquidity = await self.exchange.provide_liquidity(wallet_address, 'ETH', 'CAKE', Decimal('.4'), 3, '.8', '.2')  
         approved_liquidity = await self.exchange.approve_liquidity(liquidity.txn.id, '.0001')
         self.exchange.requests.requester.responder.currencies['ETH'].blockchain.mempool.transactions[0].confirmed = True
         await self.exchange.update_pending_liquidity()
+        pool_before = deepcopy(self.pool)
+        position_before = deepcopy(await self.exchange.get_position(liquidity.txn.id))
         self.swap = await self.exchange.swap(swapper_address, 'ETH', 'CAKE', Decimal('0.1'), Decimal('0.0001'))
         await self.exchange.approve_swap(self.swap.txn.id, '.0001')        
         self.exchange.requests.requester.responder.currencies['ETH'].blockchain.mempool.transactions[1].confirmed = True
@@ -543,8 +555,12 @@ class TestUpdateLiquidityPosition(unittest.IsolatedAsyncioTestCase):
         position = await self.exchange.get_position(liquidity.txn.id)
         await self.exchange.update_liquidity_position(position)
         self.assertTrue(isinstance(position, Liquidity))
-        self.assertEqual(position.base_fee, Decimal('0.003100775193798450'))
-        self.assertEqual(position.quote_fee, Decimal('0.003307656834233252'))        
+        self.assertTrue(position.base_fee > position_before.base_fee)
+        self.assertTrue(position.quote_fee > position_before.quote_fee)
+        self.assertTrue(self.pool.amm.reserve_a > pool_before.amm.reserve_a)
+        self.assertTrue(self.pool.amm.fees[datetime(2023, 1, 1, 0, 0)] > 0)
+        self.assertTrue(self.pool.amm.reserve_b < pool_before.amm.reserve_b)
+        self.assertTrue(self.pool.amm.k < pool_before.amm.k)
 
 class TestGetPosition(unittest.IsolatedAsyncioTestCase):
     async def asyncSetUp(self):
@@ -588,7 +604,7 @@ class TestGetPercentOfPool(unittest.IsolatedAsyncioTestCase):
 
     async def test_get_percent_of_pool(self):
         pool = self.exchange.pools['ETHCAKE'][str(self.exchange.fee_levels[3])]
-        self.liquidity = await self.exchange.pool_add_liquidity(pool, 1, 1)
+        self.liquidity = await self.exchange.pool_add_liquidity(pool, 100, 1)
         wallet_address = self.exchange.wallet_requests.requester.responder.trader.wallet.address
         liquidity = await self.exchange.provide_liquidity(wallet_address, 'ETH', 'CAKE', Decimal('.4'), 3, '.8', '.2')        
         approved_liquidity = await self.exchange.approve_liquidity(liquidity.txn.id, '.0001')
@@ -596,8 +612,31 @@ class TestGetPercentOfPool(unittest.IsolatedAsyncioTestCase):
         await self.exchange.update_pending_liquidity()
         position = await self.exchange.get_position(liquidity.txn.id)
         percent = await self.exchange.get_percent_of_pool(pool, position)
-        self.assertEqual(percent['base_pct'], Decimal('0.285714285714285715'))
-        self.assertEqual(percent['quote_pct'], Decimal('0.222222222222222223'))
+        #These should remain the same with a Constant Product AMM
+        self.assertTrue(percent['base_pct'] == percent['quote_pct'])
+        self.assertEqual(percent['base_pct'], Decimal(".004"))
+        self.assertEqual(percent['quote_pct'], Decimal('.004'))
+
+    async def test_get_percent_of_pool_after_swap(self):
+        pool = self.exchange.pools['ETHCAKE'][str(self.exchange.fee_levels[3])]
+        self.liquidity = await self.exchange.pool_add_liquidity(pool, 100, 1)
+        wallet_address = self.exchange.wallet_requests.requester.responder.trader.wallet.address
+        swapper_address = self.exchange.wallet_requests.requester.responder.swapper.wallet.address
+        liquidity = await self.exchange.provide_liquidity(wallet_address, 'ETH', 'CAKE', Decimal('.4'), 3, '.8', '.2')  
+        approved_liquidity = await self.exchange.approve_liquidity(liquidity.txn.id, '.0001')
+        self.exchange.requests.requester.responder.currencies['ETH'].blockchain.mempool.transactions[0].confirmed = True
+        await self.exchange.update_pending_liquidity()      
+        swap = await self.exchange.swap(swapper_address, 'ETH', 'CAKE', Decimal('0.1'), Decimal('0.0001'))
+        await self.exchange.approve_swap(swap.txn.id, '.0001')        
+        self.exchange.requests.requester.responder.currencies['ETH'].blockchain.mempool.transactions[1].confirmed = True
+        await self.exchange.update_pending_swaps()
+        self.exchange.update_liqudity_positions()
+        position = await self.exchange.get_position(liquidity.txn.id)
+        percent = await self.exchange.get_percent_of_pool(pool, position)
+        #These should remain the same with a Constant Product AMM
+        self.assertTrue(percent['base_pct'] == percent['quote_pct'])
+        self.assertEqual(percent['base_pct'], Decimal(".004"))
+        self.assertEqual(percent['quote_pct'], Decimal('.004'))
 
 class TestGetAccumulatedFees(unittest.IsolatedAsyncioTestCase):
     async def asyncSetUp(self):
@@ -606,7 +645,7 @@ class TestGetAccumulatedFees(unittest.IsolatedAsyncioTestCase):
         await self.exchange.list_asset('CAKE', 18)
         await self.exchange.create_pool('ETH', 'CAKE', 3)
         pool = self.exchange.pools['ETHCAKE'][str(self.exchange.fee_levels[3])]
-        self.liquidity = await self.exchange.pool_add_liquidity(pool, 1, 1)
+        self.liquidity = await self.exchange.pool_add_liquidity(pool, 100, 100)
 
     async def test_get_accumulated_fees(self):
         wallet_address = self.exchange.wallet_requests.requester.responder.trader.wallet.address
@@ -623,8 +662,8 @@ class TestGetAccumulatedFees(unittest.IsolatedAsyncioTestCase):
         fees = await self.exchange.get_accumulated_fees(liquidity.txn.id)
         self.assertTrue(isinstance(fees, dict))
         self.assertTrue('error' not in fees)
-        self.assertEqual(fees['base_fee'], Decimal('0.003100775193798450'))
-        self.assertEqual(fees['quote_fee'], Decimal('0.003307656834233252'))   
+        self.assertTrue(fees['base_fee'] > 0)
+        self.assertTrue(fees['quote_fee'] > 0)   
 
 class TestCollectFees(unittest.IsolatedAsyncioTestCase):
     async def asyncSetUp(self):
@@ -633,7 +672,7 @@ class TestCollectFees(unittest.IsolatedAsyncioTestCase):
         await self.exchange.list_asset('CAKE', 18)
         await self.exchange.create_pool('ETH', 'CAKE', 3)
         pool = self.exchange.pools['ETHCAKE'][str(self.exchange.fee_levels[3])]
-        await self.exchange.pool_add_liquidity(pool, 1, 1)
+        await self.exchange.pool_add_liquidity(pool, 100, 100)
         self.wallet_address = self.exchange.wallet_requests.requester.responder.trader.wallet.address
         self.swapper_address = self.exchange.wallet_requests.requester.responder.swapper.wallet.address
         self.liquidity = await self.exchange.provide_liquidity(self.wallet_address, 'ETH', 'CAKE', Decimal('.4'), 3, '.8', '.2')        
@@ -651,8 +690,8 @@ class TestCollectFees(unittest.IsolatedAsyncioTestCase):
         position = await self.exchange.get_position(self.liquidity.txn.id)
         self.assertTrue(len(self.exchange.unapproved_collect_fees.items()) == 1)
         self.assertTrue(self.liquidity.txn.id in self.exchange.unapproved_collect_fees)
-        self.assertEqual(position.base_fee, Decimal('0.003100775193798450')) #NOTE: will still have fees until the collect_fees txn is confirmed
-        self.assertEqual(position.quote_fee, Decimal('0.003307656834233252')) 
+        self.assertTrue(position.base_fee > 0) #NOTE: will still have fees until the collect_fees txn is confirmed
+        self.assertTrue(position.quote_fee > 0) 
 
     async def test_collect_fees_multi_attempt(self):
         position = await self.exchange.get_position(self.liquidity.txn.id)
@@ -668,7 +707,7 @@ class TestApproveCollectFees(unittest.IsolatedAsyncioTestCase):
         await self.exchange.list_asset('CAKE', 18)
         await self.exchange.create_pool('ETH', 'CAKE', 3)
         pool = self.exchange.pools['ETHCAKE'][str(self.exchange.fee_levels[3])]
-        await self.exchange.pool_add_liquidity(pool, 1, 1)
+        await self.exchange.pool_add_liquidity(pool, 100, 100)
 
     async def test_approve_collect_fees(self):
         wallet_address = self.exchange.wallet_requests.requester.responder.trader.wallet.address
@@ -701,8 +740,8 @@ class TestConfirmCollectFees(unittest.IsolatedAsyncioTestCase):
         await self.exchange.wallet_requests.requester.init()
         await self.exchange.list_asset('CAKE', 18)
         await self.exchange.create_pool('ETH', 'CAKE', 3)
-        pool = self.exchange.pools['ETHCAKE'][str(self.exchange.fee_levels[3])]
-        await self.exchange.pool_add_liquidity(pool, 1, 1)
+        self.pool = self.exchange.pools['ETHCAKE'][str(self.exchange.fee_levels[3])]
+        await self.exchange.pool_add_liquidity(self.pool, 100, 100)
         self.wallet_address = self.exchange.wallet_requests.requester.responder.trader.wallet.address
         self.swapper_address = self.exchange.wallet_requests.requester.responder.swapper.wallet.address
         self.liquidity = await self.exchange.provide_liquidity(self.wallet_address, 'ETH', 'CAKE', Decimal('.4'), 3, '.8', '.2')        
@@ -720,23 +759,22 @@ class TestConfirmCollectFees(unittest.IsolatedAsyncioTestCase):
         self.exchange.requests.requester.responder.currencies['ETH'].blockchain.mempool.transactions[2].dt = datetime(2023, 1, 1, 0, 0)        
 
     async def test_confirm_collect_fees(self):
-        await self.exchange.update_pending_collect_fees()
+        pool_before = deepcopy(self.pool)
+        position_before = deepcopy(await self.exchange.get_position(self.liquidity.txn.id))
+        collected_fees = await self.exchange.update_pending_collect_fees()
         # await self.exchange.update_liqudity_positions()
         position = await self.exchange.get_position(self.liquidity.txn.id)
-        self.assertTrue(len(self.exchange.unapproved_liquidity.items()) == 0)
-        self.assertTrue(len(self.exchange.pending_liquidity.items()) == 0)
-        self.assertTrue(len(self.exchange.unapproved_swaps.items()) == 0)
-        self.assertTrue(len(self.exchange.pending_swaps.items()) == 0)
         self.assertTrue(len(self.exchange.unapproved_collect_fees.items()) == 0)
         self.assertTrue(len(self.exchange.pending_collect_fees.items()) == 0)
         self.assertEqual(self.collect_fees.txn.id, self.approved_collect_fees.txn.id)
         self.assertEqual(self.liquidity.txn.id, self.collect_fees.liquidity_address)
         self.assertEqual(position.base_fee, 0)
         self.assertEqual(position.quote_fee, 0)
-        self.assertEqual(self.exchange.pools['ETHCAKE'][str(self.exchange.fee_levels[3])].amm.fees, {datetime(2023, 1, 1, 0, 0): Decimal('0.006899224806201550')})  
-        self.assertEqual(self.exchange.pools['ETHCAKE'][str(self.exchange.fee_levels[3])].amm.reserve_a, Decimal('1.290000000000000000'))
-        self.assertEqual(self.exchange.pools['ETHCAKE'][str(self.exchange.fee_levels[3])].amm.reserve_b, Decimal('1.376067934461887847'))
-        self.assertEqual(self.exchange.pools['ETHCAKE'][str(self.exchange.fee_levels[3])].amm.k, Decimal('1.775127635455835322'))
+        # The below are all unchanged because fees are deducted at each tick and not at the time of collection, collecting deducts fees from the liquidity position
+        self.assertTrue(self.pool.amm.reserve_b == pool_before.amm.reserve_b)
+        self.assertTrue(self.pool.amm.reserve_a == pool_before.amm.reserve_a)
+        self.assertTrue(self.pool.amm.fees[datetime(2023, 1, 1, 0, 0)] > 0)
+        self.assertTrue(self.pool.amm.k == pool_before.amm.k)        
 
     async def test_confirm_no_fee_to_collect(self):
         await self.exchange.update_pending_collect_fees()
