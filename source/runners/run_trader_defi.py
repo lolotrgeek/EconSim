@@ -32,8 +32,8 @@ class DefiTraderRunner(Runner):
                 elif msg['topic'] == 'get_balance': return dumps((await self.traders[msg['address']].wallet.get_balance(msg['asset'])))
                 elif msg['topic'] == 'transaction_confirmed': return dumps(await self.traders[msg['address']].wallet.transaction_confirmed(msg['txn']))
                 elif msg['topic'] == 'transaction_failed': return dumps(await self.traders[msg['address']].wallet.transaction_failed(msg['txn']))
-            else: return f'unknown asset {msg["asset"]}'    
-        else: return f'unknown topic {msg["topic"]}'
+            else: return dumps({"error": f'unknown address {msg["address"]}'})
+        else: return dumps({"error": f'unknown topic {msg["topic"]}'})
 
     async def run(self) -> None:
         try:
