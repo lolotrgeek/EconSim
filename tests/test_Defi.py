@@ -56,8 +56,9 @@ class TestDefi(unittest.TestCase):
         pool_fee_pct = PoolFee(0.01)
         fee_amount = 0.1
         slippage = 0.05
+        deadline = 30
         txn = MempoolTransaction('test',0,0,'test', 'test', transfers=[{'asset': 'ETH'}, {'asset': 'USDT'}])
-        swap = Swap(pool_fee_pct, fee_amount, slippage, txn)
+        swap = Swap(pool_fee_pct, fee_amount, slippage, deadline, txn)
         self.assertEqual(swap.pool_fee_pct, pool_fee_pct)
         self.assertEqual(swap.fee_amount, fee_amount)
         self.assertEqual(swap.slippage, slippage)

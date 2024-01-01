@@ -1,4 +1,4 @@
-import asyncio,sys,os, unittest
+import sys,os, unittest
 from datetime import datetime
 from copy import deepcopy
 parent_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
@@ -10,7 +10,6 @@ from source.crypto.CryptoCurrencyRequests import CryptoCurrencyRequests as Reque
 from source.crypto.WalletRequests import WalletRequests
 from .MockRequesterCrypto import MockRequesterCrypto
 from .MockRequesterWallet import MockRequesterWallet
-from source.utils._utils import prec
 from source.exchange.types.Defi import *
 
 async def standard_asyncSetUp(self):
@@ -106,25 +105,25 @@ class TestCreatePool(unittest.IsolatedAsyncioTestCase):
         new_pool = await self.exchange.create_pool('CAKE', 'ETH', 3)
         self.assertEqual(new_pool['error'], 'cannot create, max_pairs_reached')
 
-class TestSelectPoolFeePct(unittest.IsolatedAsyncioTestCase):
+class TestSelectPool(unittest.IsolatedAsyncioTestCase):
     async def asyncSetUp(self):
         self.exchange = await standard_asyncSetUp(self)
         await self.exchange.list_asset('CAKE', 18)
         await self.exchange.create_pool('ETH', 'CAKE', 3)
 
-    async def test_select_pool_fee_pct(self):
+    async def test_select_pool(self):
         self.exchange.pools['ETHCAKE'][str(self.exchange.fee_levels[3])].amm.reserve_a = 1 
         self.exchange.pools['ETHCAKE'][str(self.exchange.fee_levels[3])].amm.reserve_b = 1
-        selected_pool_pct = await self.exchange.select_pool_fee_pct('ETH', 'CAKE')
-        self.assertEqual(selected_pool_pct, str(self.exchange.fee_levels[3]) )
+        selected_pool = await self.exchange.select_pool('ETH', 'CAKE')
+        self.assertEqual(selected_pool, self.exchange.pools['ETHCAKE'][str(self.exchange.fee_levels[3])])
 
     async def test_no_pool_error(self):
-        err_pool = await self.exchange.select_pool_fee_pct('CAKE', 'ETH')
+        err_pool = await self.exchange.select_pool('CAKE', 'ETH')
         self.assertEqual(err_pool['error'], 'pool does not exist')
 
     async def test_no_active_pools(self):
         await self.exchange.create_pool('CAKE', 'ETH', 2)
-        err_pool = await self.exchange.select_pool_fee_pct('CAKE', 'ETH')
+        err_pool = await self.exchange.select_pool('CAKE', 'ETH')
         self.assertEqual(err_pool['error'], 'no active pools found')
 
 class TestPoolAddLiquidity(unittest.IsolatedAsyncioTestCase):
@@ -202,8 +201,8 @@ class TestGetPool(unittest.IsolatedAsyncioTestCase):
         await self.exchange.pool_add_liquidity(pool, 100, 100)
 
     async def test_get_pool(self):
-        fee= await self.exchange.select_pool_fee_pct('ETH', 'CAKE')
-        pool = await self.exchange.get_pool('ETH', 'CAKE', fee)
+        selected_pool = await self.exchange.select_pool('ETH', 'CAKE')
+        pool = await self.exchange.get_pool('ETH', 'CAKE', selected_pool.fee)
         self.assertEqual(pool.base , 'ETH')
         self.assertEqual(pool.quote , 'CAKE')
 
@@ -220,8 +219,8 @@ class TestGetPoolLiquidity(unittest.IsolatedAsyncioTestCase):
         await self.exchange.pool_add_liquidity(pool, 1, 1)
 
     async def test_get_pool_liquidity(self):
-        fee= await self.exchange.select_pool_fee_pct('ETH', 'CAKE')
-        pool_liquidity = await self.exchange.get_pool_liquidity('ETH', 'CAKE', fee)
+        pool = await self.exchange.select_pool('ETH', 'CAKE')
+        pool_liquidity = await self.exchange.get_pool_liquidity('ETH', 'CAKE', pool.fee)
         self.assertEqual(pool_liquidity['ETH'] , 1)
         self.assertEqual(pool_liquidity['CAKE'] , 1)
 
@@ -250,7 +249,7 @@ class TestWalletHasFunds(unittest.IsolatedAsyncioTestCase):
 
     async def test_wallet_has_funds_error(self):
         wallet_address = self.exchange.wallet_requests.requester.responder.trader.wallet.address
-        has_funds = await self.exchange.wallet_has_funds(wallet_address, 'ETH', 2)
+        has_funds = await self.exchange.wallet_has_funds(wallet_address, 'ETH', 10)
         self.assertFalse(has_funds)
 
 class TestSwap(unittest.IsolatedAsyncioTestCase):
@@ -284,7 +283,7 @@ class TestSwap(unittest.IsolatedAsyncioTestCase):
     async def test_swap_no_funds(self):
         await self.exchange.pool_add_liquidity(self.pool, 100, 100)
         wallet_address = self.exchange.wallet_requests.requester.responder.trader.wallet.address
-        swap = await self.exchange.swap(wallet_address, 'ETH', 'CAKE', Decimal('2'))
+        swap = await self.exchange.swap(wallet_address, 'ETH', 'CAKE', Decimal('10'))
         self.assertTrue(type(swap) is dict)
         self.assertEqual(swap['error'], 'wallet does not have enough funds')
 
@@ -412,11 +411,11 @@ class TestProvideLiquidity(unittest.IsolatedAsyncioTestCase):
         self.exchange = await standard_asyncSetUp(self)
         await self.exchange.wallet_requests.requester.init()
         await self.exchange.list_asset('CAKE', 18)
-        await self.exchange.create_pool('ETH', 'CAKE', 3)
-        pool = self.exchange.pools['ETHCAKE'][str(self.exchange.fee_levels[3])]
-        await self.exchange.pool_add_liquidity(pool, 1, 1)
 
     async def test_provide_liquidity(self):
+        await self.exchange.create_pool('ETH', 'CAKE', 3)
+        self.pool = self.exchange.pools['ETHCAKE'][str(self.exchange.fee_levels[3])]        
+        await self.exchange.pool_add_liquidity(self.pool, 1, 1)
         wallet_address = self.exchange.wallet_requests.requester.responder.trader.wallet.address
         liquidity = await self.exchange.provide_liquidity(wallet_address, 'ETH', 'CAKE', Decimal('.4'), 3, '.8', '.2')
         self.assertTrue(len(self.exchange.unapproved_liquidity.items()) == 1)
@@ -437,11 +436,27 @@ class TestProvideLiquidity(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(self.exchange.unapproved_liquidity[liquidity.txn.id].txn.transfers[2]['from'], self.exchange.router)
         self.assertEqual(self.exchange.unapproved_liquidity[liquidity.txn.id].txn.transfers[2]['to'], wallet_address)
 
-    async def test_provide_liquidity_no_funds(self):
+    async def test_provide_liquidity(self):
+        await self.exchange.create_pool('ETH', 'CAKE', 3)
+        self.pool = self.exchange.pools['ETHCAKE'][str(self.exchange.fee_levels[3])]        
+        await self.exchange.pool_add_liquidity(self.pool, 1, 1)
         wallet_address = self.exchange.wallet_requests.requester.responder.trader.wallet.address
-        liquidity = await self.exchange.provide_liquidity(wallet_address, 'ETH', 'CAKE', 2, 3, '.8', '.2')
+        liquidity = await self.exchange.provide_liquidity(wallet_address, 'ETH', 'CAKE', Decimal('.4'), 3, '.8', '.2')
+        self.assertTrue(len(self.exchange.unapproved_liquidity.items()) == 1)
+
+    async def test_provide_liquidity_no_funds(self):
+        await self.exchange.create_pool('ETH', 'CAKE', 3)
+        self.pool = self.exchange.pools['ETHCAKE'][str(self.exchange.fee_levels[3])]        
+        await self.exchange.pool_add_liquidity(self.pool, 1, 1)
+        wallet_address = self.exchange.wallet_requests.requester.responder.trader.wallet.address
+        liquidity = await self.exchange.provide_liquidity(wallet_address, 'ETH', 'CAKE', 10, 3, '.8', '.2')
         self.assertTrue(type(liquidity) is dict)
         self.assertEqual(liquidity['error'], 'wallet does not have enough funds')
+
+    async def test_provide_liquidity_non_existent_pool(self):
+        wallet_address = self.exchange.wallet_requests.requester.responder.trader.wallet.address
+        liquidity = await self.exchange.provide_liquidity(wallet_address, 'ETH', 'CAKE', 1, 3)
+        self.assertEqual(liquidity, {'error': 'pool does not exist'})
 
 class TestApproveLiquidity(unittest.IsolatedAsyncioTestCase):
     async def asyncSetUp(self):
@@ -449,13 +464,12 @@ class TestApproveLiquidity(unittest.IsolatedAsyncioTestCase):
         await self.exchange.wallet_requests.requester.init()
         await self.exchange.list_asset('CAKE', 18)
         await self.exchange.create_pool('ETH', 'CAKE', 3)
-        pool = self.exchange.pools['ETHCAKE'][str(self.exchange.fee_levels[3])]
-        await self.exchange.pool_add_liquidity(pool, 100, 100)
-
+        self.pool = self.exchange.pools['ETHCAKE'][str(self.exchange.fee_levels[3])]
 
     async def test_approve_liquidity(self):
+        await self.exchange.pool_add_liquidity(self.pool, 100, 100)
         wallet_address = self.exchange.wallet_requests.requester.responder.trader.wallet.address
-        self.liquidity = await self.exchange.provide_liquidity(wallet_address, 'ETH', 'CAKE', Decimal('.4'), 3, '.8', '.2')        
+        self.liquidity = await self.exchange.provide_liquidity(wallet_address, 'ETH', 'CAKE', Decimal('.4'), 3, '.8', '.2')
         approved_liquidity = await self.exchange.approve_liquidity(self.liquidity.txn.id, '.0001')
         self.assertTrue(len(self.exchange.unapproved_liquidity.items()) == 0)
         self.assertTrue(len(self.exchange.pending_liquidity.items()) == 1)
@@ -655,7 +669,7 @@ class TestGetPercentOfPool(unittest.IsolatedAsyncioTestCase):
         await self.exchange.approve_swap(swap.txn.id, '.0001')        
         self.exchange.requests.requester.responder.currencies['ETH'].blockchain.mempool.transactions[1].confirmed = True
         await self.exchange.update_pending_swaps()
-        self.exchange.update_liqudity_positions()
+        await self.exchange.update_liqudity_positions()
         position = await self.exchange.get_position(liquidity.txn.id)
         percent = await self.exchange.get_percent_of_pool(pool, position)
         #These should remain the same with a Constant Product AMM

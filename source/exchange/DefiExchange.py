@@ -52,7 +52,7 @@ class DefiExchange():
         self.max_pairs = 10000
         self.max_assets = 10000
         self.max_price_impact = Decimal('0.15')
-        self.logger = Logger('DefiExchange', 30)
+        self.logger = Logger('DefiExchange', 20)
 
     async def start(self):
         self.chain = await self.requests.connect(self.chain)
@@ -86,6 +86,9 @@ class DefiExchange():
                 quote = pending_liquidity.pair.quote
                 base_qty = pending_liquidity.txn.transfers[0]['for']
                 quote_qty = pending_liquidity.txn.transfers[1]['for']
+                if base+quote not in self.pools or pending_liquidity.pool_fee_pct not in self.pools[base+quote]:
+                    self.logger.error(f'Unable to add liquidity for confirmed txn {address}: pool does not exist, base: {base}, quote: {quote}, pool_fee_pct: {pending_liquidity.pool_fee_pct}')
+                    continue
                 pool = self.pools[base+quote][pending_liquidity.pool_fee_pct]
                 await self.pool_add_liquidity(pool, base_qty, quote_qty)
                 self.liquidity_positions[address] = pending_liquidity
@@ -134,6 +137,7 @@ class DefiExchange():
             slippage = pending_swap.slippage
 
             if not transaction['confirmed']:
+                #TODO: if the following conditions are met update on the front-end
                 if (self.dt - string_to_time(transaction['dt'])).total_seconds() > pending_swap.deadline:
                     self.logger.warning(f'transaction timed out, transaction: {transaction}, deadline: {pending_swap.deadline}')
                     await self.requests.cancel_transaction(self.default_currency.symbol, transaction['id'])
@@ -252,10 +256,7 @@ class DefiExchange():
     async def get_assets(self) -> dict:
         return self.assets
 
-    async def create_pool(self, base:str, quote:str, fee_level=2) -> Pool:
-        """
-        Returns the existing pool if found, otherwise creates a new pool.
-        """
+    async def check_assets(self, base:str, quote:str) -> dict:
         if base not in self.assets:
             return {'error': 'base asset does not exist'}
         if quote not in self.assets:
@@ -264,6 +265,13 @@ class DefiExchange():
             return {'error': 'cannot create, max_pairs_reached'}        
         if base == quote:
             return {'error': 'cannot create, base and quote assets are the same'}
+        return {'success': 'assets exist'}
+    
+    async def find_pool(self, base:str, quote:str, fee_level=2) -> Pool:
+        checked_assets = await self.check_assets(base, quote)
+        if 'error' in checked_assets:
+            return checked_assets
+
         if fee_level < 0 or fee_level >= len(self.fee_levels):
             return {'error': 'fee level does not exist'}
         
@@ -272,33 +280,50 @@ class DefiExchange():
             if str(pool_fee_pct) in self.pools[base+quote]:
                 # pool already exists, return the existing pool
                 return self.pools[base+quote][str(pool_fee_pct)]
-        else:
-            self.pools[base+quote] = {}
-        new_pool = Pool(str(pool_fee_pct), base, quote, ConstantProduct(0,0))
+        else: 
+            return {'error': 'pool does not exist'}
+        
+    async def create_pool(self, base:str, quote:str,fee_level=2, initial_base_amount=0, initial_quote_amount=0 ) -> Pool:
+        """
+        Creates a new Pool for a given base and quote pair and fee level.
+
+        """
+        checked_assets = await self.check_assets(base, quote)
+        if 'error' in checked_assets:
+            return checked_assets
+        
+        if fee_level < 0 or fee_level >= len(self.fee_levels):
+            return {'error': 'fee level does not exist'}
+        
+        pool_fee_pct = PoolFee(self.fee_levels[fee_level])
+        self.pools[base+quote] = {}
+        initial_base_amount = prec(initial_base_amount, self.assets[base].decimals)
+        initial_quote_amount = prec(initial_quote_amount, self.assets[quote].decimals)
+        new_pool = Pool(str(pool_fee_pct), base, quote, ConstantProduct(initial_base_amount, initial_quote_amount))
         self.pools[base+quote][str(pool_fee_pct)] = new_pool
         return new_pool
 
-    async def select_pool_fee_pct(self, base:str, quote:str) -> str:
+    async def select_pool(self, base:str, quote:str) -> Pool:
         """
-        Returns the fee from the pool with the most liquidity for a given base and quote pair.
-
-        NOTE: the fee also provides the key to finding pools in the self.pools dict. 
-
-        `i.e. ['BTCUSDT']['.01'] represents a pool with a fee of .01 for the BTC/USDT pair.`
+        Returns the pool with the most liquidity for a given base and quote pair.
         """
+        checked_assets= await self.check_assets(base, quote)
+        if 'error' in checked_assets:
+            return checked_assets
+        
         if base+quote not in self.pools:
             return {'error': 'pool does not exist'}
         max_reserves = 0
-        selected_pool_fee_pct = None
+        pool_fee_pct = None
         for fee_level, pool in self.pools[base+quote].items():
             if pool.is_active:
                 reserves = pool.amm.get_total_reserves()
                 if reserves > max_reserves:
                     max_reserves = reserves
-                    selected_pool_fee_pct = fee_level
-        if selected_pool_fee_pct is None:
+                    pool_fee_pct = fee_level
+        if pool_fee_pct is None:
             return {'error': 'no active pools found'}
-        return selected_pool_fee_pct
+        return self.pools[base+quote][pool_fee_pct]
 
     async def pool_swap_liquidity(self, pool: Pool, base_qty: Decimal, quote_qty: Decimal, fee_amount: Decimal):
         # liquidity fees are paid in each currency of the pool (e.g ETH/DAI, fees are paid in ETH and DAI)
@@ -393,15 +418,16 @@ class DefiExchange():
         
         deadline is number of seconds to wait before cancelling the transaction.
         """
+        self.logger.info(f'swap, agent_wallet: {agent_wallet}, base: {base}, quote: {quote}, base_qty: {base_qty}, slippage: {slippage}, deadline: {deadline}')
         if len(self.pending_swaps) >= self.max_pending_transactions:
             return {'error': 'max_pending_transactions_reached'}
 
         if len(self.unapproved_swaps) >= self.max_unapproved_swaps:
             self.unapproved_swaps.pop(self.unapproved_swaps[0])
 
-        pool_fee_pct = await self.select_pool_fee_pct(base, quote)
-        if 'error' in pool_fee_pct: return pool_fee_pct          
-        pool = self.pools[base+quote][pool_fee_pct]
+        pool = await self.select_pool(base, quote)
+        if isinstance(pool, dict) and 'error' in pool: 
+            return pool          
   
         base_qty = non_zero_prec(base_qty, self.assets[base].decimals)
         fee_amount = prec(prec(pool.fee,3) * base_qty, self.default_currency.decimals)
@@ -433,7 +459,7 @@ class DefiExchange():
         ]
         swap_address = generate_address()
         transaction = MempoolTransaction(id=swap_address, asset=self.default_currency.symbol, fee=0, amount=0, sender=agent_wallet, recipient=self.router, transfers=transfers)
-        self.unapproved_swaps[swap_address] = Swap(pool_fee_pct, fee_amount, slippage, deadline, transaction)
+        self.unapproved_swaps[swap_address] = Swap(pool.fee, fee_amount, slippage, deadline, transaction)
         await self.wallet_requests.request_signature(agent_wallet, transaction.to_dict())
         return self.unapproved_swaps[swap_address]
 
@@ -479,6 +505,7 @@ class DefiExchange():
         """
         Provides liquidity to a pool, in exchange for LP tokens.
         """
+        self.logger.info(f'provide_liquidity, agent_wallet: {agent_wallet}, base: {base}, quote: {quote}, amount: {amount}, fee_level: {fee_level}, high_range: {high_range}, low_range: {low_range}')
         amount = prec(amount, self.assets[base].decimals)
         agent_wallet = str(agent_wallet)
         has_base_funds = await self.wallet_has_funds(agent_wallet, base, amount)
@@ -486,19 +513,16 @@ class DefiExchange():
             # TODO: block agent from providing liquidity until they have enough funds 
             return {'error': 'wallet does not have enough funds'}
         
-        # auto select pool if it exists
         if fee_level < 0:
-            pool_fee_pct = await self.select_pool_fee_pct(base, quote)
-            if 'error' not in pool_fee_pct: 
-                pool = self.pools[base+quote][pool_fee_pct]
+            pool = await self.select_pool(base, quote)
         else:
-            pool = await self.create_pool(base, quote, fee_level)
-            pool_fee_pct = pool.fee
-            if  not isinstance(pool, Pool) and 'error' in pool:
-                return pool
-            
+            pool = await self.find_pool(base, quote, fee_level)
+
+        if isinstance(pool, dict) and 'error' in pool:
+            return pool    
+
         if not pool.is_active:
-            return {'error': 'pool is inactive'}            
+            return {'error': 'pool is inactive'}
 
         liquidity_address = generate_address()
         price = non_zero_prec(pool.amm.get_price(amount), self.assets[quote].decimals)
@@ -514,7 +538,7 @@ class DefiExchange():
             {'asset': liquidity_address, 'address': pool.lp_token, 'from': self.router, 'to': agent_wallet, 'for': 0} #LP token, the `asset` is the address to the Liquidity position address so that the wallet has a record of the liquidity position
         ]
         transaction = MempoolTransaction(id=liquidity_address, asset=self.default_currency.symbol, fee=0, amount=0, sender=agent_wallet, recipient=self.router, transfers=transfers)
-        self.unapproved_liquidity[liquidity_address] = Liquidity(agent_wallet, max_price, min_price, pool_fee_pct, transaction) # the `owner` is the address of the liquidity being removed
+        self.unapproved_liquidity[liquidity_address] = Liquidity(agent_wallet, max_price, min_price, pool.fee, transaction) # the `owner` is the address of the liquidity being removed
         return self.unapproved_liquidity[liquidity_address]
     
     async def approve_liquidity(self, liquidity_address: Address, network_fee:str) -> Liquidity:
