@@ -55,8 +55,8 @@ class MockResponderWallet(DefiTraderRunner):
         swapper = self.traders[self.swapper.wallet.address]
         await trader.wallet.connect('ETH')
         await swapper.wallet.connect('ETH')
-        await trader.wallet.update_holdings(MempoolTransaction('ETH', 0, Decimal('2.01'), self.seed_address, trader.wallet.address, datetime(2023,1,1)).to_dict() )
-        await swapper.wallet.update_holdings(MempoolTransaction('ETH', 0, Decimal('2.01'), self.seed_address, swapper.wallet.address, datetime(2023,1,1)).to_dict() )
+        await trader.wallet.update_holdings(MempoolTransaction('ETH', 0, Decimal('5.01'), self.seed_address, trader.wallet.address, datetime(2023,1,1)).to_dict() )
+        await swapper.wallet.update_holdings(MempoolTransaction('ETH', 0, Decimal('5.01'), self.seed_address, swapper.wallet.address, datetime(2023,1,1)).to_dict() )
         transfers_in = [
             {'asset': 'ETH', 'address': '0x0', 'from': trader.wallet.address, 'to': self.seed_address, 'for': 1, 'decimals': 8},
             {'asset': 'CAKE', 'address': '0x01', 'from': self.seed_address, 'to': trader.wallet.address, 'for': 1, 'decimals': 8}
