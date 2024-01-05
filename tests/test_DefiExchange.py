@@ -183,14 +183,16 @@ class TestPoolRemoveLiquidity(unittest.IsolatedAsyncioTestCase):
 
 class TestGetPools(unittest.IsolatedAsyncioTestCase):
     async def asyncSetUp(self):
-        self.exchange = await standard_asyncSetUp(self)
+        self.exchange = DefiExchange('ETH', datetime(2023, 1,1))
+        self.exchange.logger = Null_Logger(debug_print=True)
         await self.exchange.list_asset('CAKE', 18)
         await self.exchange.create_pool('ETH', 'CAKE', 3)
 
     async def test_get_pools(self):
-        pools = await self.exchange.get_pools()
+        pools = await self.exchange.get_pools("ETH", "CAKE")
         self.assertTrue(type(pools) is dict)
         self.assertTrue('ETHCAKE' in pools)
+        self.assertTrue(str(self.exchange.fee_levels[3]) in pools['ETHCAKE'])
 
 class TestGetPool(unittest.IsolatedAsyncioTestCase):
     async def asyncSetUp(self):

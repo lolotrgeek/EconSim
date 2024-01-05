@@ -29,12 +29,15 @@ class DefiExchangeRunner(Runner):
         elif msg['topic'] == 'list_asset': return dumps(await self.exchange.list_asset(msg['asset'], msg['decimals'] ))
         elif msg['topic'] == 'provide_liquidity': return dumps(await self.exchange.provide_liquidity(msg['agent_wallet'], msg['base'], msg['quote'], msg['amount'], msg['fee_level'], msg['high_range'], msg['low_range']))
         elif msg['topic'] == 'remove_liquidity': return dumps(await self.exchange.remove_liquidity(msg['agent_wallet'], msg['base'], msg['quote'], msg['amount'], msg['fee_level']))
+        elif msg['topic'] == 'collect_fees': return dumps(await self.exchange.collect_fees(msg['agent_wallet'], msg['base'], msg['quote'], msg['fee_level']))
         elif msg['topic'] == 'swap': return dumps(await self.exchange.swap( msg['agent_wallet'], msg['base'], msg['quote'], msg['amount'], msg['slippage']))
         elif msg['topic'] == 'get_fee_levels': return dumps(await self.exchange.get_fee_levels())
         elif msg['topic'] == 'get_pools': return dumps(await self.exchange.get_pools())
         elif msg['topic'] == 'get_pool': return dumps(await self.exchange.get_pool(msg['base'], msg['quote'], msg['fee_level']))
         elif msg['topic'] == 'get_pool_liquidity': return dumps(await self.exchange.get_pool_liquidity(msg['base'], msg['quote'], msg['fee_level']))
         elif msg['topic'] == 'get_assets': return dumps(await self.exchange.get_assets())
+        elif msg['topic'] == 'get_price': return dumps(await self.exchange.get_price(msg['base'], msg['quote'], msg['pool_fee_pct'], msg['base_amount']))
+        elif msg['topic'] == 'get_position': return dumps(await self.exchange.get_position(msg['position_address']))
         else: return dumps({"warning":  f'unknown topic {msg["topic"]}'})
 
     async def run(self) -> None:
@@ -42,8 +45,17 @@ class DefiExchangeRunner(Runner):
             await self.responder.connect()
             await self.crypto_requester.connect()
             await self.wallet_requester.connect()
-            self.exchange = DefiExchange(datetime=datetime(1700,1,1), crypto_requests=CryptoCurrencyRequests(self.crypto_requester), wallet_requests=WalletRequests(self.wallet_requester))
+            self.exchange = DefiExchange('ETH', dt=datetime(1700,1,1), crypto_requests=CryptoCurrencyRequests(self.crypto_requester), wallet_requests=WalletRequests(self.wallet_requester))
             
+            await self.exchange.start()
+            await self.exchange.list_asset('BTC', 8)
+            await self.exchange.list_asset('LTC', 8)
+            await self.exchange.list_asset('USD', 2)
+
+            await self.exchange.create_pool('ETH', 'BTC', 1, 1, 1)
+            await self.exchange.create_pool('ETH', 'LTC', 1, 1, 1)
+            await self.exchange.create_pool('ETH', 'USD', 1, 1, 1)
+
             while True:
                 self.exchange.dt = await self.get_time()
                 await self.exchange.next()

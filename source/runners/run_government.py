@@ -33,6 +33,7 @@ class GovernmentRunner(Runner):
                 next = await self.government.next()
                 if not next:
                     break
+                #TODO: this should be pub-sub
                 msg = {
                     "get_cash": dumps(self.government.cash),
                     "get_date": dumps(self.government.current_date),

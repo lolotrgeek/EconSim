@@ -16,7 +16,7 @@ class Requests():
         self.message_cache = {}
         self.cache_duration = 5  # Cache duration in seconds (adjust as needed)
 
-    async def make_request(self, topic: str, message: dict, factory, tries=0) -> str:
+    async def make_request(self, topic: str, message: dict, factory, tries=0) -> dict:
         try:
             # Check if the message is already cached and not expired
             if self.cache and topic in self.message_cache:

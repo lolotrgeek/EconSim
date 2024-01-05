@@ -17,3 +17,4 @@ class Channels:
         self.wallet_channel = 5573
 
         self.defi_channel = 5574
+        self.trader_channel = 5576

@@ -81,10 +81,11 @@ class CryptoRunner(Runner):
             while True:
                 time = await self.get_time()
                 for crypto in self.currencies:
+                    msg = await self.responder.lazy_respond(self.callback)
                     await self.currencies[crypto].next(time)
-                msg = await self.responder.lazy_respond(self.callback)
-                if msg == 'STOP':
-                    break
+                    msg = await self.responder.lazy_respond(self.callback)
+                    if msg == 'STOP':
+                        break
 
         except Exception as e:
             print(e)

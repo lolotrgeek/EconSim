@@ -4,7 +4,8 @@ import sys, os
 parent_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 sys.path.append(parent_dir)
 
-from source.exchange.types.Defi import Symbol, Pair, Address, PoolFee, Pool, Currency, Asset, Swap, Liquidity, CollectFee
+from source.exchange.types.Defi import *
+from source.exchange.components.ConstantProduct import ConstantProduct
 from source.crypto.MemPool import MempoolTransaction
 
 class TestDefi(unittest.TestCase):
@@ -37,6 +38,38 @@ class TestDefi(unittest.TestCase):
         self.assertEqual(pool.fee, fee)
         self.assertEqual(pool.base, base)
         self.assertEqual(pool.quote, quote)
+
+    def test_pool_to_dict(self):
+        fee = PoolFee(0.01)
+        base = "ETH"
+        quote = "USDT"
+        lp_token = Address(generate_address())
+        pool = Pool(fee, base, quote, lp_token=lp_token)
+        self.assertEqual(pool.to_dict(), {
+            'fee': str(fee),
+            'base': base,
+            'quote': quote,
+            'amm': {'reserve_a': 0, 'reserve_b': 0, 'k': 0},
+            'is_active': True,
+            'lp_token': str(lp_token),
+        })
+
+    def test_dict_to_pool(self):
+        fee = PoolFee(0.01)
+        base = "ETH"
+        quote = "USDT"
+        pool = Pool(fee, base, quote)
+        dict_pool = pool.to_dict()
+        re_pool = Pool(**dict_pool)
+        self.assertEqual(re_pool.fee, str(pool.fee))
+        self.assertEqual(re_pool.base, pool.base)
+        self.assertEqual(re_pool.quote, pool.quote)
+        self.assertEqual(re_pool.amm['reserve_a'], pool.amm.reserve_a)
+        self.assertEqual(re_pool.amm['reserve_b'], pool.amm.reserve_b)
+        self.assertEqual(re_pool.amm['k'], pool.amm.k)
+        self.assertEqual(re_pool.is_active, pool.is_active)
+        self.assertEqual(re_pool.lp_token, str(pool.lp_token))
+
 
     def test_currency(self):
         symbol = Symbol("ETH")

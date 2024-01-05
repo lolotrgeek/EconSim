@@ -1,22 +1,23 @@
 import sys, os
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-from uuid import uuid4 as UUID
+from datetime import datetime
+from decimal import Decimal
 from typing import List
 from source.utils._utils import generate_address, validate_address
 
 class MempoolTransaction:
     __slots__ = ['id', 'asset', 'fee', 'amount', 'sender', 'recipient', 'confirmed', 'timestamp', 'dt', 'transfers']
     def __init__(self, asset, fee, amount, sender, recipient, dt=None, id=None, transfers=[]):
-        self.id = id if id and validate_address(id) else generate_address()
-        self.asset = asset
-        self.fee = fee
-        self.amount = amount
-        self.sender = sender
-        self.recipient = recipient
-        self.confirmed = False
-        self.timestamp = None
-        self.dt = dt
-        self.transfers = transfers
+        self.id: str = id if id and validate_address(id) else generate_address()
+        self.asset:str = asset
+        self.fee: Decimal = fee
+        self.amount: Decimal = amount
+        self.sender: str = sender
+        self.recipient: str = recipient
+        self.confirmed: bool = False
+        self.timestamp: int = None
+        self.dt: datetime = dt
+        self.transfers: list = transfers
         
     def to_dict(self) -> dict:
         return {

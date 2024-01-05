@@ -10,9 +10,7 @@ files = [
     parent_dir+'\\EconSim\\source\\runners\\run_clock.py',
 ]
 traders = [
-    parent_dir+'\\EconSim\\source\\runners\\run_trader_defi.py',
-    # parent_dir+'\\EconSim\\run_trader_maker.py',
-    # parent_dir+'\\EconSim\\run_trader_taker.py',
+    parent_dir+'\\EconSim\\source\\runners\\run_trader_lp.py',
 ]
 
 

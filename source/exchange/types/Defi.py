@@ -56,22 +56,22 @@ class PoolFee():
 
 class Pool():
     __slots__ = ('fee', 'base', 'quote', 'amm', 'lp_token', 'is_active')
-    def __init__(self, fee: Decimal, base: str, quote: str, amm: ConstantProduct, is_active: bool= True):
+    def __init__(self, fee: PoolFee, base: str, quote: str, amm: ConstantProduct = ConstantProduct(0,0), is_active: bool= True, lp_token: Address = Address(generate_address())):
         self.fee: str = fee
         self.base: str = base
         self.quote: str = quote
         self.amm: ConstantProduct = amm
-        self.lp_token: Address = Address(generate_address())
         self.is_active: bool = is_active
+        self.lp_token: Address = lp_token
 
     def to_dict(self):
         return {
-            'fee': self.fee,
+            'fee': str(self.fee),
             'base': self.base,
             'quote': self.quote,
             'amm': self.amm.to_dict(),
-            'lp_token': Address(generate_address()),
             'is_active': self.is_active,
+            'lp_token': str(self.lp_token),
         }
 
 class Currency():
