@@ -26,4 +26,12 @@ export default class Subscriber {
             this.latest_reply = this.parser(msg)
           }
     }
+
+    async pull(topic) {
+        this.socket.subscribe(topic)
+        const [topic, msg] = await this.socket.receive()
+        this.latest_reply = this.parser(msg)
+        return this.latest_reply
+    }
+    
 }
