@@ -27,8 +27,8 @@ class DefiTraderRunner(Runner):
     async def callback(self, msg):
         if 'address' in msg:
             if msg['address'] == self.trader.wallet.address:
-                if msg['topic'] == 'request_signature': return dumps(await self.trader.wallet.signature_request(msg['txn']))
-                elif msg['topic'] == 'get_balance': return dumps((await self.trader.wallet.get_balance(msg['asset'])))
+                if msg['topic'] == 'request_signature': return dumps(await self.trader.wallet.signature_request(msg['txn'])) # DEPRECATED
+                elif msg['topic'] == 'get_balance': return dumps((await self.trader.wallet.get_balance(msg['asset']))) # DEPRECATED
                 elif msg['topic'] == 'transaction_confirmed': return dumps(await self.trader.wallet.transaction_confirmed(msg['txn']))
                 elif msg['topic'] == 'transaction_failed': return dumps(await self.trader.wallet.transaction_failed(msg['txn']))
             else: return dumps({"error": f'unknown address {msg["address"]}'})

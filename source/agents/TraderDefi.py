@@ -13,6 +13,9 @@ from source.utils._utils import prec, non_zero_prec, generate_address, string_to
 from source.crypto.Wallet import Wallet
 
 class TraderDefi():
+    """
+    A front end implementation of the DeFi exchange.
+    """
     def __init__(self, name:str, exchange_requests=None, crypto_requests=None):
         self.name = name
         self.exchange_requests: DefiExchangeRequests = exchange_requests
