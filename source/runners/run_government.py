@@ -8,7 +8,7 @@ sys.path.append(parent_dir)
 sys.path.append(source_dir+'\\runners')
 import traceback
 from runner import Runner
-from source.Messaging import Requester, Pusher
+from source.Messaging import Requester, Publisher
 from source.agents.Government import Government
 from source.exchange.CryptoExchangeRequests import CryptoExchangeRequests as Requests
 from source.utils._utils import dumps
@@ -18,7 +18,7 @@ class GovernmentRunner(Runner):
     def __init__(self):
         super().__init__()
         self.requester = Requester(self.channels.crypto_exchange_channel)
-        self.pusher = Pusher(self.channels.government_channel)
+        self.publisher = Publisher(self.channels.government_channel)
         self.government = None
 
     async def set_government(self):
@@ -33,16 +33,11 @@ class GovernmentRunner(Runner):
                 next = await self.government.next()
                 if not next:
                     break
-                #TODO: this should be pub-sub
-                msg = {
-                    "get_cash": dumps(self.government.cash),
-                    "get_date": dumps(self.government.current_date),
-                    "get_last_collected_taxes": dumps(self.government.taxes_last_collected),
-                    "get_taxes_collected": dumps(self.government.tax_records),
-                    "get_back_taxes": dumps(self.government.back_taxes),
-                }
-                await self.pusher.push(msg)
-
+                await self.publisher.publish("get_cash", dumps(self.government.cash))
+                await self.publisher.publish("get_date", dumps(self.government.current_date))
+                await self.publisher.publish("get_last_collected_taxes", dumps(self.government.taxes_last_collected))
+                await self.publisher.publish("get_taxes_collected", dumps(self.government.tax_records))
+                await self.publisher.publish("get_back_taxes", dumps(self.government.back_taxes))
 
         except Exception as e:
             print("[Government Error]", e)
